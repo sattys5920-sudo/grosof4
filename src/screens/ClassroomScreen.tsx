@@ -1,12 +1,20 @@
+import { useState } from 'react'
 import './ClassroomScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS } from '../data/characters'
-import { isRevealedTo } from '../data/reveal'
-import { Badge } from '../components/Badge'
 
 export function ClassroomScreen() {
-  const { viewerId, gmReveal, classroom, joinInvestigation, attemptDuel, displayName } = useGame()
-  const viewer = CHARACTERS.find((c) => c.id === viewerId)!
+  const {
+    viewerId,
+    classroom,
+    classroomMessages,
+    sendClassroomMessage,
+    attemptDuel,
+    submitPuzzleAnswer,
+    displayName,
+  } = useGame()
+  const [draft, setDraft] = useState('')
+  const [answer, setAnswer] = useState('')
 
   if (classroom.status === 'locked') {
     return (
@@ -21,73 +29,83 @@ export function ClassroomScreen() {
 
   const event = classroom.event!
   const isDuel = event.kind === 'duel'
-  const joined = classroom.participants.includes(viewerId)
+  const canChat = !!viewerId
+
+  function submit() {
+    sendClassroomMessage(draft)
+    setDraft('')
+  }
+
+  function submitAnswer() {
+    submitPuzzleAnswer(answer)
+    setAnswer('')
+  }
 
   return (
     <div className="classroom">
-      <div className="classroom__banner">
-        <span className="classroom__banner-label">
-          {classroom.status === 'cleared' ? '조사 완료' : '전체 조사 진행 중'}
-        </span>
-        <h2>{event.title}</h2>
-        <p>{event.description}</p>
+      <div className={`classroom__pin ${classroom.status === 'cleared' ? 'is-cleared' : ''}`}>
+        {event.category && <span className="classroom__pin-tag">{event.category}</span>}
+        <span className="classroom__pin-title">{event.title}</span>
+        <p className="classroom__pin-desc">{event.description}</p>
+        {event.puzzleText && classroom.status === 'active' && (
+          <pre className="classroom__pin-puzzle">{event.puzzleText}</pre>
+        )}
+        {classroom.status === 'active' && !isDuel && event.answer && (
+          <div className="classroom__pin-answer">
+            <input
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submitAnswer()}
+              placeholder="다 같이 상의한 정답을 입력..."
+            />
+            <button onClick={submitAnswer}>제출</button>
+          </div>
+        )}
+        {classroom.status === 'active' && isDuel && (
+          <div className="classroom__pin-answer">
+            <button onClick={() => attemptDuel('odd')}>홀</button>
+            <button onClick={() => attemptDuel('even')}>짝</button>
+          </div>
+        )}
+        {classroom.note && <p className="classroom__pin-note">{classroom.note}</p>}
+        {classroom.status === 'cleared' && classroom.hint && (
+          <div className="classroom__pin-hint">
+            <span>전원에게 공개된 단서</span>
+            <p>{classroom.hint}</p>
+          </div>
+        )}
       </div>
 
-      {!isDuel && (
-        <div className="classroom__panel">
-          <span className="classroom__section-label">
-            참여 인원 ({classroom.participants.length}/{event.needed})
-          </span>
-          <div className="classroom__participants">
-            {classroom.participants.length === 0 && (
-              <span className="classroom__empty">아직 아무도 나서지 않았다</span>
-            )}
-            {classroom.participants.map((id) => {
-              const c = CHARACTERS.find((ch) => ch.id === id)!
-              return (
-                <div key={id} className="classroom__participant">
-                  <Badge team={c.team} size={20} revealed={isRevealedTo(viewer, c, gmReveal)} />
-                  <span>{displayName(id)}</span>
-                </div>
-              )
-            })}
-          </div>
+      <div className="classroom__log">
+        {classroomMessages.length === 0 && (
+          <p className="classroom__empty">아직 아무도 말하지 않았다. 함께 의논해보자.</p>
+        )}
+        {classroomMessages.map((m) => {
+          const author = CHARACTERS.find((c) => c.id === m.authorId)
+          const isMe = m.authorId === viewerId
+          return (
+            <div key={m.id} className={`classroom__msg ${isMe ? 'is-me' : ''}`}>
+              <div className="classroom__msg-head">
+                <span className="classroom__msg-name">{author ? displayName(author.id) : '???'}</span>
+              </div>
+              <p className="classroom__msg-text">{m.text}</p>
+            </div>
+          )
+        })}
+      </div>
 
-          {classroom.status === 'active' && !joined && (
-            <button className="classroom__cta" onClick={joinInvestigation}>
-              함께 조사하기
-            </button>
-          )}
-          {classroom.status === 'active' && joined && (
-            <p className="classroom__waiting">더 많은 인원을 기다리는 중...</p>
-          )}
+      {canChat ? (
+        <div className="classroom__composer">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            placeholder="교실에 메시지 보내기..."
+          />
+          <button onClick={submit}>전송</button>
         </div>
-      )}
-
-      {isDuel && classroom.status === 'active' && (
-        <div className="classroom__panel">
-          <p className="classroom__waiting">괴이가 손을 내밀며 묻는다 — 홀일까, 짝일까?</p>
-          <div className="classroom__duel-row">
-            <button className="classroom__cta" onClick={() => attemptDuel('odd')}>
-              홀
-            </button>
-            <button className="classroom__cta" onClick={() => attemptDuel('even')}>
-              짝
-            </button>
-          </div>
-          {classroom.note && <p className="classroom__waiting">{classroom.note}</p>}
-        </div>
-      )}
-
-      {classroom.status === 'cleared' && classroom.hint && (
-        <div className="classroom__hint">
-          <span className="classroom__section-label">전원에게 공개된 단서</span>
-          <p>{classroom.hint}</p>
-        </div>
-      )}
-
-      {classroom.status === 'cleared' && (
-        <p className="classroom__waiting">GM이 새로운 조사를 열 때까지 기다려야 한다.</p>
+      ) : (
+        <p className="classroom__admin-note">관리자는 관전만 가능하다.</p>
       )}
     </div>
   )

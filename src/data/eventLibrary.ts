@@ -3,47 +3,6 @@ import { MISSING_STUDENT } from './characters'
 
 export const EVENT_LIBRARY: EventLibraryItem[] = [
   {
-    id: 'escape-office',
-    category: '방탈출',
-    dispatchKind: 'group',
-    title: '잠긴 교무실',
-    description:
-      '교무실 문이 3년 전 그 날짜로 된 자물쇠 번호로 잠겨 있다. 조사실에서 모은 힌트를 맞춰봐야 한다.',
-    needed: 5,
-    reward: '자물쇠 안에는 실종 당일 작성된, 끝내 발송되지 않은 상담 요청서가 들어 있었다.',
-    implemented: true,
-  },
-  {
-    id: 'maze-corridor',
-    category: '미궁',
-    dispatchKind: 'group',
-    title: '안개 속 복도',
-    description: '복도가 미로처럼 뒤틀려 있다. 같은 방향으로 세 번 꺾으면 제자리로 돌아온다는 소문이 있다.',
-    needed: 6,
-    reward: '미로의 중심에 다다르자, 벽에 3년 전 사건 당일의 CCTV 정지화면 한 장이 걸려 있었다.',
-    implemented: true,
-  },
-  {
-    id: 'puzzle-tape',
-    category: '협동조사',
-    dispatchKind: 'group',
-    title: '조각난 테이프 맞추기',
-    description: '방송실에서 나온 낡은 테이프가 조각조각 끊어져 있다. 순서를 맞춰야 재생할 수 있다.',
-    needed: 4,
-    reward: '이어붙인 테이프에서 사건 당일 마지막 통화 상대의 목소리가 흘러나온다.',
-    implemented: true,
-  },
-  {
-    id: 'social-anonvote',
-    category: '소셜',
-    dispatchKind: 'group',
-    title: '익명 제보함',
-    description: '전원이 익명으로 의심 가는 사람을 한 줄씩 제보하면, 그중 몇 개가 무작위로 공개된다.',
-    needed: 7,
-    reward: '제보함 바닥에서, 아무도 쓴 적 없다는 낯선 필체의 쪽지 한 장이 함께 나왔다.',
-    implemented: true,
-  },
-  {
     id: 'duel-oddeven',
     category: '대결',
     dispatchKind: 'duel',

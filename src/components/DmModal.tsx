@@ -9,7 +9,7 @@ export function DmModal() {
   const { viewerId, gmReveal, activeDmId, dmThreads, closeDm, sendDm, displayName } = useGame()
   const [draft, setDraft] = useState('')
 
-  if (!activeDmId) return null
+  if (!activeDmId || !viewerId) return null
 
   const viewer = CHARACTERS.find((c) => c.id === viewerId)!
   const target = CHARACTERS.find((c) => c.id === activeDmId)!

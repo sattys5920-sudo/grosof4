@@ -35,9 +35,11 @@ export interface ChatMessage {
 export interface GroupEventSpec {
   title: string
   description: string
-  needed: number
   reward: string
-  kind?: 'group' | 'duel'
+  kind?: 'duel' | 'puzzle'
+  category?: string
+  puzzleText?: string
+  answer?: string
 }
 
 export type ClassroomStatus = 'locked' | 'active' | 'cleared'
@@ -45,16 +47,15 @@ export type ClassroomStatus = 'locked' | 'active' | 'cleared'
 export interface ClassroomState {
   status: ClassroomStatus
   event: GroupEventSpec | null
-  participants: string[]
   hint: string | null
   note: string | null
 }
 
 export interface RoomEventState {
   event: GroupEventSpec | null
-  participants: string[]
   cleared: boolean
   clue: string | null
+  note: string | null
 }
 
 export interface FeedComment {
@@ -84,17 +85,26 @@ export interface Broadcast {
   body: string
 }
 
-export type EventCategory = '방탈출' | '미궁' | '협동조사' | '대결' | '공포연출' | '소셜'
+export type EventCategory = '대결' | '공포연출'
 
 export interface EventLibraryItem {
   id: string
   category: EventCategory
-  dispatchKind: 'group' | 'duel' | 'popup'
+  dispatchKind: 'duel' | 'popup'
   title: string
   description: string
-  needed?: number
   reward?: string
   popupKind?: BroadcastKind
   popupBody?: string
   implemented: boolean
+}
+
+export interface ClassroomPuzzle {
+  id: string
+  category: string
+  title: string
+  brief: string
+  puzzleText: string
+  answer: string
+  hint: string
 }

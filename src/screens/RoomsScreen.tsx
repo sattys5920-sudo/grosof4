@@ -30,6 +30,7 @@ function AdminRoomLog({ roomId }: { roomId: RoomId }) {
 export function RoomsScreen() {
   const {
     viewerId,
+    isAdmin,
     gmReveal,
     roomOccupancy,
     joinRoom,
@@ -37,23 +38,24 @@ export function RoomsScreen() {
     roomMessages,
     sendRoomMessage,
     roomEvents,
-    attemptRoomEvent,
+    submitRoomAnswer,
     displayName,
   } = useGame()
   const [openRoom, setOpenRoom] = useState<RoomId | null>(null)
-  const [adminView, setAdminView] = useState(false)
   const [draft, setDraft] = useState('')
-  const viewer = charOf(viewerId)
+  const [answer, setAnswer] = useState('')
+  const viewer = viewerId ? charOf(viewerId) : null
 
-  if (adminView) {
+  function revealedFor(c: ReturnType<typeof charOf>) {
+    return viewer ? isRevealedTo(viewer, c, gmReveal) : gmReveal
+  }
+
+  if (isAdmin) {
     return (
       <div className="rooms">
-        <div className="rooms__detail-head">
-          <button className="rooms__back" onClick={() => setAdminView(false)}>
-            ← 조사실 목록
-          </button>
-          <h2>관리자 전체 열람</h2>
-          <p className="rooms__desc">모든 조사실의 대화를 한 번에 확인한다.</p>
+        <div className="rooms__intro">
+          <span className="rooms__intro-label">관리자 전체 열람</span>
+          <p>모든 조사실의 대화를 한 번에 확인한다.</p>
         </div>
         {ROOMS.map((r) => (
           <AdminRoomLog key={r.id} roomId={r.id} />
@@ -65,107 +67,102 @@ export function RoomsScreen() {
   if (openRoom) {
     const room = ROOMS.find((r) => r.id === openRoom)!
     const occupants = roomOccupancy[openRoom]
-    const iAmHere = occupants.includes(viewerId)
+    const iAmHere = occupants.includes(viewerId ?? '')
     const roomEvent = roomEvents[openRoom]
+
+    function submitChat() {
+      sendRoomMessage(openRoom!, draft)
+      setDraft('')
+    }
+    function submitPuzzleAnswer() {
+      submitRoomAnswer(openRoom!, answer)
+      setAnswer('')
+    }
 
     return (
       <div className="rooms">
-        <div className="rooms__detail-head">
+        <div className={`rooms__pin ${roomEvent.cleared ? 'is-cleared' : ''}`}>
           <button className="rooms__back" onClick={() => setOpenRoom(null)}>
             ← 조사실 목록
           </button>
-          <h2>{room.name}</h2>
-          <p className="rooms__desc">{room.description}</p>
-        </div>
-
-        <div className="rooms__section">
-          <span className="rooms__section-label">현재 인원 ({occupants.length}/{room.capacity})</span>
-          <div className="rooms__occupants">
-            {occupants.length === 0 && <span className="rooms__empty">아직 아무도 없다</span>}
+          <span className="rooms__pin-title">{room.name}</span>
+          <div className="rooms__pin-occupants">
+            <span className="rooms__pin-count">{occupants.length}/{room.capacity}</span>
             {occupants.map((id) => {
               const c = charOf(id)
-              return (
-                <div key={id} className="rooms__occupant">
-                  <Badge team={c.team} size={22} revealed={isRevealedTo(viewer, c, gmReveal)} />
-                  <span>{displayName(id)}</span>
-                  {id === viewerId && <span className="rooms__me-tag">나</span>}
-                </div>
-              )
+              return <Badge key={id} team={c.team} size={18} revealed={revealedFor(c)} />
             })}
-          </div>
-          {iAmHere ? (
-            <button className="rooms__leave" onClick={() => leaveRoom(openRoom)}>
-              조사실에서 나가기
-            </button>
-          ) : (
-            <button
-              className="rooms__join"
-              disabled={occupants.length >= room.capacity}
-              onClick={() => joinRoom(openRoom)}
-            >
-              {occupants.length >= room.capacity ? '인원 초과' : '입장하기'}
-            </button>
-          )}
-        </div>
-
-        <div className="rooms__section">
-          <span className="rooms__section-label">대화</span>
-          <div className="rooms__chat-log">
-            {roomMessages[openRoom].map((m) => (
-              <div key={m.id} className="rooms__chat-line">
-                <span className="rooms__chat-author">{displayName(m.authorId)}</span>
-                <span className="rooms__chat-text">{m.text}</span>
-              </div>
-            ))}
-          </div>
-          {iAmHere ? (
-            <div className="rooms__composer">
-              <input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    sendRoomMessage(openRoom, draft)
-                    setDraft('')
-                  }
-                }}
-                placeholder={`${room.name}에서 대화하기...`}
-              />
-              <button
-                onClick={() => {
-                  sendRoomMessage(openRoom, draft)
-                  setDraft('')
-                }}
-              >
-                전송
-              </button>
-            </div>
-          ) : (
-            <p className="rooms__locked-note">입장한 사람만 대화할 수 있다.</p>
-          )}
-        </div>
-
-        <div className="rooms__section">
-          <span className="rooms__section-label">진행 중인 조사</span>
-          <div className="rooms__clue">
-            <span className="rooms__clue-title">{roomEvent.event!.title}</span>
-            <p className="rooms__clue-text">{roomEvent.event!.description}</p>
-            {roomEvent.cleared ? (
-              <>
-                <p className="rooms__clue-result">
-                  단서 확보 — 참여: {roomEvent.participants.map((id) => displayName(id)).join(', ')}
-                </p>
-                <p className="rooms__clue-text rooms__clue-text--reward">{roomEvent.clue}</p>
-              </>
-            ) : iAmHere ? (
-              <button className="rooms__join" onClick={() => attemptRoomEvent(openRoom)}>
-                함께 조사하기 ({occupants.length}/{room.capacity})
+            {iAmHere ? (
+              <button className="rooms__pin-toggle" onClick={() => leaveRoom(openRoom!)}>
+                나가기
               </button>
             ) : (
-              <p className="rooms__locked-note">입장한 사람만 함께 조사할 수 있다.</p>
+              <button
+                className="rooms__pin-toggle"
+                disabled={occupants.length >= room.capacity}
+                onClick={() => joinRoom(openRoom!)}
+              >
+                {occupants.length >= room.capacity ? '인원 초과' : '입장'}
+              </button>
             )}
           </div>
+
+          {roomEvent.event?.category && (
+            <span className="rooms__pin-tag">{roomEvent.event.category}</span>
+          )}
+          <span className="rooms__pin-puzzle-title">{roomEvent.event!.title}</span>
+          <p className="rooms__pin-desc">{roomEvent.event!.description}</p>
+          {!roomEvent.cleared && roomEvent.event?.puzzleText && (
+            <pre className="rooms__pin-puzzletext">{roomEvent.event.puzzleText}</pre>
+          )}
+          {!roomEvent.cleared && iAmHere && (
+            <div className="rooms__pin-answer">
+              <input
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submitPuzzleAnswer()}
+                placeholder="정답 입력..."
+              />
+              <button onClick={submitPuzzleAnswer}>제출</button>
+            </div>
+          )}
+          {!roomEvent.cleared && !iAmHere && (
+            <p className="rooms__pin-note">입장한 사람만 함께 풀 수 있다.</p>
+          )}
+          {roomEvent.note && <p className="rooms__pin-note">{roomEvent.note}</p>}
+          {roomEvent.cleared && (
+            <div className="rooms__pin-hint">
+              <span>단서 확보</span>
+              <p>{roomEvent.clue}</p>
+            </div>
+          )}
         </div>
+
+        <div className="rooms__log">
+          {roomMessages[openRoom].length === 0 && (
+            <p className="rooms__empty">아직 대화가 없다.</p>
+          )}
+          {roomMessages[openRoom].map((m) => (
+            <div key={m.id} className={`rooms__msg ${m.authorId === viewerId ? 'is-me' : ''}`}>
+              <span className="rooms__msg-name">{displayName(m.authorId)}</span>
+              <p className="rooms__msg-text">{m.text}</p>
+            </div>
+          ))}
+        </div>
+
+        {iAmHere ? (
+          <div className="rooms__composer">
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submitChat()}
+              placeholder={`${room.name}에서 대화하기...`}
+            />
+            <button onClick={submitChat}>전송</button>
+          </div>
+        ) : (
+          <p className="rooms__locked-note">입장한 사람만 대화할 수 있다.</p>
+        )}
       </div>
     )
   }
@@ -175,11 +172,6 @@ export function RoomsScreen() {
       <div className="rooms__intro">
         <span className="rooms__intro-label">조사실</span>
         <p>선착순으로 입장한다. 각 조사실에는 인원 제한이 있다.</p>
-        {gmReveal && (
-          <button className="rooms__admin-btn" onClick={() => setAdminView(true)}>
-            [관리자] 전체 대화 열람
-          </button>
-        )}
       </div>
       <div className="rooms__grid">
         {ROOMS.map((room) => {
@@ -201,14 +193,7 @@ export function RoomsScreen() {
               <div className="rooms__card-avatars">
                 {occupants.map((id) => {
                   const c = charOf(id)
-                  return (
-                    <Badge
-                      key={id}
-                      team={c.team}
-                      size={18}
-                      revealed={isRevealedTo(viewer, c, gmReveal)}
-                    />
-                  )
+                  return <Badge key={id} team={c.team} size={18} revealed={revealedFor(c)} />
                 })}
               </div>
             </button>

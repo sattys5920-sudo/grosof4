@@ -1,14 +1,14 @@
 import './StoryIntroScreen.css'
-import { INCIDENT_SUMMARY } from '../data/characters'
+import { INCIDENT_SUMMARY, SCHOOL_NAME, CLUB_NAME } from '../data/characters'
 
 export function StoryIntroScreen({ onEnter }: { onEnter: () => void }) {
   return (
     <div className="intro">
       <div className="intro__body">
-        <span className="intro__eyebrow">OO고등학교 · 돌아오지 않는 수학여행 전날</span>
+        <span className="intro__eyebrow">{SCHOOL_NAME} · {CLUB_NAME}</span>
         <p>
-          지방의 오래된 사립고등학교. 수학여행을 하루 앞둔 밤, 열 명이 이유 없이 학교에 남아
-          자정을 넘긴다.
+          지방의 오래된 사립고등학교. {CLUB_NAME} 부원 열 명이 이유 없이 학교에 남아 자정을
+          넘긴다.
         </p>
         <p className="intro__incident">{INCIDENT_SUMMARY}</p>
         <p>

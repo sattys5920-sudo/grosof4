@@ -34,6 +34,7 @@ function MissionTrack() {
 export function MissionScreen() {
   const {
     viewerId,
+    isAdmin,
     gmReveal,
     missionsOpen,
     mission,
@@ -44,12 +45,11 @@ export function MissionScreen() {
     resetMission,
     displayName,
   } = useGame()
-  const viewer = charOf(viewerId)
   const [draftTeam, setDraftTeam] = useState<string[]>([])
   const leader = charOf(CHARACTERS[mission.leaderIdx].id)
   const isLeader = leader.id === viewerId
   const teamSize = MISSION_SIZES[mission.missionIndex]
-  const onTeam = mission.proposedTeam.includes(viewerId)
+  const onTeam = viewerId ? mission.proposedTeam.includes(viewerId) : false
 
   function toggleDraft(id: string) {
     setDraftTeam((prev) => {
@@ -67,6 +67,26 @@ export function MissionScreen() {
       </div>
     )
   }
+
+  if (isAdmin || !viewerId) {
+    return (
+      <div className="mission">
+        <div className="mission__head">
+          <span className="mission__index">
+            {mission.missionIndex + 1}차 원정 · 관리자 관전
+          </span>
+          <span className="mission__score">
+            탐구자 {mission.wardWins} : {mission.sinWins} 괴이
+          </span>
+        </div>
+        <MissionTrack />
+        {mission.lastNote && <p className="mission__note">{mission.lastNote}</p>}
+        <p className="mission__lock-text">관리자는 원정에 참여하지 않고 진행 상황만 지켜본다.</p>
+      </div>
+    )
+  }
+
+  const viewer = charOf(viewerId)
 
   if (mission.phase === 'gameover') {
     const winnerLabel = mission.winner === 'ward' ? '탐구자 진영 승리' : '괴이 진영 승리'

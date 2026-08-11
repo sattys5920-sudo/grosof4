@@ -12,6 +12,7 @@ import { ClassroomScreen } from './screens/ClassroomScreen'
 import { RoomsScreen } from './screens/RoomsScreen'
 import { MissionScreen } from './screens/MissionScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
+import { SCHOOL_NAME } from './data/characters'
 
 function Screen() {
   const { activeTab } = useGame()
@@ -34,7 +35,7 @@ function Shell() {
     <div className="shell">
       <div className="shell__fog" />
       <header className="shell__header">
-        <span className="shell__title">OO고등학교</span>
+        <span className="shell__title">{SCHOOL_NAME}</span>
         <span className="shell__status">
           <span className="shell__dot" />
           안개 결계 · 자정 이후

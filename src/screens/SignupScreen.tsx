@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './SignupScreen.css'
 import { useGame } from '../state/GameContext'
+import { SCHOOL_NAME } from '../data/characters'
 
 const GRADES = ['1학년', '2학년', '3학년']
 
@@ -27,7 +28,7 @@ export function SignupScreen() {
   return (
     <div className="signup">
       <div className="signup__intro">
-        <span className="signup__eyebrow">OO고등학교 · 재학생 확인</span>
+        <span className="signup__eyebrow">{SCHOOL_NAME} · 재학생 확인</span>
         <h1>당신은 누구입니까?</h1>
         <p>안개가 걷히기 전, 함께 갇힌 사람들에게 자신을 알려야 한다.</p>
       </div>

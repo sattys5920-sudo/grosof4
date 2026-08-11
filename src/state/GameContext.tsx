@@ -7,6 +7,7 @@ import type {
   Broadcast,
   BroadcastKind,
   ChatMessage,
+  ClassroomPuzzle,
   ClassroomState,
   EventLibraryItem,
   FeedPost,
@@ -20,7 +21,8 @@ const ADMIN_CODE = '316316316'
 export type TabId = 'main' | 'classroom' | 'rooms' | 'mission' | 'profile'
 
 interface GameState {
-  viewerId: string
+  viewerId: string | null
+  isAdmin: boolean
   setViewerId: (id: string) => void
   nickname: string
   setNickname: (name: string) => void
@@ -40,11 +42,14 @@ interface GameState {
   roomMessages: Record<RoomId, ChatMessage[]>
   sendRoomMessage: (roomId: RoomId, text: string) => void
   roomEvents: Record<RoomId, RoomEventState>
-  attemptRoomEvent: (roomId: RoomId) => void
+  submitRoomAnswer: (roomId: RoomId, text: string) => void
+  classroomMessages: ChatMessage[]
+  sendClassroomMessage: (text: string) => void
   classroom: ClassroomState
   dispatchClassroomEvent: (item: EventLibraryItem) => void
+  dispatchPuzzle: (puzzle: ClassroomPuzzle) => void
+  submitPuzzleAnswer: (text: string) => void
   closeInvestigation: () => void
-  joinInvestigation: () => void
   attemptDuel: (choice: 'odd' | 'even') => void
   feed: FeedPost[]
   toggleHeart: (postId: string) => void
@@ -66,6 +71,11 @@ interface GameState {
   openDm: (id: string) => void
   closeDm: () => void
   sendDm: (text: string) => void
+  abilityUsed: boolean
+  personalClues: string[]
+  useWitnessMemory: () => void
+  useFamilyInsight: (roomId: RoomId) => void
+  spreadDisinfo: (text: string) => void
 }
 
 const GameContext = createContext<GameState | null>(null)
@@ -90,29 +100,35 @@ const INITIAL_ROOM_MESSAGES: Record<RoomId, ChatMessage[]> = {
   rooftop: [],
 }
 
+function normalize(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/g, '')
+}
+
 function initialRoomEvents(): Record<RoomId, RoomEventState> {
   const result = {} as Record<RoomId, RoomEventState>
   for (const room of ROOMS) {
-    result[room.id] = { event: ROOM_EVENTS[room.id], participants: [], cleared: false, clue: null }
+    result[room.id] = { event: ROOM_EVENTS[room.id], cleared: false, clue: null, note: null }
   }
   return result
 }
 
 function initialClassroom(): ClassroomState {
-  return { status: 'locked', event: null, participants: [], hint: null, note: null }
+  return { status: 'locked', event: null, hint: null, note: null }
 }
 
 export function GameProvider({ children }: { children: ReactNode }) {
-  const [viewerId, setViewerId] = useState(CHARACTERS[0].id)
-  const [nickname, setNickname] = useState(CHARACTERS[0].name)
+  const [viewerId, setViewerId] = useState<string | null>(null)
+  const [nickname, setNickname] = useState('')
   const [grade, setGrade] = useState('1학년')
   const [photo, setPhoto] = useState<string | null>(null)
   const [signedUp, setSignedUp] = useState(false)
   const [roleRevealed, setRoleRevealed] = useState(false)
+  const [claimedSlots, setClaimedSlots] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<TabId>('main')
   const [roomOccupancy, setRoomOccupancy] = useState(INITIAL_OCCUPANCY)
   const [roomMessages, setRoomMessages] = useState(INITIAL_ROOM_MESSAGES)
   const [roomEvents, setRoomEvents] = useState<Record<RoomId, RoomEventState>>(initialRoomEvents)
+  const [classroomMessages, setClassroomMessages] = useState<ChatMessage[]>([])
   const [classroom, setClassroom] = useState<ClassroomState>(initialClassroom)
   const [feed, setFeed] = useState<FeedPost[]>(INITIAL_FEED)
   const [gmReveal, setGmReveal] = useState(false)
@@ -120,15 +136,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [missionsOpen, setMissionsOpen] = useState(false)
   const [dmThreads, setDmThreads] = useState<Record<string, ChatMessage[]>>({})
   const [activeDmId, setActiveDmId] = useState<string | null>(null)
+  const [abilityUsed, setAbilityUsed] = useState(false)
+  const [personalClues, setPersonalClues] = useState<string[]>([])
   const [mission, dispatch] = useReducer(missionReducer, undefined, initialMissionState)
 
+  const isAdmin = viewerId === null && signedUp
+
   function completeSignup(newNickname: string, newGrade: string, newPhoto: string | null, adminCode: string) {
-    const assigned = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)]
-    setViewerId(assigned.id)
-    setNickname(newNickname.trim() || assigned.name)
     setGrade(newGrade)
     setPhoto(newPhoto)
-    setGmReveal(adminCode.trim() === ADMIN_CODE)
+    if (adminCode.trim() === ADMIN_CODE) {
+      setViewerId(null)
+      setNickname(newNickname.trim() || '관리자')
+      setGmReveal(true)
+      setSignedUp(true)
+      setRoleRevealed(true)
+      return
+    }
+    const pool = CHARACTERS.filter((c) => !claimedSlots.includes(c.id))
+    const available = pool.length > 0 ? pool : CHARACTERS
+    const assigned = available[Math.floor(Math.random() * available.length)]
+    setClaimedSlots((prev) => [...prev, assigned.id])
+    setViewerId(assigned.id)
+    setNickname(newNickname.trim() || assigned.name)
+    setGmReveal(false)
     setSignedUp(true)
     setRoleRevealed(false)
   }
@@ -155,7 +186,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   function sendDm(text: string) {
-    if (!activeDmId || !text.trim()) return
+    if (!activeDmId || !text.trim() || !viewerId) return
     const targetId = activeDmId
     const myMsg: ChatMessage = {
       id: `dm-${targetId}-${Date.now()}`,
@@ -190,6 +221,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   function joinRoom(roomId: RoomId) {
+    if (!viewerId) return
     setRoomOccupancy((prev) => {
       const capacity = ROOMS.find((r) => r.id === roomId)!.capacity
       if (prev[roomId].length >= capacity) return prev
@@ -204,6 +236,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   function leaveRoom(roomId: RoomId) {
+    if (!viewerId) return
     setRoomOccupancy((prev) => ({
       ...prev,
       [roomId]: prev[roomId].filter((id) => id !== viewerId),
@@ -211,7 +244,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   function sendRoomMessage(roomId: RoomId, text: string) {
-    if (!text.trim()) return
+    if (!text.trim() || !viewerId) return
     setRoomMessages((prev) => ({
       ...prev,
       [roomId]: [
@@ -221,83 +254,85 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }))
   }
 
-  function attemptRoomEvent(roomId: RoomId) {
+  function sendClassroomMessage(text: string) {
+    if (!text.trim() || !viewerId) return
+    setClassroomMessages((prev) => [
+      ...prev,
+      { id: `cr-${prev.length + 1}`, authorId: viewerId, text: text.trim(), time: '지금' },
+    ])
+  }
+
+  function submitRoomAnswer(roomId: RoomId, text: string) {
+    if (!text.trim()) return
     setRoomEvents((prev) => {
       const state = prev[roomId]
-      if (state.cleared) return prev
-      const capacity = ROOMS.find((r) => r.id === roomId)!.capacity
-      const present = roomOccupancy[roomId]
-      const cleared = present.length >= capacity
-      return {
-        ...prev,
-        [roomId]: {
-          ...state,
-          participants: present,
-          cleared,
-          clue: cleared ? state.event!.reward : null,
-        },
+      if (state.cleared || !state.event?.answer) return prev
+      const correct = normalize(text) === normalize(state.event.answer)
+      if (correct) {
+        return { ...prev, [roomId]: { ...state, cleared: true, clue: state.event.reward, note: null } }
       }
+      return { ...prev, [roomId]: { ...state, note: '오답이다. 다시 생각해보자.' } }
     })
   }
 
   function dispatchClassroomEvent(item: EventLibraryItem) {
-    if (!item.implemented) return
+    if (!item.implemented || item.dispatchKind !== 'duel') return
     setClassroom({
       status: 'active',
       event: {
         title: item.title,
         description: item.description,
-        needed: item.needed ?? 1,
         reward: item.reward ?? '',
-        kind: item.dispatchKind === 'duel' ? 'duel' : 'group',
+        kind: 'duel',
       },
-      participants: [],
       hint: null,
       note: null,
     })
+  }
+
+  function dispatchPuzzle(puzzle: ClassroomPuzzle) {
+    setClassroom({
+      status: 'active',
+      event: {
+        title: puzzle.title,
+        description: puzzle.brief,
+        reward: puzzle.hint,
+        kind: 'puzzle',
+        category: puzzle.category,
+        puzzleText: puzzle.puzzleText,
+        answer: puzzle.answer,
+      },
+      hint: null,
+      note: null,
+    })
+    setClassroomMessages([])
   }
 
   function closeInvestigation() {
     setClassroom(initialClassroom())
   }
 
-  function joinInvestigation() {
+  function submitPuzzleAnswer(text: string) {
+    if (!text.trim()) return
     setClassroom((prev) => {
-      if (prev.status !== 'active' || !prev.event) return prev
-      if (prev.participants.includes(viewerId)) return prev
-      const others = CHARACTERS.map((c) => c.id).filter(
-        (id) => id !== viewerId && !prev.participants.includes(id),
-      )
-      const shuffled = [...others].sort(() => Math.random() - 0.5)
-      const needMore = Math.max(0, prev.event.needed - (prev.participants.length + 1))
-      const joinedNow = [viewerId, ...shuffled.slice(0, needMore)]
-      const participants = [...prev.participants, ...joinedNow]
-      const cleared = participants.length >= prev.event.needed
-      return {
-        ...prev,
-        participants,
-        status: cleared ? 'cleared' : 'active',
-        hint: cleared ? prev.event.reward : null,
+      if (prev.status !== 'active' || !prev.event?.answer) return prev
+      const correct = normalize(text) === normalize(prev.event.answer)
+      if (correct) {
+        return { ...prev, status: 'cleared', hint: prev.event.reward, note: null }
       }
+      return { ...prev, note: '오답이다. 다시 논의해보자.' }
     })
   }
 
   function attemptDuel(choice: 'odd' | 'even') {
     setClassroom((prev) => {
       if (prev.status !== 'active' || !prev.event) return prev
-      const participants = prev.participants.includes(viewerId)
-        ? prev.participants
-        : [...prev.participants, viewerId]
       const outcome: 'odd' | 'even' = Math.random() < 0.5 ? 'odd' : 'even'
       const win = outcome === choice
       if (win) {
-        return { ...prev, participants, status: 'cleared', hint: prev.event.reward, note: null }
+        return { ...prev, status: 'cleared', hint: prev.event.reward, note: null }
       }
-      return {
-        ...prev,
-        participants,
-        note: '괴이가 낮게 웃는다. "아니야." 다시 시도해볼 수 있다.',
-      }
+      return { ...prev, note: '괴이가 낮게 웃는다. "아니야." 다시 시도해볼 수 있다.' }
     })
   }
 
@@ -316,7 +351,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   function addComment(postId: string, text: string) {
-    if (!text.trim()) return
+    if (!text.trim() || !viewerId) return
     setFeed((prev) =>
       prev.map((p) =>
         p.id === postId
@@ -363,13 +398,36 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setBroadcast(null)
   }
 
+  function useWitnessMemory() {
+    if (abilityUsed) return
+    const candidates = ROOMS.filter((r) => !roomEvents[r.id].cleared)
+    const pool = candidates.length > 0 ? candidates : ROOMS
+    const pick = pool[Math.floor(Math.random() * pool.length)]
+    setPersonalClues((prev) => [...prev, roomEvents[pick.id].event!.reward])
+    setAbilityUsed(true)
+  }
+
+  function useFamilyInsight(roomId: RoomId) {
+    if (abilityUsed) return
+    setPersonalClues((prev) => [...prev, roomEvents[roomId].event!.reward])
+    setAbilityUsed(true)
+  }
+
+  function spreadDisinfo(text: string) {
+    if (abilityUsed || !text.trim()) return
+    sendBroadcast('notice', '[익명 제보]', text.trim())
+    setAbilityUsed(true)
+  }
+
   function confirmProposal(team: string[]) {
     dispatch({ type: 'CONFIRM_PROPOSAL', team })
   }
   function castVote(approve: boolean) {
+    if (!viewerId) return
     dispatch({ type: 'CAST_VOTE', viewerId, approve })
   }
   function submitCard(card: 'success' | 'fail' | null) {
+    if (!viewerId) return
     dispatch({ type: 'SUBMIT_CARD', viewerId, card })
   }
   function continueMission() {
@@ -382,6 +440,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       viewerId,
+      isAdmin,
       setViewerId,
       nickname,
       setNickname,
@@ -401,11 +460,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
       roomMessages,
       sendRoomMessage,
       roomEvents,
-      attemptRoomEvent,
+      submitRoomAnswer,
+      classroomMessages,
+      sendClassroomMessage,
       classroom,
       dispatchClassroomEvent,
+      dispatchPuzzle,
+      submitPuzzleAnswer,
       closeInvestigation,
-      joinInvestigation,
       attemptDuel,
       feed,
       toggleHeart,
@@ -427,9 +489,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
       openDm,
       closeDm,
       sendDm,
+      abilityUsed,
+      personalClues,
+      useWitnessMemory,
+      useFamilyInsight,
+      spreadDisinfo,
     }),
     [
       viewerId,
+      isAdmin,
       nickname,
       grade,
       photo,
@@ -439,6 +507,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       roomOccupancy,
       roomMessages,
       roomEvents,
+      classroomMessages,
       classroom,
       feed,
       gmReveal,
@@ -447,6 +516,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       mission,
       dmThreads,
       activeDmId,
+      abilityUsed,
+      personalClues,
     ],
   )
 

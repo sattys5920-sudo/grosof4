@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
-import { CHARACTERS, roleLabel } from '../data/characters'
-import { isRevealedTo } from '../data/reveal'
+import { CHARACTERS, ROOMS, roleLabel } from '../data/characters'
 import { Badge } from '../components/Badge'
 import { EVENT_LIBRARY } from '../data/eventLibrary'
+import { CLASSROOM_PUZZLES } from '../data/classroomPuzzles'
 import type { BroadcastKind } from '../data/types'
 
 const PRESETS: { kind: BroadcastKind; label: string; title: string; body: string }[] = [
@@ -31,7 +31,6 @@ const PRESETS: { kind: BroadcastKind; label: string; title: string; body: string
 export function ProfileScreen() {
   const {
     viewerId,
-    setViewerId,
     nickname,
     setNickname,
     grade,
@@ -42,15 +41,23 @@ export function ProfileScreen() {
     sendBroadcast,
     classroom,
     dispatchClassroomEvent,
+    dispatchPuzzle,
     closeInvestigation,
     missionsOpen,
     openMissions,
+    abilityUsed,
+    personalClues,
+    useWitnessMemory,
+    useFamilyInsight,
+    spreadDisinfo,
     openDm,
   } = useGame()
-  const viewer = CHARACTERS.find((c) => c.id === viewerId)!
+  const viewer = viewerId ? CHARACTERS.find((c) => c.id === viewerId)! : null
   const [kind, setKind] = useState<BroadcastKind>('event')
   const [title, setTitle] = useState(PRESETS[0].title)
   const [body, setBody] = useState(PRESETS[0].body)
+  const [disinfoText, setDisinfoText] = useState('')
+  const [insightRoom, setInsightRoom] = useState(ROOMS[0].id)
 
   function applyPreset(preset: (typeof PRESETS)[number]) {
     setKind(preset.kind)
@@ -78,93 +85,139 @@ export function ProfileScreen() {
 
   return (
     <div className="profile">
-      <div className="profile__card">
-        <div className="profile__card-head">
-          <label className="profile__photo-picker">
-            <input type="file" accept="image/*" onChange={onPhotoChange} hidden />
-            {photo ? (
-              <img className="profile__photo" src={photo} alt="프로필 사진" />
-            ) : (
-              <Badge team={viewer.team} size={56} />
-            )}
-            <span className="profile__photo-edit">수정</span>
-          </label>
-          <div className="profile__name-block">
-            <input
-              className="profile__name-input"
-              value={nickname}
-              maxLength={12}
-              onChange={(e) => setNickname(e.target.value)}
-              placeholder="닉네임을 입력하세요"
-            />
-            <span className={`profile__role profile__role--${viewer.team}`}>
-              {roleLabel(viewer)} · {grade}
-            </span>
+      {viewer ? (
+        <div className="profile__card">
+          <div className="profile__card-head">
+            <label className="profile__photo-picker">
+              <input type="file" accept="image/*" onChange={onPhotoChange} hidden />
+              {photo ? (
+                <img className="profile__photo" src={photo} alt="프로필 사진" />
+              ) : (
+                <Badge team={viewer.team} size={56} />
+              )}
+              <span className="profile__photo-edit">수정</span>
+            </label>
+            <div className="profile__name-block">
+              <input
+                className="profile__name-input"
+                value={nickname}
+                maxLength={12}
+                onChange={(e) => setNickname(e.target.value)}
+                placeholder="닉네임을 입력하세요"
+              />
+              <span className={`profile__role profile__role--${viewer.team}`}>
+                {roleLabel(viewer)} · {grade}
+              </span>
+            </div>
           </div>
+          <p className="profile__tagline">{viewer.tagline}</p>
+          <dl className="profile__facts">
+            <dt>사건 당시</dt>
+            <dd>{viewer.incidentPosition}</dd>
+            <dt>서사</dt>
+            <dd>{viewer.bio}</dd>
+            <dt>단서 특기</dt>
+            <dd>{viewer.clueHint}</dd>
+          </dl>
+
+          {viewer.role === '방관자' && (
+            <div className="profile__ability">
+              <span className="profile__section-label">특수 능력 — 목격자의 기억</span>
+              <p>1회 한정. 아직 풀리지 않은 조사실 단서 중 하나를 몰래 떠올릴 수 있다.</p>
+              <button disabled={abilityUsed} onClick={useWitnessMemory}>
+                {abilityUsed ? '사용 완료' : '기억 떠올리기'}
+              </button>
+            </div>
+          )}
+          {viewer.role === '거짓유포자' && (
+            <div className="profile__ability">
+              <span className="profile__section-label">특수 능력 — 역정보 유포</span>
+              <p>1회 한정. 익명 제보로 위장한 가짜 정보를 전원에게 퍼뜨릴 수 있다.</p>
+              <textarea
+                rows={2}
+                value={disinfoText}
+                onChange={(e) => setDisinfoText(e.target.value)}
+                placeholder="퍼뜨릴 내용을 입력..."
+                disabled={abilityUsed}
+              />
+              <button
+                disabled={abilityUsed || !disinfoText.trim()}
+                onClick={() => {
+                  spreadDisinfo(disinfoText)
+                  setDisinfoText('')
+                }}
+              >
+                {abilityUsed ? '사용 완료' : '익명으로 퍼뜨리기'}
+              </button>
+            </div>
+          )}
+          {viewer.role === '경계인' && (
+            <div className="profile__ability">
+              <span className="profile__section-label">특수 능력 — 가족의 직감</span>
+              <p>1회 한정. 조사실 하나를 골라 그곳의 단서를 즉시 확인할 수 있다.</p>
+              <div className="profile__ability-row">
+                <select
+                  value={insightRoom}
+                  onChange={(e) => setInsightRoom(e.target.value as typeof insightRoom)}
+                  disabled={abilityUsed}
+                >
+                  {ROOMS.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+                <button disabled={abilityUsed} onClick={() => useFamilyInsight(insightRoom)}>
+                  {abilityUsed ? '사용 완료' : '확인하기'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {personalClues.length > 0 && (
+            <div className="profile__personal-clues">
+              <span className="profile__section-label">나만 아는 단서</span>
+              {personalClues.map((c, i) => (
+                <p key={i}>{c}</p>
+              ))}
+            </div>
+          )}
         </div>
-        <p className="profile__assigned">배정된 인물: {viewer.name}</p>
-        <p className="profile__tagline">{viewer.tagline}</p>
-        <dl className="profile__facts">
-          <dt>사건 당시</dt>
-          <dd>{viewer.incidentPosition}</dd>
-          <dt>서사</dt>
-          <dd>{viewer.bio}</dd>
-          <dt>단서 특기</dt>
-          <dd>{viewer.clueHint}</dd>
-        </dl>
-      </div>
+      ) : (
+        <div className="profile__card">
+          <div className="profile__card-head">
+            <div className="profile__admin-badge">GM</div>
+            <div className="profile__name-block">
+              <input
+                className="profile__name-input"
+                value={nickname}
+                maxLength={12}
+                onChange={(e) => setNickname(e.target.value)}
+                placeholder="닉네임을 입력하세요"
+              />
+              <span className="profile__role">관리자 계정</span>
+            </div>
+          </div>
+          <p className="profile__tagline">역할이 배정되지 않는다. 진행과 연출만 담당한다.</p>
+        </div>
+      )}
 
       <div className="profile__section">
-        <span className="profile__section-label">함께 갇힌 10명</span>
+        <span className="profile__section-label">함께 있는 사람들</span>
         <div className="profile__roster">
-          {CHARACTERS.map((c) => {
-            const revealed = isRevealedTo(viewer, c, gmReveal)
-            const isMe = c.id === viewerId
-            return (
-              <div key={c.id} className="profile__roster-item">
-                <Badge team={c.team} size={26} revealed={revealed} />
-                <div className="profile__roster-info">
-                  <span className="profile__roster-name">{displayName(c.id)}</span>
-                  <span className="profile__roster-role">
-                    {revealed ? roleLabel(c) : '정체 미상'} · {isMe ? grade : c.grade}
-                  </span>
-                </div>
-                {isMe ? (
-                  <span className="profile__me-tag">나</span>
-                ) : (
-                  <button className="profile__dm-btn" onClick={() => openDm(c.id)}>
-                    귓속말
-                  </button>
-                )}
-              </div>
-            )
-          })}
+          {CHARACTERS.map((c) => (
+            <div key={c.id} className="profile__roster-item">
+              <span className="profile__roster-name">{displayName(c.id)}</span>
+              {c.id === viewerId ? (
+                <span className="profile__me-tag">나</span>
+              ) : (
+                <button className="profile__dm-btn" onClick={() => openDm(c.id)}>
+                  귓속말
+                </button>
+              )}
+            </div>
+          ))}
         </div>
-      </div>
-
-      <div className="profile__dev">
-        <span className="profile__section-label">프로토타입 도구</span>
-        <label className="profile__dev-row">
-          <span>시점 전환 (관전용 캐릭터 선택)</span>
-          <select
-            value={viewerId}
-            onChange={(e) => {
-              setViewerId(e.target.value)
-              setNickname(CHARACTERS.find((c) => c.id === e.target.value)!.name)
-            }}
-          >
-            {CHARACTERS.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="profile__admin-status">
-          {gmReveal
-            ? '관리자 코드로 로그인됨 — GM 권한이 활성화되어 있다.'
-            : '일반 참가자 계정 — 가입 시 관리자 코드를 입력하지 않았다.'}
-        </p>
       </div>
 
       {gmReveal && (
@@ -216,7 +269,7 @@ export function ProfileScreen() {
           </div>
 
           <div className="profile__gm">
-            <span className="profile__section-label">GM 전용 — 교실 이벤트 목록</span>
+            <span className="profile__section-label">GM 전용 — 교실 단체조사 문제 (10)</span>
             <p className="profile__gm-note">
               교실 상태: <strong>{CLASSROOM_STATUS_LABEL[classroom.status]}</strong>
               {classroom.event && ` — ${classroom.event.title}`}
@@ -226,6 +279,24 @@ export function ProfileScreen() {
                 교실 잠그기 / 초기화
               </button>
             )}
+            <div className="profile__gm-eventlist">
+              {CLASSROOM_PUZZLES.map((puzzle) => (
+                <div key={puzzle.id} className="profile__gm-event">
+                  <div className="profile__gm-event-head">
+                    <span className="profile__gm-event-category">{puzzle.category}</span>
+                    <span className="profile__gm-event-title">{puzzle.title}</span>
+                  </div>
+                  <p className="profile__gm-event-desc">{puzzle.brief}</p>
+                  <button className="profile__gm-event-send" onClick={() => dispatchPuzzle(puzzle)}>
+                    발송
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="profile__gm">
+            <span className="profile__section-label">GM 전용 — 기타 이벤트</span>
             <div className="profile__gm-eventlist">
               {EVENT_LIBRARY.map((item) => (
                 <div key={item.id} className="profile__gm-event">
