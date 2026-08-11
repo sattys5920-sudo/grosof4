@@ -3,10 +3,23 @@ import './MainFeedScreen.css'
 import { useGame } from '../state/GameContext'
 
 export function MainFeedScreen() {
-  const { feed, toggleHeart, addComment, displayName, viewerId, gmReveal, toggleCommentsEnabled } = useGame()
+  const {
+    feed,
+    toggleHeart,
+    addComment,
+    displayName,
+    viewerId,
+    gmReveal,
+    toggleCommentsEnabled,
+    createFeedPost,
+  } = useGame()
   const [openPostId, setOpenPostId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [secret, setSecret] = useState(false)
+  const [composerOpen, setComposerOpen] = useState(false)
+  const [postTitle, setPostTitle] = useState('')
+  const [postBody, setPostBody] = useState('')
+  const [postCommentsOn, setPostCommentsOn] = useState(false)
 
   const openPost = feed.find((p) => p.id === openPostId) ?? null
 
@@ -14,6 +27,14 @@ export function MainFeedScreen() {
     addComment(postId, draft, secret)
     setDraft('')
     setSecret(false)
+  }
+
+  function submitNewPost() {
+    createFeedPost(postTitle, postBody, postCommentsOn)
+    setPostTitle('')
+    setPostBody('')
+    setPostCommentsOn(false)
+    setComposerOpen(false)
   }
 
   if (openPost) {
@@ -103,9 +124,55 @@ export function MainFeedScreen() {
   return (
     <div className="feed">
       <div className="feed__intro">
-        <span className="feed__intro-label">방송실 게시판</span>
-        <p>학교 관리자와 방송실 명의로 올라오는 공지를 확인한다.</p>
+        <div className="feed__intro-row">
+          <div>
+            <span className="feed__intro-label">방송실 게시판</span>
+            <p>학교 관리자와 방송실 명의로 올라오는 공지를 확인한다.</p>
+          </div>
+          {gmReveal && (
+            <button
+              className="feed__new-post-btn"
+              onClick={() => setComposerOpen((v) => !v)}
+              aria-label="새 공지 작성"
+            >
+              {composerOpen ? '×' : '+'}
+            </button>
+          )}
+        </div>
       </div>
+
+      {gmReveal && composerOpen && (
+        <div className="feed__composer">
+          <input
+            value={postTitle}
+            onChange={(e) => setPostTitle(e.target.value)}
+            placeholder="게시글 제목"
+          />
+          <textarea
+            value={postBody}
+            onChange={(e) => setPostBody(e.target.value)}
+            placeholder="게시글 내용"
+            rows={3}
+          />
+          <div className="feed__composer-row">
+            <label className="feed__secret-toggle">
+              <input
+                type="checkbox"
+                checked={postCommentsOn}
+                onChange={(e) => setPostCommentsOn(e.target.checked)}
+              />
+              댓글 허용
+            </label>
+            <button
+              className="feed__composer-submit"
+              disabled={!postTitle.trim() || !postBody.trim()}
+              onClick={submitNewPost}
+            >
+              게시하기
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="feed__list">
         {feed.length === 0 && (

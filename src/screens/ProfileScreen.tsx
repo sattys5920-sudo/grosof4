@@ -58,7 +58,6 @@ export function ProfileScreen() {
     forgeResult,
     revengerCheck,
     mission,
-    createFeedPost,
     roomEvents,
     dispatchRoomPuzzle,
     closeRoomInvestigation,
@@ -70,9 +69,6 @@ export function ProfileScreen() {
   const [body, setBody] = useState(PRESETS[0].body)
   const [targetId, setTargetId] = useState('')
   const [missionPick, setMissionPick] = useState(0)
-  const [postTitle, setPostTitle] = useState('')
-  const [postBody, setPostBody] = useState('')
-  const [postCommentsOn, setPostCommentsOn] = useState(false)
 
   const otherCharacters = CHARACTERS.filter((c) => c.id !== viewerId)
   const completedMissions = mission.missionResults
@@ -310,44 +306,6 @@ export function ProfileScreen() {
 
       {gmReveal && (
         <>
-          <div className="profile__gm">
-            <span className="profile__section-label">GM 전용 — 새 공지 작성</span>
-            <p className="profile__gm-note">메인 피드에 새 게시글을 올린다. 댓글 허용 여부는 이후에도 다시 바꿀 수 있다.</p>
-            <input
-              className="profile__gm-input"
-              value={postTitle}
-              onChange={(e) => setPostTitle(e.target.value)}
-              placeholder="게시글 제목"
-            />
-            <textarea
-              className="profile__gm-textarea"
-              value={postBody}
-              onChange={(e) => setPostBody(e.target.value)}
-              placeholder="게시글 내용"
-              rows={3}
-            />
-            <label className="profile__gm-checkbox">
-              <input
-                type="checkbox"
-                checked={postCommentsOn}
-                onChange={(e) => setPostCommentsOn(e.target.checked)}
-              />
-              댓글 허용
-            </label>
-            <button
-              className="profile__gm-send"
-              disabled={!postTitle.trim() || !postBody.trim()}
-              onClick={() => {
-                createFeedPost(postTitle, postBody, postCommentsOn)
-                setPostTitle('')
-                setPostBody('')
-                setPostCommentsOn(false)
-              }}
-            >
-              게시하기
-            </button>
-          </div>
-
           <div className="profile__gm">
             <span className="profile__section-label">GM 전용 — 빠른 쪽지 발송</span>
             <p className="profile__gm-note">
