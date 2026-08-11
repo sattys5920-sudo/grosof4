@@ -90,6 +90,10 @@
   letter-spacing: 0.5px;
 }
 
+.signup__field--optional span {
+  color: var(--bone-dim);
+}
+
 .signup__field input,
 .signup__field select {
   width: 100%;

@@ -35,6 +35,7 @@ export function MissionScreen() {
   const {
     viewerId,
     gmReveal,
+    missionsOpen,
     mission,
     confirmProposal,
     castVote,
@@ -56,6 +57,15 @@ export function MissionScreen() {
       if (prev.length >= teamSize) return prev
       return [...prev, id]
     })
+  }
+
+  if (!missionsOpen) {
+    return (
+      <div className="mission mission--locked">
+        <span className="mission__lock-icon">▧</span>
+        <p className="mission__lock-text">원정은 아직 열리지 않았다. GM이 열 때까지 기다려야 한다.</p>
+      </div>
+    )
   }
 
   if (mission.phase === 'gameover') {

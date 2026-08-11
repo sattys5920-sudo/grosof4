@@ -36,13 +36,16 @@ export function ProfileScreen() {
     setNickname,
     grade,
     photo,
+    updatePhoto,
     displayName,
     gmReveal,
-    setGmReveal,
     sendBroadcast,
     classroom,
     dispatchClassroomEvent,
     closeInvestigation,
+    missionsOpen,
+    openMissions,
+    openDm,
   } = useGame()
   const viewer = CHARACTERS.find((c) => c.id === viewerId)!
   const [kind, setKind] = useState<BroadcastKind>('event')
@@ -59,6 +62,14 @@ export function ProfileScreen() {
     sendBroadcast(kind, title, body)
   }
 
+  function onPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => updatePhoto(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
   const CLASSROOM_STATUS_LABEL: Record<typeof classroom.status, string> = {
     locked: '잠김',
     active: '진행 중',
@@ -69,11 +80,15 @@ export function ProfileScreen() {
     <div className="profile">
       <div className="profile__card">
         <div className="profile__card-head">
-          {photo ? (
-            <img className="profile__photo" src={photo} alt="프로필 사진" />
-          ) : (
-            <Badge team={viewer.team} size={56} />
-          )}
+          <label className="profile__photo-picker">
+            <input type="file" accept="image/*" onChange={onPhotoChange} hidden />
+            {photo ? (
+              <img className="profile__photo" src={photo} alt="프로필 사진" />
+            ) : (
+              <Badge team={viewer.team} size={56} />
+            )}
+            <span className="profile__photo-edit">수정</span>
+          </label>
           <div className="profile__name-block">
             <input
               className="profile__name-input"
@@ -104,16 +119,23 @@ export function ProfileScreen() {
         <div className="profile__roster">
           {CHARACTERS.map((c) => {
             const revealed = isRevealedTo(viewer, c, gmReveal)
+            const isMe = c.id === viewerId
             return (
               <div key={c.id} className="profile__roster-item">
                 <Badge team={c.team} size={26} revealed={revealed} />
                 <div className="profile__roster-info">
                   <span className="profile__roster-name">{displayName(c.id)}</span>
                   <span className="profile__roster-role">
-                    {revealed ? roleLabel(c) : '정체 미상'}
+                    {revealed ? roleLabel(c) : '정체 미상'} · {isMe ? grade : c.grade}
                   </span>
                 </div>
-                {c.id === viewerId && <span className="profile__me-tag">나</span>}
+                {isMe ? (
+                  <span className="profile__me-tag">나</span>
+                ) : (
+                  <button className="profile__dm-btn" onClick={() => openDm(c.id)}>
+                    귓속말
+                  </button>
+                )}
               </div>
             )
           })}
@@ -138,14 +160,11 @@ export function ProfileScreen() {
             ))}
           </select>
         </label>
-        <label className="profile__dev-row">
-          <span>GM 모드 진입 (나만 가입 가능한 계정 가정)</span>
-          <input
-            type="checkbox"
-            checked={gmReveal}
-            onChange={(e) => setGmReveal(e.target.checked)}
-          />
-        </label>
+        <p className="profile__admin-status">
+          {gmReveal
+            ? '관리자 코드로 로그인됨 — GM 권한이 활성화되어 있다.'
+            : '일반 참가자 계정 — 가입 시 관리자 코드를 입력하지 않았다.'}
+        </p>
       </div>
 
       {gmReveal && (
@@ -182,6 +201,18 @@ export function ProfileScreen() {
             <button className="profile__gm-send" onClick={send}>
               전원에게 쪽지 보내기
             </button>
+          </div>
+
+          <div className="profile__gm">
+            <span className="profile__section-label">GM 전용 — 원정</span>
+            <p className="profile__gm-note">
+              원정 상태: <strong>{missionsOpen ? '열림' : '잠김'}</strong>
+            </p>
+            {!missionsOpen && (
+              <button className="profile__gm-preset" onClick={openMissions}>
+                원정 열기 (3전 2선승)
+              </button>
+            )}
           </div>
 
           <div className="profile__gm">

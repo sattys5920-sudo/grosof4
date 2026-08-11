@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, useReducer, useState, type ReactNod
 import { CHARACTERS, ROOMS } from '../data/characters'
 import { ROOM_EVENTS } from '../data/events'
 import { INITIAL_FEED } from '../data/feed'
+import { DM_REPLIES } from '../data/dmReplies'
 import type {
   Broadcast,
   BroadcastKind,
@@ -14,6 +15,8 @@ import type {
 } from '../data/types'
 import { initialMissionState, missionReducer, type MissionState } from './missionEngine'
 
+const ADMIN_CODE = '316316316'
+
 export type TabId = 'main' | 'classroom' | 'rooms' | 'mission' | 'profile'
 
 interface GameState {
@@ -23,9 +26,10 @@ interface GameState {
   setNickname: (name: string) => void
   grade: string
   photo: string | null
+  updatePhoto: (photo: string | null) => void
   signedUp: boolean
   roleRevealed: boolean
-  completeSignup: (nickname: string, grade: string, photo: string | null) => void
+  completeSignup: (nickname: string, grade: string, photo: string | null, adminCode: string) => void
   acknowledgeRole: () => void
   displayName: (id: string) => string
   activeTab: TabId
@@ -46,16 +50,22 @@ interface GameState {
   toggleHeart: (postId: string) => void
   addComment: (postId: string, text: string) => void
   gmReveal: boolean
-  setGmReveal: (v: boolean) => void
   broadcast: Broadcast | null
   sendBroadcast: (kind: BroadcastKind, title: string, body: string) => void
   dismissBroadcast: () => void
+  missionsOpen: boolean
+  openMissions: () => void
   mission: MissionState
   confirmProposal: (team: string[]) => void
   castVote: (approve: boolean) => void
   submitCard: (card: 'success' | 'fail' | null) => void
   continueMission: () => void
   resetMission: () => void
+  dmThreads: Record<string, ChatMessage[]>
+  activeDmId: string | null
+  openDm: (id: string) => void
+  closeDm: () => void
+  sendDm: (text: string) => void
 }
 
 const GameContext = createContext<GameState | null>(null)
@@ -107,20 +117,64 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [feed, setFeed] = useState<FeedPost[]>(INITIAL_FEED)
   const [gmReveal, setGmReveal] = useState(false)
   const [broadcast, setBroadcast] = useState<Broadcast | null>(null)
+  const [missionsOpen, setMissionsOpen] = useState(false)
+  const [dmThreads, setDmThreads] = useState<Record<string, ChatMessage[]>>({})
+  const [activeDmId, setActiveDmId] = useState<string | null>(null)
   const [mission, dispatch] = useReducer(missionReducer, undefined, initialMissionState)
 
-  function completeSignup(newNickname: string, newGrade: string, newPhoto: string | null) {
+  function completeSignup(newNickname: string, newGrade: string, newPhoto: string | null, adminCode: string) {
     const assigned = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)]
     setViewerId(assigned.id)
     setNickname(newNickname.trim() || assigned.name)
     setGrade(newGrade)
     setPhoto(newPhoto)
+    setGmReveal(adminCode.trim() === ADMIN_CODE)
     setSignedUp(true)
     setRoleRevealed(false)
   }
 
   function acknowledgeRole() {
     setRoleRevealed(true)
+  }
+
+  function updatePhoto(newPhoto: string | null) {
+    setPhoto(newPhoto)
+  }
+
+  function openMissions() {
+    setMissionsOpen(true)
+  }
+
+  function openDm(id: string) {
+    setActiveDmId(id)
+    setDmThreads((prev) => (prev[id] ? prev : { ...prev, [id]: [] }))
+  }
+
+  function closeDm() {
+    setActiveDmId(null)
+  }
+
+  function sendDm(text: string) {
+    if (!activeDmId || !text.trim()) return
+    const targetId = activeDmId
+    const myMsg: ChatMessage = {
+      id: `dm-${targetId}-${Date.now()}`,
+      authorId: viewerId,
+      text: text.trim(),
+      time: '지금',
+    }
+    setDmThreads((prev) => ({ ...prev, [targetId]: [...(prev[targetId] ?? []), myMsg] }))
+    const pool = DM_REPLIES[targetId] ?? ['...']
+    const reply = pool[Math.floor(Math.random() * pool.length)]
+    window.setTimeout(() => {
+      setDmThreads((prev) => ({
+        ...prev,
+        [targetId]: [
+          ...(prev[targetId] ?? []),
+          { id: `dm-${targetId}-${Date.now()}-r`, authorId: targetId, text: reply, time: '지금' },
+        ],
+      }))
+    }, 500)
   }
 
   function displayName(id: string) {
@@ -333,6 +387,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setNickname,
       grade,
       photo,
+      updatePhoto,
       signedUp,
       roleRevealed,
       completeSignup,
@@ -356,16 +411,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
       toggleHeart,
       addComment,
       gmReveal,
-      setGmReveal,
       broadcast,
       sendBroadcast,
       dismissBroadcast,
+      missionsOpen,
+      openMissions,
       mission,
       confirmProposal,
       castVote,
       submitCard,
       continueMission,
       resetMission,
+      dmThreads,
+      activeDmId,
+      openDm,
+      closeDm,
+      sendDm,
     }),
     [
       viewerId,
@@ -382,7 +443,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       feed,
       gmReveal,
       broadcast,
+      missionsOpen,
       mission,
+      dmThreads,
+      activeDmId,
     ],
   )
 

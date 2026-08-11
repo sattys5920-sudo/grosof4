@@ -1,8 +1,10 @@
 import { CHARACTERS } from '../data/characters'
 
-export const MISSION_SIZES = [3, 4, 4, 5, 5]
-export const TWO_FAILS_REQUIRED = [false, false, false, true, false]
-export const WINS_NEEDED = 3
+// 3박4일 = 밤 3번 → 원정 기회는 최대 3회. 과반수(2선승)로 승부를 가리면
+// 늦어도 3번째(마지막 밤) 원정에서는 반드시 결판난다 (2-2는 불가능하므로).
+export const MISSION_SIZES = [4, 6, 7]
+export const TWO_FAILS_REQUIRED = [false, false, true]
+export const WINS_NEEDED = 2
 export const MAX_REJECTIONS = 5
 
 export type MissionPhase = 'propose' | 'vote' | 'execute' | 'result' | 'gameover'
@@ -52,7 +54,7 @@ export function initialMissionState(): MissionState {
     rejectionCount: 0,
     voteTally: null,
     cardTally: null,
-    missionResults: [null, null, null, null, null],
+    missionResults: MISSION_SIZES.map(() => null),
     wardWins: 0,
     sinWins: 0,
     winner: null,

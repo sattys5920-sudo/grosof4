@@ -6,6 +6,26 @@
   flex: 1;
 }
 
+.mission--locked {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 14px;
+}
+
+.mission__lock-icon {
+  font-size: 32px;
+  color: var(--bone-dim);
+}
+
+.mission__lock-text {
+  margin: 0;
+  max-width: 260px;
+  font-size: 14.5px;
+  color: var(--bone-dim);
+  line-height: 1.65;
+}
+
 .mission__head {
   display: flex;
   flex-direction: column;

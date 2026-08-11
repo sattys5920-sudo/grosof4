@@ -9,6 +9,7 @@ export interface Character {
   name: string
   team: Team
   role: Role
+  grade: string
   tagline: string
   incidentPosition: string
   bio: string
