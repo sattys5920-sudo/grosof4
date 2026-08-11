@@ -1,6 +1,5 @@
-import { createContext, useContext, useMemo, useReducer, useState, type ReactNode } from 'react'
-import { CHARACTERS, ROOMS } from '../data/characters'
-import { INITIAL_FEED } from '../data/feed'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { CHARACTERS } from '../data/characters'
 import type {
   Broadcast,
   BroadcastKind,
@@ -8,21 +7,57 @@ import type {
   ClassroomPuzzle,
   ClassroomState,
   EventLibraryItem,
+  FeedComment,
   FeedPost,
   RoomEventState,
   RoomId,
   RoomPuzzle,
 } from '../data/types'
-import { initialMissionState, missionReducer, type MissionState } from './missionEngine'
+import { missionReducer, type MissionState } from './missionEngine'
+import { firebaseConfigured } from '../firebase'
+import {
+  addCommentSync,
+  claimRandomSlot,
+  createFeedPostSync,
+  defaultSessionState,
+  ensureSessionInitialized,
+  feedPostToFeedPost,
+  joinRoomSync,
+  leaveRoomSync,
+  openMissionsSync,
+  patchPlayer,
+  patchSession,
+  runAbilityTransaction,
+  sendBroadcastSync,
+  sendClassroomMessageSync,
+  sendRoomMessageSync,
+  subscribeAllPlayers,
+  subscribeFeed,
+  subscribeSession,
+  toggleCommentsEnabledSync,
+  toggleHeartSync,
+  updateClassroomSync,
+  updateMissionSync,
+  updateRoomEventSync,
+  type FeedPostDoc,
+  type PlayerDoc,
+  type SessionDoc,
+} from './sync'
 
 const ADMIN_CODE = '316316316'
+const LS = {
+  viewerId: 'gwae_viewerId',
+  isAdmin: 'gwae_isAdmin',
+  adminNickname: 'gwae_adminNickname',
+  roleRevealed: 'gwae_roleRevealed',
+  dismissedBroadcastId: 'gwae_dismissedBroadcastId',
+} as const
 
 export type TabId = 'main' | 'classroom' | 'rooms' | 'mission' | 'profile'
 
 interface GameState {
   viewerId: string | null
   isAdmin: boolean
-  setViewerId: (id: string) => void
   nickname: string
   setNickname: (name: string) => void
   grade: string
@@ -86,221 +121,219 @@ interface GameState {
 
 const GameContext = createContext<GameState | null>(null)
 
-const INITIAL_OCCUPANCY: Record<RoomId, string[]> = {
-  library: ['jimin', 'haneul'],
-  infirmary: ['ayoung'],
-  broadcast: ['seungwoo', 'gihoon'],
-  rooftop: [],
-}
-
-const INITIAL_ROOM_MESSAGES: Record<RoomId, ChatMessage[]> = {
-  library: [
-    { id: 'l1', authorId: 'jimin', text: '졸업앨범부터 뒤져보자, 페이지 순서가 좀 이상해', time: '00:11' },
-    { id: 'l2', authorId: 'haneul', text: '......나는 그냥 지켜볼게', time: '00:12' },
-  ],
-  infirmary: [{ id: 'i1', authorId: 'ayoung', text: '기록부에 그날 오후 진료 사유가 지워져 있어', time: '00:10' }],
-  broadcast: [
-    { id: 'b1', authorId: 'seungwoo', text: '이 채널, 3 년 전에 폐기된 장비인데 왜 지금 살아있지', time: '00:13' },
-    { id: 'b2', authorId: 'gihoon', text: '......나 먼저 나갈게', time: '00:14' },
-  ],
-  rooftop: [],
-}
-
 function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, '')
 }
 
-function initialRoomEvents(): Record<RoomId, RoomEventState> {
-  const result = {} as Record<RoomId, RoomEventState>
-  for (const room of ROOMS) {
-    result[room.id] = { event: null, cleared: false, clue: null, note: null }
+function resolveTeamCheckPure(decoyUsedIn: boolean, targetId: string): { team: 'ward' | 'sin'; decoyUsed: boolean } {
+  const target = CHARACTERS.find((c) => c.id === targetId)!
+  if (target.role === '잠입자' && !decoyUsedIn) {
+    return { team: 'ward', decoyUsed: true }
   }
-  return result
+  return { team: target.team === 'ward' ? 'ward' : 'sin', decoyUsed: decoyUsedIn }
 }
 
-function initialClassroom(): ClassroomState {
-  return { status: 'locked', event: null, hint: null, note: null }
+const BROADCAST_TAG: Record<BroadcastKind, string> = { event: '이벤트', sin: '괴이', notice: '공지' }
+const BROADCAST_LABEL: Record<BroadcastKind, string> = {
+  event: '[긴급 이벤트]',
+  sin: '[괴이 출현]',
+  notice: '[관리자 쪽지]',
 }
 
-export function GameProvider({ children }: { children: ReactNode }) {
-  const [viewerId, setViewerId] = useState<string | null>(null)
-  const [nickname, setNickname] = useState('')
-  const [grade, setGrade] = useState('1 학년')
-  const [photo, setPhoto] = useState<string | null>(null)
-  const [signedUp, setSignedUp] = useState(false)
-  const [roleRevealed, setRoleRevealed] = useState(false)
-  const [claimedSlots, setClaimedSlots] = useState<string[]>([])
+function FirebaseSetupNotice() {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100svh',
+        padding: 24,
+        textAlign: 'center',
+        color: '#d9cfbf',
+        background: '#0a0908',
+      }}
+    >
+      <p style={{ maxWidth: 360, lineHeight: 1.7 }}>
+        실시간 동기화를 위한 Firebase 설정이 아직 없다....... VITE_FIREBASE_* 환경변수를 채워야
+        여러 사람이 함께 접속할 수 있다.
+      </p>
+    </div>
+  )
+}
+
+function GameProviderInner({ children }: { children: ReactNode }) {
+  const [viewerId, setViewerIdLocal] = useState<string | null>(() => localStorage.getItem(LS.viewerId))
+  const [isAdminFlag, setIsAdminFlag] = useState<boolean>(() => localStorage.getItem(LS.isAdmin) === 'true')
+  const [adminNickname, setAdminNicknameLocal] = useState<string>(
+    () => localStorage.getItem(LS.adminNickname) ?? '',
+  )
+  const [roleRevealed, setRoleRevealedLocal] = useState<boolean>(
+    () => localStorage.getItem(LS.roleRevealed) === 'true',
+  )
+  const [dismissedBroadcastId, setDismissedBroadcastIdLocal] = useState<string | null>(
+    () => localStorage.getItem(LS.dismissedBroadcastId),
+  )
   const [activeTab, setActiveTab] = useState<TabId>('main')
-  const [roomOccupancy, setRoomOccupancy] = useState(INITIAL_OCCUPANCY)
-  const [roomMessages, setRoomMessages] = useState(INITIAL_ROOM_MESSAGES)
-  const [roomEvents, setRoomEvents] = useState<Record<RoomId, RoomEventState>>(initialRoomEvents)
-  const [classroomMessages, setClassroomMessages] = useState<ChatMessage[]>([])
-  const [classroom, setClassroom] = useState<ClassroomState>(initialClassroom)
-  const [feed, setFeed] = useState<FeedPost[]>(INITIAL_FEED)
-  const [gmReveal, setGmReveal] = useState(false)
-  const [broadcast, setBroadcast] = useState<Broadcast | null>(null)
-  const [missionsOpen, setMissionsOpen] = useState(false)
-  const [abilityUnlocked, setAbilityUnlocked] = useState(false)
-  const [abilityUsed, setAbilityUsed] = useState(false)
-  const [personalClues, setPersonalClues] = useState<string[]>([])
-  const [protectedId, setProtectedId] = useState<string | null>(null)
-  const [erosionTargetId, setErosionTargetId] = useState<string | null>(null)
-  const [decoyUsed, setDecoyUsed] = useState(false)
-  const [mission, dispatch] = useReducer(missionReducer, undefined, initialMissionState)
+  const [session, setSession] = useState<SessionDoc>(defaultSessionState)
+  const [players, setPlayers] = useState<Record<string, PlayerDoc>>({})
+  const [feedDocs, setFeedDocs] = useState<(FeedPostDoc & { id: string })[]>([])
 
-  const isAdmin = viewerId === null && signedUp
+  useEffect(() => {
+    ensureSessionInitialized().catch(() => {})
+    const unsubSession = subscribeSession(setSession)
+    const unsubPlayers = subscribeAllPlayers(setPlayers)
+    const unsubFeed = subscribeFeed(setFeedDocs)
+    return () => {
+      unsubSession()
+      unsubPlayers()
+      unsubFeed()
+    }
+  }, [])
 
-  function completeSignup(newNickname: string, newGrade: string, newPhoto: string | null, adminCode: string) {
-    setGrade(newGrade)
-    setPhoto(newPhoto)
+  const signedUp = isAdminFlag || viewerId !== null
+  const isAdmin = isAdminFlag
+  const myPlayer = viewerId ? players[viewerId] ?? null : null
+  const nickname = isAdminFlag ? adminNickname : myPlayer?.nickname ?? ''
+  const grade = isAdminFlag ? '—' : myPlayer?.grade ?? '1 학년'
+  const photo = isAdminFlag ? null : myPlayer?.photo ?? null
+  const abilityUnlocked = myPlayer?.abilityUnlocked ?? false
+  const abilityUsed = myPlayer?.abilityUsed ?? false
+  const personalClues = myPlayer?.personalClues ?? []
+
+  function displayName(id: string) {
+    if (id === 'admin') return isAdminFlag ? nickname : '관리자'
+    if (id === viewerId) return nickname
+    return players[id]?.nickname ?? CHARACTERS.find((c) => c.id === id)?.name ?? '???'
+  }
+
+  async function completeSignup(
+    newNickname: string,
+    newGrade: string,
+    newPhoto: string | null,
+    adminCode: string,
+  ) {
     if (adminCode.trim() === ADMIN_CODE) {
-      setViewerId(null)
-      setNickname(newNickname.trim() || '관리자')
-      setGmReveal(true)
-      setSignedUp(true)
-      setRoleRevealed(true)
+      const finalNickname = newNickname.trim() || '관리자'
+      localStorage.setItem(LS.isAdmin, 'true')
+      localStorage.setItem(LS.adminNickname, finalNickname)
+      localStorage.setItem(LS.roleRevealed, 'true')
+      setIsAdminFlag(true)
+      setAdminNicknameLocal(finalNickname)
+      setRoleRevealedLocal(true)
       return
     }
-    const pool = CHARACTERS.filter((c) => !claimedSlots.includes(c.id))
-    const available = pool.length > 0 ? pool : CHARACTERS
-    const assigned = available[Math.floor(Math.random() * available.length)]
-    setClaimedSlots((prev) => [...prev, assigned.id])
-    setViewerId(assigned.id)
-    setNickname(newNickname.trim() || assigned.name)
-    setGmReveal(false)
-    setSignedUp(true)
-    setRoleRevealed(false)
+    const assignedId = await claimRandomSlot(newNickname, newGrade, newPhoto)
+    localStorage.setItem(LS.viewerId, assignedId)
+    localStorage.setItem(LS.roleRevealed, 'false')
+    setViewerIdLocal(assignedId)
+    setRoleRevealedLocal(false)
   }
 
   function acknowledgeRole() {
-    setRoleRevealed(true)
+    localStorage.setItem(LS.roleRevealed, 'true')
+    setRoleRevealedLocal(true)
+  }
+
+  function setNickname(name: string) {
+    if (isAdminFlag) {
+      localStorage.setItem(LS.adminNickname, name)
+      setAdminNicknameLocal(name)
+      return
+    }
+    if (!viewerId) return
+    void patchPlayer(viewerId, { nickname: name })
   }
 
   function updatePhoto(newPhoto: string | null) {
-    setPhoto(newPhoto)
-  }
-
-  function openMissions() {
-    setMissionsOpen(true)
-  }
-
-  function displayName(id: string) {
-    if (id === 'admin') return isAdmin ? nickname : '관리자'
-    if (id === viewerId) return nickname
-    return CHARACTERS.find((c) => c.id === id)?.name ?? '???'
-  }
-
-  function currentRoomOf(id: string): RoomId | null {
-    for (const room of ROOMS) {
-      if (roomOccupancy[room.id].includes(id)) return room.id
-    }
-    return null
+    if (!viewerId || isAdminFlag) return
+    void patchPlayer(viewerId, { photo: newPhoto })
   }
 
   function joinRoom(roomId: RoomId) {
     if (!viewerId) return
-    setRoomOccupancy((prev) => {
-      const capacity = ROOMS.find((r) => r.id === roomId)!.capacity
-      if (prev[roomId].length >= capacity) return prev
-      const existing = currentRoomOf(viewerId)
-      const next: Record<RoomId, string[]> = { ...prev }
-      if (existing) {
-        next[existing] = next[existing].filter((id) => id !== viewerId)
-      }
-      next[roomId] = [...next[roomId], viewerId]
-      return next
-    })
+    void joinRoomSync(viewerId, roomId)
   }
 
   function leaveRoom(roomId: RoomId) {
     if (!viewerId) return
-    setRoomOccupancy((prev) => ({
-      ...prev,
-      [roomId]: prev[roomId].filter((id) => id !== viewerId),
-    }))
+    void leaveRoomSync(viewerId, roomId)
   }
 
   function sendRoomMessage(roomId: RoomId, text: string) {
     if (!text.trim() || !viewerId) return
-    setRoomMessages((prev) => ({
-      ...prev,
-      [roomId]: [
-        ...prev[roomId],
-        { id: `${roomId}-${prev[roomId].length + 1}`, authorId: viewerId, text: text.trim(), time: '지금' },
-      ],
-    }))
+    const msg: ChatMessage = {
+      id: `${roomId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      authorId: viewerId,
+      text: text.trim(),
+      time: '지금',
+    }
+    void sendRoomMessageSync(roomId, msg)
   }
 
   function sendClassroomMessage(text: string) {
     if (!text.trim() || !viewerId) return
-    setClassroomMessages((prev) => [
-      ...prev,
-      { id: `cr-${prev.length + 1}`, authorId: viewerId, text: text.trim(), time: '지금' },
-    ])
+    const msg: ChatMessage = {
+      id: `cr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      authorId: viewerId,
+      text: text.trim(),
+      time: '지금',
+    }
+    void sendClassroomMessageSync(msg)
   }
 
-  function submitRoomAnswer(roomId: RoomId, text: string) {
+  async function submitRoomAnswer(roomId: RoomId, text: string) {
     if (!text.trim()) return
     let solved = false
-    setRoomEvents((prev) => {
-      const state = prev[roomId]
-      if (state.cleared || !state.event?.answer) return prev
+    await updateRoomEventSync(roomId, (state) => {
+      if (state.cleared || !state.event?.answer) return state
       const correct = normalize(text) === normalize(state.event.answer)
       if (correct) {
         solved = true
-        return { ...prev, [roomId]: { ...state, cleared: true, clue: state.event.reward, note: null } }
+        return { ...state, cleared: true, clue: state.event.reward, note: null }
       }
-      return { ...prev, [roomId]: { ...state, note: '오답이다. 다시 생각해보자.' } }
+      return { ...state, note: '오답이다. 다시 생각해보자.' }
     })
-    if (solved && viewerId && roomOccupancy[roomId].includes(viewerId)) {
-      setAbilityUnlocked(true)
+    if (solved && viewerId && (session.roomOccupancy[roomId] ?? []).includes(viewerId)) {
+      void patchPlayer(viewerId, { abilityUnlocked: true })
     }
   }
 
   function dispatchRoomPuzzle(roomId: RoomId, puzzle: RoomPuzzle) {
-    setRoomEvents((prev) => ({
-      ...prev,
-      [roomId]: {
-        event: {
-          title: puzzle.title,
-          description: puzzle.brief,
-          reward: puzzle.hint,
-          kind: 'puzzle',
-          category: puzzle.category,
-          puzzleText: puzzle.puzzleText,
-          answer: puzzle.answer,
-        },
-        cleared: false,
-        clue: null,
-        note: null,
+    void updateRoomEventSync(roomId, () => ({
+      event: {
+        title: puzzle.title,
+        description: puzzle.brief,
+        reward: puzzle.hint,
+        kind: 'puzzle',
+        category: puzzle.category,
+        puzzleText: puzzle.puzzleText,
+        answer: puzzle.answer,
       },
+      cleared: false,
+      clue: null,
+      note: null,
     }))
   }
 
   function closeRoomInvestigation(roomId: RoomId) {
-    setRoomEvents((prev) => ({
-      ...prev,
-      [roomId]: { event: null, cleared: false, clue: null, note: null },
-    }))
+    void updateRoomEventSync(roomId, () => ({ event: null, cleared: false, clue: null, note: null }))
   }
 
   function dispatchClassroomEvent(item: EventLibraryItem) {
     if (!item.implemented || item.dispatchKind !== 'duel') return
-    setClassroom({
+    void updateClassroomSync(() => ({
       status: 'active',
-      event: {
-        title: item.title,
-        description: item.description,
-        reward: item.reward ?? '',
-        kind: 'duel',
-      },
+      event: { title: item.title, description: item.description, reward: item.reward ?? '', kind: 'duel' },
       hint: null,
       note: null,
-    })
+    }))
   }
 
   function dispatchPuzzle(puzzle: ClassroomPuzzle) {
-    setClassroom({
+    void updateClassroomSync(() => ({
       status: 'active',
       event: {
         title: puzzle.title,
@@ -313,256 +346,244 @@ export function GameProvider({ children }: { children: ReactNode }) {
       },
       hint: null,
       note: null,
-    })
-    setClassroomMessages([])
+    }))
+    void patchSession({ classroomMessages: [] })
   }
 
   function closeInvestigation() {
-    setClassroom(initialClassroom())
+    void updateClassroomSync(() => ({ status: 'locked', event: null, hint: null, note: null }))
   }
 
   function submitPuzzleAnswer(text: string) {
     if (!text.trim()) return
-    setClassroom((prev) => {
+    void updateClassroomSync((prev) => {
       if (prev.status !== 'active' || !prev.event?.answer) return prev
       const correct = normalize(text) === normalize(prev.event.answer)
-      if (correct) {
-        return { ...prev, status: 'cleared', hint: prev.event.reward, note: null }
-      }
+      if (correct) return { ...prev, status: 'cleared', hint: prev.event.reward, note: null }
       return { ...prev, note: '오답이다. 다시 논의해보자.' }
     })
   }
 
   function attemptDuel(choice: 'odd' | 'even') {
-    setClassroom((prev) => {
+    void updateClassroomSync((prev) => {
       if (prev.status !== 'active' || !prev.event) return prev
       const outcome: 'odd' | 'even' = Math.random() < 0.5 ? 'odd' : 'even'
       const win = outcome === choice
-      if (win) {
-        return { ...prev, status: 'cleared', hint: prev.event.reward, note: null }
-      }
+      if (win) return { ...prev, status: 'cleared', hint: prev.event.reward, note: null }
       return { ...prev, note: '괴이가 낮게 웃는다. "아니야." 다시 시도해볼 수 있다.' }
     })
   }
 
   function toggleHeart(postId: string) {
-    setFeed((prev) =>
-      prev.map((p) =>
-        p.id === postId
-          ? {
-              ...p,
-              heartedByViewer: !p.heartedByViewer,
-              hearts: p.hearts + (p.heartedByViewer ? -1 : 1),
-            }
-          : p,
-      ),
-    )
+    const myId = viewerId ?? (isAdminFlag ? 'admin' : null)
+    if (!myId) return
+    void toggleHeartSync(postId, myId)
   }
 
   function addComment(postId: string, text: string, secret: boolean) {
     if (!text.trim() || !signedUp) return
     const authorId = viewerId ?? 'admin'
-    setFeed((prev) =>
-      prev.map((p) =>
-        p.id === postId && p.commentsEnabled
-          ? {
-              ...p,
-              comments: [
-                ...p.comments,
-                { id: `${postId}-${p.comments.length + 1}`, authorId, text: text.trim(), secret },
-              ],
-            }
-          : p,
-      ),
-    )
+    const comment: FeedComment = {
+      id: `${postId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      authorId,
+      text: text.trim(),
+      secret,
+    }
+    void addCommentSync(postId, comment)
   }
 
   function toggleCommentsEnabled(postId: string) {
-    setFeed((prev) =>
-      prev.map((p) => (p.id === postId ? { ...p, commentsEnabled: !p.commentsEnabled } : p)),
-    )
+    void toggleCommentsEnabledSync(postId)
   }
 
   function createFeedPost(title: string, body: string, commentsEnabled: boolean) {
     if (!title.trim() || !body.trim()) return
-    setFeed((prev) => [
-      {
-        id: `post-${Date.now()}`,
-        authorLabel: '[관리자]',
-        tag: '공지',
-        title: title.trim(),
-        body: body.trim(),
-        time: '방금',
-        hearts: 0,
-        heartedByViewer: false,
-        commentsEnabled,
-        comments: [],
-      },
-      ...prev,
-    ])
-  }
-
-  const BROADCAST_TAG: Record<BroadcastKind, string> = { event: '이벤트', sin: '괴이', notice: '공지' }
-  const BROADCAST_LABEL: Record<BroadcastKind, string> = {
-    event: '[긴급 이벤트]',
-    sin: '[괴이 출현]',
-    notice: '[관리자 쪽지]',
+    void createFeedPostSync({
+      authorLabel: '[관리자]',
+      tag: '공지',
+      title: title.trim(),
+      body: body.trim(),
+      time: '방금',
+      commentsEnabled,
+    })
   }
 
   function sendBroadcast(kind: BroadcastKind, title: string, body: string) {
     if (!title.trim() || !body.trim()) return
     const id = `bc-${Date.now()}`
-    setBroadcast({ id, kind, title: title.trim(), body: body.trim() })
-    setFeed((prev) => [
-      {
-        id,
-        authorLabel: BROADCAST_LABEL[kind],
-        tag: BROADCAST_TAG[kind],
-        title: title.trim(),
-        body: body.trim(),
-        time: '방금',
-        hearts: 0,
-        heartedByViewer: false,
-        commentsEnabled: false,
-        comments: [],
-      },
-      ...prev,
-    ])
+    const bc: Broadcast = { id, kind, title: title.trim(), body: body.trim() }
+    void sendBroadcastSync(bc)
+    void createFeedPostSync({
+      authorLabel: BROADCAST_LABEL[kind],
+      tag: BROADCAST_TAG[kind],
+      title: title.trim(),
+      body: body.trim(),
+      time: '방금',
+      commentsEnabled: false,
+    })
   }
 
   function dismissBroadcast() {
-    setBroadcast(null)
+    if (!session.broadcast) return
+    localStorage.setItem(LS.dismissedBroadcastId, session.broadcast.id)
+    setDismissedBroadcastIdLocal(session.broadcast.id)
   }
 
-  function canUseAbility() {
-    return abilityUnlocked && !abilityUsed && !!viewerId
+  function openMissions() {
+    void openMissionsSync()
   }
 
-  // 잠입자를 대상으로 한 첫 정체 확인은 '선'처럼 위장된다.
-  function resolveTeamCheck(targetId: string): 'ward' | 'sin' {
-    const target = CHARACTERS.find((c) => c.id === targetId)!
-    if (target.role === '잠입자' && !decoyUsed) {
-      setDecoyUsed(true)
-      return 'ward'
-    }
-    return target.team === 'ward' ? 'ward' : 'sin'
+  function confirmProposal(team: string[]) {
+    void updateMissionSync((m) => missionReducer(m, { type: 'CONFIRM_PROPOSAL', team }))
+  }
+  function castVote(approve: boolean) {
+    if (!viewerId) return
+    void updateMissionSync((m) => missionReducer(m, { type: 'CAST_VOTE', viewerId, approve }))
+  }
+  function submitCard(card: 'success' | 'fail' | null) {
+    if (!viewerId) return
+    void updateMissionSync((m) => missionReducer(m, { type: 'SUBMIT_CARD', viewerId, card }))
+  }
+  function continueMission() {
+    void updateMissionSync((m) => missionReducer(m, { type: 'CONTINUE' }))
+  }
+  function resetMission() {
+    void updateMissionSync((m) => missionReducer(m, { type: 'RESET' }))
   }
 
   function useRecordBook() {
-    if (!canUseAbility()) return
-    const others = CHARACTERS.filter((c) => c.id !== viewerId)
-    const shuffled = [...others].sort(() => Math.random() - 0.5)
-    const [a, b] = shuffled.slice(0, 2)
-    const lieOnA = Math.random() < 0.5
-    const teamLabel = (team: 'ward' | 'sin') => (team === 'ward' ? '선' : '악')
-    const trueA = resolveTeamCheck(a.id)
-    const trueB = resolveTeamCheck(b.id)
-    const shownA = lieOnA ? (trueA === 'ward' ? 'sin' : 'ward') : trueA
-    const shownB = !lieOnA ? (trueB === 'ward' ? 'sin' : 'ward') : trueB
-    setPersonalClues((prev) => [
-      ...prev,
-      `《출석부》 ${displayName(a.id)} = ${teamLabel(shownA)}, ${displayName(b.id)} = ${teamLabel(shownB)} — 둘 중 하나는 거짓이다.`,
-    ])
-    setAbilityUsed(true)
+    if (!viewerId) return
+    void runAbilityTransaction(viewerId, (sess, player) => {
+      if (!player.abilityUnlocked || player.abilityUsed) return {}
+      const others = CHARACTERS.filter((c) => c.id !== viewerId)
+      const shuffled = [...others].sort(() => Math.random() - 0.5)
+      const [a, b] = shuffled.slice(0, 2)
+      const lieOnA = Math.random() < 0.5
+      const teamLabel = (team: 'ward' | 'sin') => (team === 'ward' ? '선' : '악')
+      const firstCheck = resolveTeamCheckPure(sess.decoyUsed, a.id)
+      const secondCheck = resolveTeamCheckPure(firstCheck.decoyUsed, b.id)
+      const trueA = firstCheck.team
+      const trueB = secondCheck.team
+      const shownA = lieOnA ? (trueA === 'ward' ? 'sin' : 'ward') : trueA
+      const shownB = !lieOnA ? (trueB === 'ward' ? 'sin' : 'ward') : trueB
+      const text = `《출석부》 ${displayName(a.id)} = ${teamLabel(shownA)}, ${displayName(b.id)} = ${teamLabel(shownB)} — 둘 중 하나는 거짓이다.`
+      return {
+        session: secondCheck.decoyUsed !== sess.decoyUsed ? { decoyUsed: secondCheck.decoyUsed } : undefined,
+        player: { abilityUsed: true, personalClues: [...player.personalClues, text] },
+      }
+    })
   }
 
   function investigate(targetId: string) {
-    if (!canUseAbility()) return
-    let resultText: string
-    if (protectedId === targetId) {
-      resultText = `《학생부 조사》 ${displayName(targetId)} — 보호받고 있어 판별 불가.`
-    } else {
-      const team = resolveTeamCheck(targetId)
-      resultText = `《학생부 조사》 ${displayName(targetId)} — 실패 카드를 ${team === 'sin' ? '낼 수 있다' : '낼 수 없다'}.`
-    }
-    setPersonalClues((prev) => [...prev, resultText])
-    setAbilityUsed(true)
+    if (!viewerId) return
+    void runAbilityTransaction(viewerId, (sess, player) => {
+      if (!player.abilityUnlocked || player.abilityUsed) return {}
+      let resultText: string
+      let decoyUsed = sess.decoyUsed
+      if (sess.protectedId === targetId) {
+        resultText = `《학생부 조사》 ${displayName(targetId)} — 보호받고 있어 판별 불가.`
+      } else {
+        const check = resolveTeamCheckPure(decoyUsed, targetId)
+        decoyUsed = check.decoyUsed
+        resultText = `《학생부 조사》 ${displayName(targetId)} — 실패 카드를 ${check.team === 'sin' ? '낼 수 있다' : '낼 수 없다'}.`
+      }
+      return {
+        session: decoyUsed !== sess.decoyUsed ? { decoyUsed } : undefined,
+        player: { abilityUsed: true, personalClues: [...player.personalClues, resultText] },
+      }
+    })
   }
 
   function protect(targetId: string) {
-    if (!canUseAbility()) return
-    setProtectedId(targetId)
-    setPersonalClues((prev) => [...prev, `《동행》 ${displayName(targetId)}을(를) 보호하기 시작했다.`])
-    setAbilityUsed(true)
+    if (!viewerId) return
+    void runAbilityTransaction(viewerId, (_sess, player) => {
+      if (!player.abilityUnlocked || player.abilityUsed) return {}
+      const text = `《동행》 ${displayName(targetId)}을(를) 보호하기 시작했다.`
+      return {
+        session: { protectedId: targetId },
+        player: { abilityUsed: true, personalClues: [...player.personalClues, text] },
+      }
+    })
   }
 
   function checkCctv(missionIndex: number) {
-    if (!canUseAbility()) return
-    const count = mission.failCounts[missionIndex]
-    if (count === null || count === undefined) return
-    setPersonalClues((prev) => [
-      ...prev,
-      `《CCTV》 ${missionIndex + 1}차 원정 — 실패 카드 ${count}장.`,
-    ])
-    setAbilityUsed(true)
+    if (!viewerId) return
+    void runAbilityTransaction(viewerId, (sess, player) => {
+      if (!player.abilityUnlocked || player.abilityUsed) return {}
+      const count = sess.mission.failCounts[missionIndex]
+      if (count === null || count === undefined) return {}
+      const text = `《CCTV》 ${missionIndex + 1} 차 원정 — 실패 카드 ${count} 장.`
+      return { player: { abilityUsed: true, personalClues: [...player.personalClues, text] } }
+    })
   }
 
   function erode(targetId: string) {
-    if (!canUseAbility()) return
-    setErosionTargetId(targetId)
-    setPersonalClues((prev) => [...prev, `《침식》 ${displayName(targetId)}을(를) 표적으로 삼았다.`])
-    setAbilityUsed(true)
+    if (!viewerId) return
+    void runAbilityTransaction(viewerId, (_sess, player) => {
+      if (!player.abilityUnlocked || player.abilityUsed) return {}
+      const text = `《침식》 ${displayName(targetId)}을(를) 표적으로 삼았다.`
+      return {
+        session: { erosionTargetId: targetId },
+        player: { abilityUsed: true, personalClues: [...player.personalClues, text] },
+      }
+    })
   }
 
   function forgeResult() {
-    if (!canUseAbility() || !viewerId) return
-    if (!mission.proposedTeam.includes(viewerId)) return
-    if (mission.missionResults[mission.missionIndex] !== 'success') return
-    dispatch({ type: 'FORGE_RESULT' })
-    setAbilityUsed(true)
+    if (!viewerId) return
+    void runAbilityTransaction(viewerId, (sess, player) => {
+      if (!player.abilityUnlocked || player.abilityUsed) return {}
+      if (!sess.mission.proposedTeam.includes(viewerId)) return {}
+      if (sess.mission.missionResults[sess.mission.missionIndex] !== 'success') return {}
+      const nextMission = missionReducer(sess.mission, { type: 'FORGE_RESULT' })
+      return { session: { mission: nextMission }, player: { abilityUsed: true } }
+    })
   }
 
   function revengerCheck(targetId: string) {
-    if (!canUseAbility()) return
-    const target = CHARACTERS.find((c) => c.id === targetId)!
-    let resultText: string
-    if (protectedId === targetId) {
-      resultText = `《공략》 ${displayName(targetId)} — 보호받고 있어 판별 불가.`
-    } else {
-      const team = resolveTeamCheck(targetId)
-      const trueRoleLabel = team === target.team ? target.role : team === 'ward' ? '선(위장 감지)' : '악'
-      resultText = `《공략》 ${displayName(targetId)}의 진짜 정체 — ${trueRoleLabel}.`
-    }
-    setPersonalClues((prev) => [...prev, resultText])
-    setAbilityUsed(true)
+    if (!viewerId) return
+    void runAbilityTransaction(viewerId, (sess, player) => {
+      if (!player.abilityUnlocked || player.abilityUsed) return {}
+      let resultText: string
+      let decoyUsed = sess.decoyUsed
+      if (sess.protectedId === targetId) {
+        resultText = `《공략》 ${displayName(targetId)} — 보호받고 있어 판별 불가.`
+      } else {
+        const target = CHARACTERS.find((c) => c.id === targetId)!
+        const check = resolveTeamCheckPure(decoyUsed, targetId)
+        decoyUsed = check.decoyUsed
+        const trueRoleLabel =
+          check.team === target.team ? target.role : check.team === 'ward' ? '선(위장 감지)' : '악'
+        resultText = `《공략》 ${displayName(targetId)}의 진짜 정체 — ${trueRoleLabel}.`
+      }
+      return {
+        session: decoyUsed !== sess.decoyUsed ? { decoyUsed } : undefined,
+        player: { abilityUsed: true, personalClues: [...player.personalClues, resultText] },
+      }
+    })
   }
 
   const forgottenIdentity: 'ward' | 'sin' | null = (() => {
     if (!viewerId) return null
     const viewer = CHARACTERS.find((c) => c.id === viewerId)!
     if (viewer.role !== '망각자') return null
-    if (mission.missionResults[2] === null) return null
+    if (session.mission.missionResults[2] === null) return null
     let fails = 0
     for (let i = 0; i < 3; i++) {
-      const team = mission.teamHistory[i]
-      if (team && team.includes(viewerId) && mission.missionResults[i] === 'fail') fails++
+      const team = session.mission.teamHistory[i]
+      if (team && team.includes(viewerId) && session.mission.missionResults[i] === 'fail') fails++
     }
     return fails >= 2 ? 'sin' : 'ward'
   })()
 
-  function confirmProposal(team: string[]) {
-    dispatch({ type: 'CONFIRM_PROPOSAL', team })
-  }
-  function castVote(approve: boolean) {
-    if (!viewerId) return
-    dispatch({ type: 'CAST_VOTE', viewerId, approve })
-  }
-  function submitCard(card: 'success' | 'fail' | null) {
-    if (!viewerId) return
-    dispatch({ type: 'SUBMIT_CARD', viewerId, card })
-  }
-  function continueMission() {
-    dispatch({ type: 'CONTINUE' })
-  }
-  function resetMission() {
-    dispatch({ type: 'RESET' })
-  }
+  const myId = viewerId ?? 'admin'
+  const feed: FeedPost[] = feedDocs.map((d) => feedPostToFeedPost(d.id, d, myId))
+  const broadcast = session.broadcast && session.broadcast.id !== dismissedBroadcastId ? session.broadcast : null
 
-  const value = useMemo(
+  const value = useMemo<GameState>(
     () => ({
       viewerId,
       isAdmin,
-      setViewerId,
       nickname,
       setNickname,
       grade,
@@ -575,18 +596,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
       displayName,
       activeTab,
       setActiveTab,
-      roomOccupancy,
+      roomOccupancy: session.roomOccupancy,
       joinRoom,
       leaveRoom,
-      roomMessages,
+      roomMessages: session.roomMessages,
       sendRoomMessage,
-      roomEvents,
+      roomEvents: session.roomEvents,
       submitRoomAnswer,
       dispatchRoomPuzzle,
       closeRoomInvestigation,
-      classroomMessages,
+      classroomMessages: session.classroomMessages,
       sendClassroomMessage,
-      classroom,
+      classroom: session.classroom,
       dispatchClassroomEvent,
       dispatchPuzzle,
       submitPuzzleAnswer,
@@ -597,13 +618,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
       addComment,
       toggleCommentsEnabled,
       createFeedPost,
-      gmReveal,
+      gmReveal: isAdmin,
       broadcast,
       sendBroadcast,
       dismissBroadcast,
-      missionsOpen,
+      missionsOpen: session.missionsOpen,
       openMissions,
-      mission,
+      mission: session.mission,
       confirmProposal,
       castVote,
       submitCard,
@@ -616,10 +637,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       useRecordBook,
       investigate,
       protect,
-      protectedId,
+      protectedId: session.protectedId,
       checkCctv,
       erode,
-      erosionTargetId,
+      erosionTargetId: session.erosionTargetId,
       forgeResult,
       revengerCheck,
     }),
@@ -632,26 +653,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
       signedUp,
       roleRevealed,
       activeTab,
-      roomOccupancy,
-      roomMessages,
-      roomEvents,
-      classroomMessages,
-      classroom,
+      session,
       feed,
-      gmReveal,
       broadcast,
-      missionsOpen,
-      mission,
       abilityUnlocked,
       abilityUsed,
       personalClues,
-      protectedId,
-      erosionTargetId,
       forgottenIdentity,
     ],
   )
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>
+}
+
+export function GameProvider({ children }: { children: ReactNode }) {
+  if (!firebaseConfigured) return <FirebaseSetupNotice />
+  return <GameProviderInner>{children}</GameProviderInner>
 }
 
 export function useGame() {
