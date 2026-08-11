@@ -161,7 +161,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
           teamHistory,
           sinWins: state.sinWins + 1,
           phase: 'result',
-          lastNote: `찬성 ${tally.approve} · 반대 ${tally.reject} — 5회 연속 부결로 원정이 자동 실패했다.`,
+          lastNote: `찬성 ${tally.approve} · 반대 ${tally.reject} — 5 회 연속 부결로 원정이 자동 실패했다.`,
         }
       }
       const nextLeaderIdx = (state.leaderIdx + 1) % ALL_IDS.length

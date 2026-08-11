@@ -1,8 +1,6 @@
 import { createContext, useContext, useMemo, useReducer, useState, type ReactNode } from 'react'
 import { CHARACTERS, ROOMS } from '../data/characters'
-import { ROOM_EVENTS } from '../data/events'
 import { INITIAL_FEED } from '../data/feed'
-import { DM_REPLIES } from '../data/dmReplies'
 import type {
   Broadcast,
   BroadcastKind,
@@ -13,6 +11,7 @@ import type {
   FeedPost,
   RoomEventState,
   RoomId,
+  RoomPuzzle,
 } from '../data/types'
 import { initialMissionState, missionReducer, type MissionState } from './missionEngine'
 
@@ -43,6 +42,8 @@ interface GameState {
   sendRoomMessage: (roomId: RoomId, text: string) => void
   roomEvents: Record<RoomId, RoomEventState>
   submitRoomAnswer: (roomId: RoomId, text: string) => void
+  dispatchRoomPuzzle: (roomId: RoomId, puzzle: RoomPuzzle) => void
+  closeRoomInvestigation: (roomId: RoomId) => void
   classroomMessages: ChatMessage[]
   sendClassroomMessage: (text: string) => void
   classroom: ClassroomState
@@ -65,11 +66,6 @@ interface GameState {
   submitCard: (card: 'success' | 'fail' | null) => void
   continueMission: () => void
   resetMission: () => void
-  dmThreads: Record<string, ChatMessage[]>
-  activeDmId: string | null
-  openDm: (id: string) => void
-  closeDm: () => void
-  sendDm: (text: string) => void
   abilityUnlocked: boolean
   abilityUsed: boolean
   personalClues: string[]
@@ -100,12 +96,12 @@ const INITIAL_OCCUPANCY: Record<RoomId, string[]> = {
 const INITIAL_ROOM_MESSAGES: Record<RoomId, ChatMessage[]> = {
   library: [
     { id: 'l1', authorId: 'jimin', text: '졸업앨범부터 뒤져보자, 페이지 순서가 좀 이상해', time: '00:11' },
-    { id: 'l2', authorId: 'haneul', text: '...나는 그냥 지켜볼게', time: '00:12' },
+    { id: 'l2', authorId: 'haneul', text: '......나는 그냥 지켜볼게', time: '00:12' },
   ],
   infirmary: [{ id: 'i1', authorId: 'ayoung', text: '기록부에 그날 오후 진료 사유가 지워져 있어', time: '00:10' }],
   broadcast: [
-    { id: 'b1', authorId: 'seungwoo', text: '이 채널, 3년 전에 폐기된 장비인데 왜 지금 살아있지', time: '00:13' },
-    { id: 'b2', authorId: 'gihoon', text: '...나 먼저 나갈게', time: '00:14' },
+    { id: 'b1', authorId: 'seungwoo', text: '이 채널, 3 년 전에 폐기된 장비인데 왜 지금 살아있지', time: '00:13' },
+    { id: 'b2', authorId: 'gihoon', text: '......나 먼저 나갈게', time: '00:14' },
   ],
   rooftop: [],
 }
@@ -117,7 +113,7 @@ function normalize(s: string): string {
 function initialRoomEvents(): Record<RoomId, RoomEventState> {
   const result = {} as Record<RoomId, RoomEventState>
   for (const room of ROOMS) {
-    result[room.id] = { event: ROOM_EVENTS[room.id], cleared: false, clue: null, note: null }
+    result[room.id] = { event: null, cleared: false, clue: null, note: null }
   }
   return result
 }
@@ -129,7 +125,7 @@ function initialClassroom(): ClassroomState {
 export function GameProvider({ children }: { children: ReactNode }) {
   const [viewerId, setViewerId] = useState<string | null>(null)
   const [nickname, setNickname] = useState('')
-  const [grade, setGrade] = useState('1학년')
+  const [grade, setGrade] = useState('1 학년')
   const [photo, setPhoto] = useState<string | null>(null)
   const [signedUp, setSignedUp] = useState(false)
   const [roleRevealed, setRoleRevealed] = useState(false)
@@ -144,8 +140,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [gmReveal, setGmReveal] = useState(false)
   const [broadcast, setBroadcast] = useState<Broadcast | null>(null)
   const [missionsOpen, setMissionsOpen] = useState(false)
-  const [dmThreads, setDmThreads] = useState<Record<string, ChatMessage[]>>({})
-  const [activeDmId, setActiveDmId] = useState<string | null>(null)
   const [abilityUnlocked, setAbilityUnlocked] = useState(false)
   const [abilityUsed, setAbilityUsed] = useState(false)
   const [personalClues, setPersonalClues] = useState<string[]>([])
@@ -190,39 +184,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setMissionsOpen(true)
   }
 
-  function openDm(id: string) {
-    setActiveDmId(id)
-    setDmThreads((prev) => (prev[id] ? prev : { ...prev, [id]: [] }))
-  }
-
-  function closeDm() {
-    setActiveDmId(null)
-  }
-
-  function sendDm(text: string) {
-    if (!activeDmId || !text.trim() || !viewerId) return
-    const targetId = activeDmId
-    const myMsg: ChatMessage = {
-      id: `dm-${targetId}-${Date.now()}`,
-      authorId: viewerId,
-      text: text.trim(),
-      time: '지금',
-    }
-    setDmThreads((prev) => ({ ...prev, [targetId]: [...(prev[targetId] ?? []), myMsg] }))
-    const pool = DM_REPLIES[targetId] ?? ['...']
-    const reply = pool[Math.floor(Math.random() * pool.length)]
-    window.setTimeout(() => {
-      setDmThreads((prev) => ({
-        ...prev,
-        [targetId]: [
-          ...(prev[targetId] ?? []),
-          { id: `dm-${targetId}-${Date.now()}-r`, authorId: targetId, text: reply, time: '지금' },
-        ],
-      }))
-    }, 500)
-  }
-
   function displayName(id: string) {
+    if (id === 'admin') return isAdmin ? nickname : '관리자'
     if (id === viewerId) return nickname
     return CHARACTERS.find((c) => c.id === id)?.name ?? '???'
   }
@@ -292,6 +255,33 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (solved && viewerId && roomOccupancy[roomId].includes(viewerId)) {
       setAbilityUnlocked(true)
     }
+  }
+
+  function dispatchRoomPuzzle(roomId: RoomId, puzzle: RoomPuzzle) {
+    setRoomEvents((prev) => ({
+      ...prev,
+      [roomId]: {
+        event: {
+          title: puzzle.title,
+          description: puzzle.brief,
+          reward: puzzle.hint,
+          kind: 'puzzle',
+          category: puzzle.category,
+          puzzleText: puzzle.puzzleText,
+          answer: puzzle.answer,
+        },
+        cleared: false,
+        clue: null,
+        note: null,
+      },
+    }))
+  }
+
+  function closeRoomInvestigation(roomId: RoomId) {
+    setRoomEvents((prev) => ({
+      ...prev,
+      [roomId]: { event: null, cleared: false, clue: null, note: null },
+    }))
   }
 
   function dispatchClassroomEvent(item: EventLibraryItem) {
@@ -370,7 +360,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }
 
   function addComment(postId: string, text: string, secret: boolean) {
-    if (!text.trim() || !viewerId) return
+    if (!text.trim() || !signedUp) return
+    const authorId = viewerId ?? 'admin'
     setFeed((prev) =>
       prev.map((p) =>
         p.id === postId && p.commentsEnabled
@@ -378,7 +369,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
               ...p,
               comments: [
                 ...p.comments,
-                { id: `${postId}-${p.comments.length + 1}`, authorId: viewerId, text: text.trim(), secret },
+                { id: `${postId}-${p.comments.length + 1}`, authorId, text: text.trim(), secret },
               ],
             }
           : p,
@@ -591,6 +582,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       sendRoomMessage,
       roomEvents,
       submitRoomAnswer,
+      dispatchRoomPuzzle,
+      closeRoomInvestigation,
       classroomMessages,
       sendClassroomMessage,
       classroom,
@@ -616,11 +609,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
       submitCard,
       continueMission,
       resetMission,
-      dmThreads,
-      activeDmId,
-      openDm,
-      closeDm,
-      sendDm,
       abilityUnlocked,
       abilityUsed,
       personalClues,
@@ -654,8 +642,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
       broadcast,
       missionsOpen,
       mission,
-      dmThreads,
-      activeDmId,
       abilityUnlocked,
       abilityUsed,
       personalClues,

@@ -107,34 +107,40 @@ export function RoomsScreen() {
             )}
           </div>
 
-          {roomEvent.event?.category && (
-            <span className="rooms__pin-tag">{roomEvent.event.category}</span>
-          )}
-          <span className="rooms__pin-puzzle-title">{roomEvent.event!.title}</span>
-          <p className="rooms__pin-desc">{roomEvent.event!.description}</p>
-          {!roomEvent.cleared && roomEvent.event?.puzzleText && (
-            <pre className="rooms__pin-puzzletext">{roomEvent.event.puzzleText}</pre>
-          )}
-          {!roomEvent.cleared && iAmHere && (
-            <div className="rooms__pin-answer">
-              <input
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && submitPuzzleAnswer()}
-                placeholder="정답 입력..."
-              />
-              <button onClick={submitPuzzleAnswer}>제출</button>
-            </div>
-          )}
-          {!roomEvent.cleared && !iAmHere && (
-            <p className="rooms__pin-note">입장한 사람만 함께 풀 수 있다.</p>
-          )}
-          {roomEvent.note && <p className="rooms__pin-note">{roomEvent.note}</p>}
-          {roomEvent.cleared && (
-            <div className="rooms__pin-hint">
-              <span>단서 확보</span>
-              <p>{roomEvent.clue}</p>
-            </div>
+          {!roomEvent.event && <p className="rooms__pin-ambient">{room.ambientText}</p>}
+
+          {roomEvent.event && (
+            <>
+              {roomEvent.event.category && (
+                <span className="rooms__pin-tag">{roomEvent.event.category}</span>
+              )}
+              <span className="rooms__pin-puzzle-title">{roomEvent.event.title}</span>
+              <p className="rooms__pin-desc">{roomEvent.event.description}</p>
+              {!roomEvent.cleared && roomEvent.event.puzzleText && (
+                <pre className="rooms__pin-puzzletext">{roomEvent.event.puzzleText}</pre>
+              )}
+              {!roomEvent.cleared && iAmHere && (
+                <div className="rooms__pin-answer">
+                  <input
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && submitPuzzleAnswer()}
+                    placeholder="정답 입력......"
+                  />
+                  <button onClick={submitPuzzleAnswer}>제출</button>
+                </div>
+              )}
+              {!roomEvent.cleared && !iAmHere && (
+                <p className="rooms__pin-note">입장한 사람만 함께 풀 수 있다.</p>
+              )}
+              {roomEvent.note && <p className="rooms__pin-note">{roomEvent.note}</p>}
+              {roomEvent.cleared && (
+                <div className="rooms__pin-hint">
+                  <span>단서 확보</span>
+                  <p>{roomEvent.clue}</p>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -156,7 +162,7 @@ export function RoomsScreen() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && submitChat()}
-              placeholder={`${room.name}에서 대화하기...`}
+              placeholder={`${room.name}에서 대화하기......`}
             />
             <button onClick={submitChat}>전송</button>
           </div>
@@ -178,12 +184,14 @@ export function RoomsScreen() {
           const occupants = roomOccupancy[room.id]
           const full = occupants.length >= room.capacity
           const cleared = roomEvents[room.id].cleared
+          const investigating = !!roomEvents[room.id].event && !cleared
           return (
             <button key={room.id} className="rooms__card" onClick={() => setOpenRoom(room.id)}>
               <div className="rooms__card-top">
                 <span className="rooms__card-name">
                   {room.name}
                   {cleared && <span className="rooms__card-clue-tag">단서 발견</span>}
+                  {investigating && <span className="rooms__card-active-tag">조사 중</span>}
                 </span>
                 <span className={`rooms__card-count ${full ? 'is-full' : ''}`}>
                   {occupants.length}/{room.capacity}

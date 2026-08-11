@@ -56,7 +56,7 @@ export function ClassroomScreen() {
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && submitAnswer()}
-              placeholder="다 같이 상의한 정답을 입력..."
+              placeholder="다 같이 상의한 정답을 입력......"
             />
             <button onClick={submitAnswer}>제출</button>
           </div>
@@ -100,7 +100,7 @@ export function ClassroomScreen() {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
-            placeholder="교실에 메시지 보내기..."
+            placeholder="교실에 메시지 보내기......"
           />
           <button onClick={submit}>전송</button>
         </div>

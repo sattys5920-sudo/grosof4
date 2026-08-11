@@ -35,6 +35,7 @@ export interface Room {
   name: string
   capacity: number
   description: string
+  ambientText: string
 }
 
 export interface ChatMessage {
@@ -114,6 +115,16 @@ export interface EventLibraryItem {
 }
 
 export interface ClassroomPuzzle {
+  id: string
+  category: string
+  title: string
+  brief: string
+  puzzleText: string
+  answer: string
+  hint: string
+}
+
+export interface RoomPuzzle {
   id: string
   category: string
   title: string

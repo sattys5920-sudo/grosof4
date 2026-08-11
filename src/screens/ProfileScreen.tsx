@@ -1,24 +1,25 @@
 import { useState } from 'react'
 import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
-import { CHARACTERS, roleLabel } from '../data/characters'
+import { CHARACTERS, ROOMS, roleLabel } from '../data/characters'
 import { Badge } from '../components/Badge'
 import { EVENT_LIBRARY } from '../data/eventLibrary'
 import { CLASSROOM_PUZZLES } from '../data/classroomPuzzles'
-import type { BroadcastKind } from '../data/types'
+import { ROOM_PUZZLE_BANK } from '../data/events'
+import type { BroadcastKind, RoomId } from '../data/types'
 
 const PRESETS: { kind: BroadcastKind; label: string; title: string; body: string }[] = [
   {
     kind: 'event',
     label: '이벤트 발생',
     title: '갑작스러운 정전',
-    body: '건물 전체 조명이 3초간 꺼졌다. 그 순간 무언가를 본 사람이 있을지도 모른다.',
+    body: '건물 전체 조명이 3 초간 꺼졌다. 그 순간 무언가를 본 사람이 있을지도 모른다.',
   },
   {
     kind: 'sin',
     label: '괴이 출현',
     title: '복도에서 괴이가 목격되었다',
-    body: '방금 2층 복도 CCTV에 정체를 알 수 없는 형체가 잡혔다. 문단속을 확인하라.',
+    body: '방금 2 층 복도 CCTV에 정체를 알 수 없는 형체가 잡혔다. 문단속을 확인하라.',
   },
   {
     kind: 'notice',
@@ -57,11 +58,14 @@ export function ProfileScreen() {
     forgeResult,
     revengerCheck,
     mission,
-    openDm,
     createFeedPost,
+    roomEvents,
+    dispatchRoomPuzzle,
+    closeRoomInvestigation,
   } = useGame()
   const viewer = viewerId ? CHARACTERS.find((c) => c.id === viewerId)! : null
   const [kind, setKind] = useState<BroadcastKind>('event')
+  const [targetRoomId, setTargetRoomId] = useState<RoomId>(ROOMS[0].id)
   const [title, setTitle] = useState(PRESETS[0].title)
   const [body, setBody] = useState(PRESETS[0].body)
   const [targetId, setTargetId] = useState('')
@@ -197,7 +201,7 @@ export function ProfileScreen() {
                   {completedMissions.length === 0 && <option value={0}>완료된 원정 없음</option>}
                   {completedMissions.map((m) => (
                     <option key={m.i} value={m.i}>
-                      {m.i + 1}차 원정
+                      {m.i + 1} 차 원정
                     </option>
                   ))}
                 </select>
@@ -253,13 +257,13 @@ export function ProfileScreen() {
               <p className="profile__ability-locked">
                 {forgottenIdentity
                   ? `《기억 회복》 발동 — 지금까지의 원정 결과로 볼 때, 너는 ${forgottenIdentity === 'ward' ? '선' : '악'}이었다.`
-                  : '3차 원정이 끝나기 전까지는 자신의 정체를 알 수 없다.'}
+                  : '3 차 원정이 끝나기 전까지는 자신의 정체를 알 수 없다.'}
               </p>
             )}
 
             {viewer.role === '일반학생' && (
               <p className="profile__ability-locked">
-                특별한 능력은 없다. 대신 5차 원정에 반드시 참가해야 한다.
+                특별한 능력은 없다. 대신 5 차 원정에 반드시 참가해야 한다.
               </p>
             )}
           </div>
@@ -298,13 +302,7 @@ export function ProfileScreen() {
           {CHARACTERS.map((c) => (
             <div key={c.id} className="profile__roster-item">
               <span className="profile__roster-name">{displayName(c.id)}</span>
-              {c.id === viewerId ? (
-                <span className="profile__me-tag">나</span>
-              ) : (
-                <button className="profile__dm-btn" onClick={() => openDm(c.id)}>
-                  귓속말
-                </button>
-              )}
+              {c.id === viewerId && <span className="profile__me-tag">나</span>}
             </div>
           ))}
         </div>
@@ -391,7 +389,7 @@ export function ProfileScreen() {
             </p>
             {!missionsOpen && (
               <button className="profile__gm-preset" onClick={openMissions}>
-                원정 열기 (5원정 · 3선승)
+                원정 열기 (5 원정 · 3 선승)
               </button>
             )}
           </div>
@@ -417,6 +415,54 @@ export function ProfileScreen() {
                   <p className="profile__gm-event-desc">{puzzle.brief}</p>
                   <button className="profile__gm-event-send" onClick={() => dispatchPuzzle(puzzle)}>
                     발송
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="profile__gm">
+            <span className="profile__section-label">GM 전용 — 조사실 문제 발동 (50)</span>
+            <p className="profile__gm-note">
+              대상 조사실을 고른 뒤, 문제 목록에서 발송한다. 조사실은 문제를 발동하기 전까지 대화만 가능한 분위기 상태로 유지된다.
+            </p>
+            <div className="profile__gm-presets">
+              {ROOMS.map((room) => {
+                const state = roomEvents[room.id]
+                const statusLabel = state.cleared ? '단서 확보' : state.event ? '조사 중' : '분위기'
+                return (
+                  <button
+                    key={room.id}
+                    className={`profile__gm-preset ${targetRoomId === room.id ? 'is-active' : ''}`}
+                    onClick={() => setTargetRoomId(room.id)}
+                  >
+                    {room.name} · {statusLabel}
+                  </button>
+                )
+              })}
+            </div>
+            {roomEvents[targetRoomId].event && (
+              <button
+                className="profile__gm-preset"
+                onClick={() => closeRoomInvestigation(targetRoomId)}
+              >
+                {ROOMS.find((r) => r.id === targetRoomId)!.name} 조사 종료 / 분위기로 되돌리기
+              </button>
+            )}
+            <div className="profile__gm-eventlist">
+              {ROOM_PUZZLE_BANK.map((puzzle) => (
+                <div key={puzzle.id} className="profile__gm-event">
+                  <div className="profile__gm-event-head">
+                    <span className="profile__gm-event-category">{puzzle.category}</span>
+                    <span className="profile__gm-event-title">{puzzle.title}</span>
+                  </div>
+                  <p className="profile__gm-event-desc">{puzzle.brief}</p>
+                  <p className="profile__gm-event-answer">정답: {puzzle.answer}</p>
+                  <button
+                    className="profile__gm-event-send"
+                    onClick={() => dispatchRoomPuzzle(targetRoomId, puzzle)}
+                  >
+                    {ROOMS.find((r) => r.id === targetRoomId)!.name}에 발송
                   </button>
                 </div>
               ))}

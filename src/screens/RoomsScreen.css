@@ -71,6 +71,14 @@
   padding: 2px 5px;
 }
 
+.rooms__card-active-tag {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: var(--sin);
+  border: 1px solid var(--sin);
+  padding: 2px 5px;
+}
+
 .rooms__card-count {
   font-family: var(--font-pixel);
   font-size: 11px;
@@ -154,6 +162,14 @@
   opacity: 0.4;
   cursor: not-allowed;
   border-color: var(--line);
+}
+
+.rooms__pin-ambient {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--bone-dim);
+  font-style: italic;
+  line-height: 1.6;
 }
 
 .rooms__pin-tag {

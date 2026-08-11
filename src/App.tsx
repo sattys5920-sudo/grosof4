@@ -3,7 +3,6 @@ import './App.css'
 import { GameProvider, useGame } from './state/GameContext'
 import { TabBar } from './components/TabBar'
 import { BroadcastPopup } from './components/BroadcastPopup'
-import { DmModal } from './components/DmModal'
 import { StoryIntroScreen } from './screens/StoryIntroScreen'
 import { SignupScreen } from './screens/SignupScreen'
 import { RoleRevealScreen } from './screens/RoleRevealScreen'
@@ -46,7 +45,6 @@ function Shell() {
       </main>
       <TabBar />
       <BroadcastPopup />
-      <DmModal />
     </div>
   )
 }

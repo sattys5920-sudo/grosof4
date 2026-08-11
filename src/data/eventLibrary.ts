@@ -37,7 +37,7 @@ export const EVENT_LIBRARY: EventLibraryItem[] = [
     title: 'CCTV에 잡힌 형체',
     description: '복도 CCTV에 정체불명의 형체가 잡혔다는 공지를 즉시 보낸다.',
     popupKind: 'sin',
-    popupBody: '방금 2층 복도 CCTV에 정체를 알 수 없는 형체가 잡혔다. 문단속을 확인하라.',
+    popupBody: '방금 2 층 복도 CCTV에 정체를 알 수 없는 형체가 잡혔다. 문단속을 확인하라.',
     implemented: true,
   },
   {

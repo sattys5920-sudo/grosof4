@@ -73,7 +73,7 @@ export function MissionScreen() {
       <div className="mission">
         <div className="mission__head">
           <span className="mission__index">
-            {mission.missionIndex + 1}차 원정 · 관리자 관전
+            {mission.missionIndex + 1} 차 원정 · 관리자 관전
           </span>
           <span className="mission__score">
             선 {mission.wardWins} : {mission.sinWins} 악
@@ -93,7 +93,7 @@ export function MissionScreen() {
     return (
       <div className="mission mission--gameover">
         <h2>{winnerLabel}</h2>
-        <p>선 {mission.wardWins}승 · 악 {mission.sinWins}승</p>
+        <p>선 {mission.wardWins} 승 · 악 {mission.sinWins} 승</p>
         <button onClick={resetMission}>새 원정 시작하기</button>
       </div>
     )
@@ -103,8 +103,8 @@ export function MissionScreen() {
     <div className="mission">
       <div className="mission__head">
         <span className="mission__index">
-          {mission.missionIndex + 1}차 원정 · 필요 인원 {teamSize}명
-          {TWO_FAILS_REQUIRED[mission.missionIndex] && ' (실패 카드 2장부터 실패)'}
+          {mission.missionIndex + 1} 차 원정 · 필요 인원 {teamSize} 명
+          {TWO_FAILS_REQUIRED[mission.missionIndex] && ' (실패 카드 2 장부터 실패)'}
         </span>
         <span className="mission__score">
           선 {mission.wardWins} : {mission.sinWins} 악

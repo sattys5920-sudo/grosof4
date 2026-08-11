@@ -16,8 +16,8 @@ export function StoryIntroScreen({ onEnter }: { onEnter: () => void }) {
           안개에 둘러싸인다. 정문도, 후문도, 창밖도 전부 안개뿐이다.
         </p>
         <p className="intro__quote">
-          [교내 방송] 세 사람은... 이미 그날의 죄를... 되갚고 있다. 나머지는 오늘 밤, 그들을
-          찾아내거나... 함께 잠식된다.
+          [교내 방송] 세 사람은...... 이미 그날의 죄를...... 되갚고 있다. 나머지는 오늘 밤, 그들을
+          찾아내거나...... 함께 잠식된다.......
         </p>
       </div>
       <button className="intro__enter" onClick={onEnter}>
