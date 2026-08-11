@@ -71,3 +71,12 @@ export interface FeedPost {
   heartedByViewer: boolean
   comments: FeedComment[]
 }
+
+export type BroadcastKind = 'event' | 'sin' | 'notice'
+
+export interface Broadcast {
+  id: string
+  kind: BroadcastKind
+  title: string
+  body: string
+}

@@ -14,14 +14,14 @@
 
 .feed__intro-label {
   font-family: var(--font-pixel);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--veil);
   letter-spacing: 1px;
 }
 
 .feed__intro p {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--bone-dim);
 }
 
@@ -60,7 +60,7 @@
 }
 
 .feed__author {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--bone-bright);
 }
 
@@ -74,16 +74,16 @@
 .feed__title {
   margin: 0;
   font-family: var(--font-title);
-  font-size: 14px;
+  font-size: 16px;
   color: var(--bone-bright);
   text-wrap: balance;
 }
 
 .feed__body {
   margin: 0;
-  font-size: 13px;
+  font-size: 14.5px;
   color: var(--bone);
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .feed__actions {
@@ -98,7 +98,7 @@
   background: none;
   border: none;
   color: var(--bone-dim);
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   padding: 6px 0;
 }
@@ -118,7 +118,7 @@
 .feed__comment {
   display: flex;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--bone);
 }
 
@@ -137,9 +137,9 @@
   flex: 1;
   background: var(--void-3);
   border: 1px solid var(--line);
-  padding: 7px 9px;
+  padding: 8px 9px;
   color: var(--bone-bright);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .feed__comment-composer input:focus {

@@ -1,13 +1,57 @@
+import { useState } from 'react'
 import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS, TEAM_LABEL } from '../data/characters'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
+import type { BroadcastKind } from '../data/types'
+
+const PRESETS: { kind: BroadcastKind; label: string; title: string; body: string }[] = [
+  {
+    kind: 'event',
+    label: '이벤트 발생',
+    title: '갑작스러운 정전',
+    body: '건물 전체 조명이 3초간 꺼졌다. 그 순간 무언가를 본 사람이 있을지도 모른다.',
+  },
+  {
+    kind: 'sin',
+    label: '괴이 출현',
+    title: '복도에서 괴이가 목격되었다',
+    body: '방금 2층 복도 CCTV에 정체를 알 수 없는 형체가 잡혔다. 문단속을 확인하라.',
+  },
+  {
+    kind: 'notice',
+    label: '공지',
+    title: '관리자 공지',
+    body: '내용을 입력하세요.',
+  },
+]
 
 export function ProfileScreen() {
-  const { viewerId, setViewerId, nickname, setNickname, displayName, gmReveal, setGmReveal } =
-    useGame()
+  const {
+    viewerId,
+    setViewerId,
+    nickname,
+    setNickname,
+    displayName,
+    gmReveal,
+    setGmReveal,
+    sendBroadcast,
+  } = useGame()
   const viewer = CHARACTERS.find((c) => c.id === viewerId)!
+  const [kind, setKind] = useState<BroadcastKind>('event')
+  const [title, setTitle] = useState(PRESETS[0].title)
+  const [body, setBody] = useState(PRESETS[0].body)
+
+  function applyPreset(preset: (typeof PRESETS)[number]) {
+    setKind(preset.kind)
+    setTitle(preset.title)
+    setBody(preset.body)
+  }
+
+  function send() {
+    sendBroadcast(kind, title, body)
+  }
 
   return (
     <div className="profile">
@@ -79,7 +123,7 @@ export function ProfileScreen() {
           </select>
         </label>
         <label className="profile__dev-row">
-          <span>전체 정체 보기 (GM 모드)</span>
+          <span>GM 모드 진입 (나만 가입 가능한 계정 가정)</span>
           <input
             type="checkbox"
             checked={gmReveal}
@@ -87,6 +131,42 @@ export function ProfileScreen() {
           />
         </label>
       </div>
+
+      {gmReveal && (
+        <div className="profile__gm">
+          <span className="profile__section-label">GM 전용 — 전체 열람 + 쪽지 발송</span>
+          <p className="profile__gm-note">
+            모든 조사실·교실·원정 정보를 열람할 수 있고, 아래에서 전원에게 팝업 쪽지를 즉시 보낼 수 있다.
+          </p>
+          <div className="profile__gm-presets">
+            {PRESETS.map((p) => (
+              <button
+                key={p.kind}
+                className={`profile__gm-preset ${kind === p.kind ? 'is-active' : ''}`}
+                onClick={() => applyPreset(p)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <input
+            className="profile__gm-input"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="쪽지 제목"
+          />
+          <textarea
+            className="profile__gm-textarea"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="쪽지 내용"
+            rows={3}
+          />
+          <button className="profile__gm-send" onClick={send}>
+            전원에게 쪽지 보내기
+          </button>
+        </div>
+      )}
     </div>
   )
 }

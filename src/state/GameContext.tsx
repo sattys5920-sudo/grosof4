@@ -3,6 +3,8 @@ import { CHARACTERS, ROOMS } from '../data/characters'
 import { CLASSROOM_EVENTS, ROOM_EVENTS } from '../data/events'
 import { INITIAL_FEED } from '../data/feed'
 import type {
+  Broadcast,
+  BroadcastKind,
   ChatMessage,
   ClassroomState,
   FeedPost,
@@ -36,6 +38,9 @@ interface GameState {
   addComment: (postId: string, text: string) => void
   gmReveal: boolean
   setGmReveal: (v: boolean) => void
+  broadcast: Broadcast | null
+  sendBroadcast: (kind: BroadcastKind, title: string, body: string) => void
+  dismissBroadcast: () => void
   mission: MissionState
   confirmProposal: (team: string[]) => void
   castVote: (approve: boolean) => void
@@ -88,6 +93,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [classroom, setClassroom] = useState<ClassroomState>(initialClassroom)
   const [feed, setFeed] = useState<FeedPost[]>(INITIAL_FEED)
   const [gmReveal, setGmReveal] = useState(false)
+  const [broadcast, setBroadcast] = useState<Broadcast | null>(null)
   const [mission, dispatch] = useReducer(missionReducer, undefined, initialMissionState)
 
   function displayName(id: string) {
@@ -218,6 +224,37 @@ export function GameProvider({ children }: { children: ReactNode }) {
     )
   }
 
+  const BROADCAST_TAG: Record<BroadcastKind, string> = { event: '이벤트', sin: '괴이', notice: '공지' }
+  const BROADCAST_LABEL: Record<BroadcastKind, string> = {
+    event: '[긴급 이벤트]',
+    sin: '[괴이 출현]',
+    notice: '[관리자 쪽지]',
+  }
+
+  function sendBroadcast(kind: BroadcastKind, title: string, body: string) {
+    if (!title.trim() || !body.trim()) return
+    const id = `bc-${Date.now()}`
+    setBroadcast({ id, kind, title: title.trim(), body: body.trim() })
+    setFeed((prev) => [
+      {
+        id,
+        authorLabel: BROADCAST_LABEL[kind],
+        tag: BROADCAST_TAG[kind],
+        title: title.trim(),
+        body: body.trim(),
+        time: '방금',
+        hearts: 0,
+        heartedByViewer: false,
+        comments: [],
+      },
+      ...prev,
+    ])
+  }
+
+  function dismissBroadcast() {
+    setBroadcast(null)
+  }
+
   function confirmProposal(team: string[]) {
     dispatch({ type: 'CONFIRM_PROPOSAL', team })
   }
@@ -258,6 +295,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       addComment,
       gmReveal,
       setGmReveal,
+      broadcast,
+      sendBroadcast,
+      dismissBroadcast,
       mission,
       confirmProposal,
       castVote,
@@ -275,6 +315,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       classroom,
       feed,
       gmReveal,
+      broadcast,
       mission,
     ],
   )

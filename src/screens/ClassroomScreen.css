@@ -22,9 +22,9 @@
 .classroom__lock-text {
   margin: 0;
   max-width: 260px;
-  font-size: 13px;
+  font-size: 14.5px;
   color: var(--bone-dim);
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .classroom__gm-btn {
@@ -54,7 +54,7 @@
 
 .classroom__banner-label {
   font-family: var(--font-pixel);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--bone-bright);
   letter-spacing: 1px;
 }
@@ -62,16 +62,16 @@
 .classroom__banner h2 {
   margin: 0;
   font-family: var(--font-title);
-  font-size: 15px;
+  font-size: 17px;
   color: var(--bone-bright);
   text-wrap: balance;
 }
 
 .classroom__banner p {
   margin: 0;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--bone);
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 .classroom__panel {
@@ -85,7 +85,7 @@
 
 .classroom__section-label {
   font-family: var(--font-pixel);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--veil);
   letter-spacing: 1px;
 }
@@ -103,12 +103,12 @@
   background: var(--void-3);
   border: 1px solid var(--line);
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--bone-bright);
 }
 
 .classroom__empty {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--bone-dim);
   font-style: italic;
 }
@@ -126,7 +126,7 @@
 
 .classroom__waiting {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--bone-dim);
   font-style: italic;
 }
@@ -142,7 +142,7 @@
 
 .classroom__hint p {
   margin: 0;
-  font-size: 13px;
+  font-size: 14.5px;
   color: var(--bone-bright);
-  line-height: 1.6;
+  line-height: 1.65;
 }

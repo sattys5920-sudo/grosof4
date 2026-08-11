@@ -30,7 +30,7 @@
 
 .profile__name-input {
   font-family: var(--font-title);
-  font-size: 16px;
+  font-size: 17px;
   color: var(--bone-bright);
   background: var(--void-3);
   border: 1px solid var(--line);
@@ -46,13 +46,13 @@
 .profile__assigned {
   margin: 0;
   font-family: var(--font-pixel);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--bone-dim);
 }
 
 .profile__role {
   font-family: var(--font-pixel);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.5px;
 }
 
@@ -68,7 +68,7 @@
 
 .profile__tagline {
   margin: 0;
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--bone-dim);
   font-style: italic;
 }
@@ -82,7 +82,7 @@
 
 .profile__facts dt {
   font-family: var(--font-pixel);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--veil);
   align-self: start;
   padding-top: 2px;
@@ -90,9 +90,9 @@
 
 .profile__facts dd {
   margin: 0;
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--bone);
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 .profile__section {
@@ -103,7 +103,7 @@
 
 .profile__section-label {
   font-family: var(--font-pixel);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--veil);
   letter-spacing: 1px;
 }
@@ -130,12 +130,12 @@
 }
 
 .profile__roster-name {
-  font-size: 13px;
+  font-size: 14.5px;
   color: var(--bone-bright);
 }
 
 .profile__roster-role {
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--bone-dim);
 }
 
@@ -159,7 +159,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--bone-dim);
 }
 
@@ -168,5 +168,76 @@
   color: var(--bone-bright);
   border: 1px solid var(--line);
   padding: 5px 8px;
+  font-size: 13px;
+}
+
+.profile__gm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--sin-dim);
+  border: 1px solid var(--sin);
+}
+
+.profile__gm-note {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--bone);
+  line-height: 1.6;
+}
+
+.profile__gm-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.profile__gm-preset {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  padding: 7px 10px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--void-3);
+  color: var(--bone-dim);
+}
+
+.profile__gm-preset.is-active {
+  border-color: var(--sin);
+  color: var(--bone-bright);
+  background: var(--void-2);
+}
+
+.profile__gm-input,
+.profile__gm-textarea {
+  width: 100%;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  padding: 8px 9px;
+  color: var(--bone-bright);
+  font-size: 14px;
+  font-family: var(--font-body);
+  resize: vertical;
+}
+
+.profile__gm-input:focus,
+.profile__gm-textarea:focus {
+  outline: none;
+  border-color: var(--sin);
+}
+
+.profile__gm-send {
+  align-self: flex-start;
+  font-family: var(--font-pixel);
   font-size: 12px;
+  padding: 9px 16px;
+  cursor: pointer;
+  border: 1px solid var(--sin);
+  background: var(--void-2);
+  color: var(--bone-bright);
+}
+
+.profile__gm-send:hover {
+  background: var(--sin);
 }

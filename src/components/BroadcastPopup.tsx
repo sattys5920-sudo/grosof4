@@ -1,0 +1,26 @@
+import './BroadcastPopup.css'
+import { useGame } from '../state/GameContext'
+
+const KIND_LABEL: Record<string, string> = {
+  event: '긴급 이벤트',
+  sin: '괴이 출현',
+  notice: '관리자 쪽지',
+}
+
+export function BroadcastPopup() {
+  const { broadcast, dismissBroadcast } = useGame()
+  if (!broadcast) return null
+
+  return (
+    <div className="bcpopup__backdrop" role="alertdialog" aria-modal="true">
+      <div className={`bcpopup bcpopup--${broadcast.kind}`}>
+        <span className="bcpopup__kind">{KIND_LABEL[broadcast.kind]}</span>
+        <h3 className="bcpopup__title">{broadcast.title}</h3>
+        <p className="bcpopup__body">{broadcast.body}</p>
+        <button className="bcpopup__dismiss" onClick={dismissBroadcast}>
+          확인
+        </button>
+      </div>
+    </div>
+  )
+}

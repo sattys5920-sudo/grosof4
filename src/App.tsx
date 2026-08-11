@@ -1,6 +1,7 @@
 import './App.css'
 import { GameProvider, useGame } from './state/GameContext'
 import { TabBar } from './components/TabBar'
+import { BroadcastPopup } from './components/BroadcastPopup'
 import { MainFeedScreen } from './screens/MainFeedScreen'
 import { ClassroomScreen } from './screens/ClassroomScreen'
 import { RoomsScreen } from './screens/RoomsScreen'
@@ -38,6 +39,7 @@ function Shell() {
         <Screen />
       </main>
       <TabBar />
+      <BroadcastPopup />
     </div>
   )
 }

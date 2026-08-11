@@ -42,15 +42,18 @@
   --veil-dim: #362d4a;
 
   --font-pixel: 'Galmuri9', monospace;
-  --font-body: 'Galmuri11', monospace;
   --font-title: 'Galmuri14', monospace;
+  --font-body:
+    -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI',
+    sans-serif;
 
   color-scheme: dark;
   color: var(--bone);
   background: var(--void);
   font-family: var(--font-body);
-  -webkit-font-smoothing: none;
-  font-smooth: never;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {

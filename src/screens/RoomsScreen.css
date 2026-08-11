@@ -14,14 +14,14 @@
 
 .rooms__intro-label {
   font-family: var(--font-pixel);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--veil);
   letter-spacing: 1px;
 }
 
 .rooms__intro p {
   margin: 0;
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--bone-dim);
 }
 
@@ -69,13 +69,13 @@
   align-items: center;
   gap: 8px;
   font-family: var(--font-title);
-  font-size: 14px;
+  font-size: 15px;
   color: var(--bone-bright);
 }
 
 .rooms__card-clue-tag {
   font-family: var(--font-pixel);
-  font-size: 8px;
+  font-size: 9px;
   color: var(--ward);
   border: 1px solid var(--ward);
   padding: 2px 5px;
@@ -93,9 +93,9 @@
 
 .rooms__card-desc {
   margin: 0;
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--bone-dim);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .rooms__card-avatars {
@@ -115,7 +115,7 @@
   background: none;
   border: none;
   color: var(--bone-dim);
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   padding: 0;
 }
@@ -123,15 +123,15 @@
 .rooms__detail-head h2 {
   margin: 0;
   font-family: var(--font-title);
-  font-size: 16px;
+  font-size: 18px;
   color: var(--bone-bright);
 }
 
 .rooms__desc {
   margin: 0;
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--bone-dim);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .rooms__section {
@@ -144,7 +144,7 @@
 
 .rooms__section-label {
   font-family: var(--font-pixel);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--veil);
   letter-spacing: 1px;
 }
@@ -159,7 +159,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .rooms__me-tag {
@@ -171,7 +171,7 @@
 }
 
 .rooms__empty {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--bone-dim);
   font-style: italic;
 }
@@ -180,7 +180,7 @@
 .rooms__leave {
   align-self: flex-start;
   font-family: var(--font-pixel);
-  font-size: 11px;
+  font-size: 12px;
   padding: 8px 14px;
   cursor: pointer;
   border: 1px solid var(--ward);
@@ -208,15 +208,15 @@
 
 .rooms__clue-title {
   font-family: var(--font-pixel);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--bone-bright);
 }
 
 .rooms__clue-text {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--bone-dim);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .rooms__clue-text--reward {
@@ -232,7 +232,7 @@
 
 .rooms__locked-note {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--bone-dim);
   font-style: italic;
 }
@@ -251,8 +251,8 @@
 .rooms__chat-line {
   display: flex;
   gap: 6px;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 13.5px;
+  line-height: 1.55;
 }
 
 .rooms__chat-author {
@@ -275,7 +275,7 @@
   border: 1px solid var(--line);
   padding: 8px 9px;
   color: var(--bone-bright);
-  font-size: 12px;
+  font-size: 13.5px;
 }
 
 .rooms__composer input:focus {
@@ -289,7 +289,7 @@
   color: var(--bone-bright);
   padding: 0 12px;
   font-family: var(--font-pixel);
-  font-size: 10px;
+  font-size: 11px;
   cursor: pointer;
 }
 
@@ -304,14 +304,14 @@
 
 .rooms__admin-room-name {
   font-family: var(--font-title);
-  font-size: 13px;
+  font-size: 15px;
   color: var(--veil);
 }
 
 .rooms__admin-line {
   display: flex;
   gap: 6px;
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--bone);
 }
 

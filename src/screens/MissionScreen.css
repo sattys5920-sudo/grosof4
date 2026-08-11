@@ -14,13 +14,13 @@
 
 .mission__index {
   font-family: var(--font-pixel);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--veil);
   letter-spacing: 0.5px;
 }
 
 .mission__score {
-  font-size: 13px;
+  font-size: 14.5px;
   color: var(--bone-bright);
 }
 
@@ -76,11 +76,11 @@
 
 .mission__note {
   margin: 0;
-  font-size: 12px;
+  font-size: 13.5px;
   color: var(--bone-dim);
   border-left: 2px solid var(--veil);
   padding-left: 8px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .mission__panel {
@@ -94,7 +94,7 @@
 
 .mission__leader {
   margin: 0;
-  font-size: 13px;
+  font-size: 14.5px;
   color: var(--bone);
 }
 
@@ -115,7 +115,7 @@
   background: var(--void-3);
   border: 1px solid var(--line);
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--bone-dim);
   cursor: pointer;
 }
@@ -133,7 +133,7 @@
 .mission__cta {
   align-self: flex-start;
   font-family: var(--font-pixel);
-  font-size: 11px;
+  font-size: 12px;
   padding: 9px 16px;
   cursor: pointer;
   border: 1px solid var(--veil);
@@ -154,7 +154,7 @@
 .mission__vote {
   flex: 1;
   font-family: var(--font-pixel);
-  font-size: 12px;
+  font-size: 13px;
   padding: 12px 0;
   cursor: pointer;
   border: 1px solid var(--line);
@@ -181,7 +181,7 @@
 
 .mission--gameover h2 {
   font-family: var(--font-title);
-  font-size: 20px;
+  font-size: 22px;
   color: var(--bone-bright);
   margin: 0;
 }
@@ -193,7 +193,7 @@
 
 .mission--gameover button {
   font-family: var(--font-pixel);
-  font-size: 12px;
+  font-size: 13px;
   padding: 10px 18px;
   cursor: pointer;
   border: 1px solid var(--veil);
