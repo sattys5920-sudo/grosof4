@@ -14,6 +14,7 @@ export interface Character {
   bio: string
   clueHint: string
   avatarSeed: string
+  revealText: string
 }
 
 export interface Room {
@@ -35,6 +36,7 @@ export interface GroupEventSpec {
   description: string
   needed: number
   reward: string
+  kind?: 'group' | 'duel'
 }
 
 export type ClassroomStatus = 'locked' | 'active' | 'cleared'
@@ -44,7 +46,7 @@ export interface ClassroomState {
   event: GroupEventSpec | null
   participants: string[]
   hint: string | null
-  presetIndex: number
+  note: string | null
 }
 
 export interface RoomEventState {
@@ -79,4 +81,19 @@ export interface Broadcast {
   kind: BroadcastKind
   title: string
   body: string
+}
+
+export type EventCategory = '방탈출' | '미궁' | '협동조사' | '대결' | '공포연출' | '소셜'
+
+export interface EventLibraryItem {
+  id: string
+  category: EventCategory
+  dispatchKind: 'group' | 'duel' | 'popup'
+  title: string
+  description: string
+  needed?: number
+  reward?: string
+  popupKind?: BroadcastKind
+  popupBody?: string
+  implemented: boolean
 }

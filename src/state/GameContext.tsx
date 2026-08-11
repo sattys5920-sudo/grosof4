@@ -1,12 +1,13 @@
 import { createContext, useContext, useMemo, useReducer, useState, type ReactNode } from 'react'
 import { CHARACTERS, ROOMS } from '../data/characters'
-import { CLASSROOM_EVENTS, ROOM_EVENTS } from '../data/events'
+import { ROOM_EVENTS } from '../data/events'
 import { INITIAL_FEED } from '../data/feed'
 import type {
   Broadcast,
   BroadcastKind,
   ChatMessage,
   ClassroomState,
+  EventLibraryItem,
   FeedPost,
   RoomEventState,
   RoomId,
@@ -20,6 +21,12 @@ interface GameState {
   setViewerId: (id: string) => void
   nickname: string
   setNickname: (name: string) => void
+  grade: string
+  photo: string | null
+  signedUp: boolean
+  roleRevealed: boolean
+  completeSignup: (nickname: string, grade: string, photo: string | null) => void
+  acknowledgeRole: () => void
   displayName: (id: string) => string
   activeTab: TabId
   setActiveTab: (tab: TabId) => void
@@ -31,8 +38,10 @@ interface GameState {
   roomEvents: Record<RoomId, RoomEventState>
   attemptRoomEvent: (roomId: RoomId) => void
   classroom: ClassroomState
-  startInvestigation: () => void
+  dispatchClassroomEvent: (item: EventLibraryItem) => void
+  closeInvestigation: () => void
   joinInvestigation: () => void
+  attemptDuel: (choice: 'odd' | 'even') => void
   feed: FeedPost[]
   toggleHeart: (postId: string) => void
   addComment: (postId: string, text: string) => void
@@ -80,12 +89,16 @@ function initialRoomEvents(): Record<RoomId, RoomEventState> {
 }
 
 function initialClassroom(): ClassroomState {
-  return { status: 'locked', event: null, participants: [], hint: null, presetIndex: 0 }
+  return { status: 'locked', event: null, participants: [], hint: null, note: null }
 }
 
 export function GameProvider({ children }: { children: ReactNode }) {
   const [viewerId, setViewerId] = useState(CHARACTERS[0].id)
   const [nickname, setNickname] = useState(CHARACTERS[0].name)
+  const [grade, setGrade] = useState('1학년')
+  const [photo, setPhoto] = useState<string | null>(null)
+  const [signedUp, setSignedUp] = useState(false)
+  const [roleRevealed, setRoleRevealed] = useState(false)
   const [activeTab, setActiveTab] = useState<TabId>('main')
   const [roomOccupancy, setRoomOccupancy] = useState(INITIAL_OCCUPANCY)
   const [roomMessages, setRoomMessages] = useState(INITIAL_ROOM_MESSAGES)
@@ -95,6 +108,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [gmReveal, setGmReveal] = useState(false)
   const [broadcast, setBroadcast] = useState<Broadcast | null>(null)
   const [mission, dispatch] = useReducer(missionReducer, undefined, initialMissionState)
+
+  function completeSignup(newNickname: string, newGrade: string, newPhoto: string | null) {
+    const assigned = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)]
+    setViewerId(assigned.id)
+    setNickname(newNickname.trim() || assigned.name)
+    setGrade(newGrade)
+    setPhoto(newPhoto)
+    setSignedUp(true)
+    setRoleRevealed(false)
+  }
+
+  function acknowledgeRole() {
+    setRoleRevealed(true)
+  }
 
   function displayName(id: string) {
     if (id === viewerId) return nickname
@@ -159,17 +186,25 @@ export function GameProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  function startInvestigation() {
-    setClassroom((prev) => {
-      const nextIndex = prev.presetIndex % CLASSROOM_EVENTS.length
-      return {
-        status: 'active',
-        event: CLASSROOM_EVENTS[nextIndex],
-        participants: [],
-        hint: null,
-        presetIndex: prev.presetIndex + 1,
-      }
+  function dispatchClassroomEvent(item: EventLibraryItem) {
+    if (!item.implemented) return
+    setClassroom({
+      status: 'active',
+      event: {
+        title: item.title,
+        description: item.description,
+        needed: item.needed ?? 1,
+        reward: item.reward ?? '',
+        kind: item.dispatchKind === 'duel' ? 'duel' : 'group',
+      },
+      participants: [],
+      hint: null,
+      note: null,
     })
+  }
+
+  function closeInvestigation() {
+    setClassroom(initialClassroom())
   }
 
   function joinInvestigation() {
@@ -189,6 +224,25 @@ export function GameProvider({ children }: { children: ReactNode }) {
         participants,
         status: cleared ? 'cleared' : 'active',
         hint: cleared ? prev.event.reward : null,
+      }
+    })
+  }
+
+  function attemptDuel(choice: 'odd' | 'even') {
+    setClassroom((prev) => {
+      if (prev.status !== 'active' || !prev.event) return prev
+      const participants = prev.participants.includes(viewerId)
+        ? prev.participants
+        : [...prev.participants, viewerId]
+      const outcome: 'odd' | 'even' = Math.random() < 0.5 ? 'odd' : 'even'
+      const win = outcome === choice
+      if (win) {
+        return { ...prev, participants, status: 'cleared', hint: prev.event.reward, note: null }
+      }
+      return {
+        ...prev,
+        participants,
+        note: '괴이가 낮게 웃는다. "아니야." 다시 시도해볼 수 있다.',
       }
     })
   }
@@ -277,6 +331,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setViewerId,
       nickname,
       setNickname,
+      grade,
+      photo,
+      signedUp,
+      roleRevealed,
+      completeSignup,
+      acknowledgeRole,
       displayName,
       activeTab,
       setActiveTab,
@@ -288,8 +348,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       roomEvents,
       attemptRoomEvent,
       classroom,
-      startInvestigation,
+      dispatchClassroomEvent,
+      closeInvestigation,
       joinInvestigation,
+      attemptDuel,
       feed,
       toggleHeart,
       addComment,
@@ -308,6 +370,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     [
       viewerId,
       nickname,
+      grade,
+      photo,
+      signedUp,
+      roleRevealed,
       activeTab,
       roomOccupancy,
       roomMessages,

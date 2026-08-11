@@ -2,6 +2,8 @@ import './App.css'
 import { GameProvider, useGame } from './state/GameContext'
 import { TabBar } from './components/TabBar'
 import { BroadcastPopup } from './components/BroadcastPopup'
+import { SignupScreen } from './screens/SignupScreen'
+import { RoleRevealScreen } from './screens/RoleRevealScreen'
 import { MainFeedScreen } from './screens/MainFeedScreen'
 import { ClassroomScreen } from './screens/ClassroomScreen'
 import { RoomsScreen } from './screens/RoomsScreen'
@@ -44,10 +46,17 @@ function Shell() {
   )
 }
 
+function Gate() {
+  const { signedUp, roleRevealed } = useGame()
+  if (!signedUp) return <SignupScreen />
+  if (!roleRevealed) return <RoleRevealScreen />
+  return <Shell />
+}
+
 function App() {
   return (
     <GameProvider>
-      <Shell />
+      <Gate />
     </GameProvider>
   )
 }

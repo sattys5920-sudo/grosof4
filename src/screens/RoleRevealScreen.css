@@ -1,0 +1,58 @@
+.reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 430px;
+  min-height: 100svh;
+  padding: 56px 28px;
+  background: var(--void);
+  text-align: center;
+}
+
+.reveal__eyebrow {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  color: var(--bone-dim);
+  letter-spacing: 0.5px;
+}
+
+.reveal__team {
+  font-family: var(--font-title);
+  font-size: 18px;
+  letter-spacing: 0.5px;
+}
+
+.reveal__team--ward {
+  color: var(--ward);
+}
+.reveal__team--sin {
+  color: var(--sin);
+}
+.reveal__team--veil {
+  color: var(--veil);
+}
+
+.reveal__text {
+  margin: 8px 0 0;
+  max-width: 320px;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--bone);
+}
+
+.reveal__button {
+  margin-top: 16px;
+  font-family: var(--font-pixel);
+  font-size: 13px;
+  padding: 13px 28px;
+  cursor: pointer;
+  border: 1px solid var(--bone-dim);
+  background: var(--void-2);
+  color: var(--bone-bright);
+}
+
+.reveal__button:hover {
+  border-color: var(--sin);
+}

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
-import { CHARACTERS, TEAM_LABEL } from '../data/characters'
+import { CHARACTERS, roleLabel } from '../data/characters'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
+import { EVENT_LIBRARY } from '../data/eventLibrary'
 import type { BroadcastKind } from '../data/types'
 
 const PRESETS: { kind: BroadcastKind; label: string; title: string; body: string }[] = [
@@ -33,10 +34,15 @@ export function ProfileScreen() {
     setViewerId,
     nickname,
     setNickname,
+    grade,
+    photo,
     displayName,
     gmReveal,
     setGmReveal,
     sendBroadcast,
+    classroom,
+    dispatchClassroomEvent,
+    closeInvestigation,
   } = useGame()
   const viewer = CHARACTERS.find((c) => c.id === viewerId)!
   const [kind, setKind] = useState<BroadcastKind>('event')
@@ -53,11 +59,21 @@ export function ProfileScreen() {
     sendBroadcast(kind, title, body)
   }
 
+  const CLASSROOM_STATUS_LABEL: Record<typeof classroom.status, string> = {
+    locked: '잠김',
+    active: '진행 중',
+    cleared: '완료',
+  }
+
   return (
     <div className="profile">
       <div className="profile__card">
         <div className="profile__card-head">
-          <Badge team={viewer.team} size={56} />
+          {photo ? (
+            <img className="profile__photo" src={photo} alt="프로필 사진" />
+          ) : (
+            <Badge team={viewer.team} size={56} />
+          )}
           <div className="profile__name-block">
             <input
               className="profile__name-input"
@@ -67,7 +83,7 @@ export function ProfileScreen() {
               placeholder="닉네임을 입력하세요"
             />
             <span className={`profile__role profile__role--${viewer.team}`}>
-              {TEAM_LABEL[viewer.team]} · {viewer.role}
+              {roleLabel(viewer)} · {grade}
             </span>
           </div>
         </div>
@@ -94,7 +110,7 @@ export function ProfileScreen() {
                 <div className="profile__roster-info">
                   <span className="profile__roster-name">{displayName(c.id)}</span>
                   <span className="profile__roster-role">
-                    {revealed ? `${TEAM_LABEL[c.team]} · ${c.role}` : '정체 미상'}
+                    {revealed ? roleLabel(c) : '정체 미상'}
                   </span>
                 </div>
                 {c.id === viewerId && <span className="profile__me-tag">나</span>}
@@ -133,39 +149,78 @@ export function ProfileScreen() {
       </div>
 
       {gmReveal && (
-        <div className="profile__gm">
-          <span className="profile__section-label">GM 전용 — 전체 열람 + 쪽지 발송</span>
-          <p className="profile__gm-note">
-            모든 조사실·교실·원정 정보를 열람할 수 있고, 아래에서 전원에게 팝업 쪽지를 즉시 보낼 수 있다.
-          </p>
-          <div className="profile__gm-presets">
-            {PRESETS.map((p) => (
-              <button
-                key={p.kind}
-                className={`profile__gm-preset ${kind === p.kind ? 'is-active' : ''}`}
-                onClick={() => applyPreset(p)}
-              >
-                {p.label}
-              </button>
-            ))}
+        <>
+          <div className="profile__gm">
+            <span className="profile__section-label">GM 전용 — 빠른 쪽지 발송</span>
+            <p className="profile__gm-note">
+              모든 조사실·교실·원정 정보를 열람할 수 있고, 아래에서 전원에게 팝업 쪽지를 즉시 보낼 수 있다.
+            </p>
+            <div className="profile__gm-presets">
+              {PRESETS.map((p) => (
+                <button
+                  key={p.kind}
+                  className={`profile__gm-preset ${kind === p.kind ? 'is-active' : ''}`}
+                  onClick={() => applyPreset(p)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <input
+              className="profile__gm-input"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="쪽지 제목"
+            />
+            <textarea
+              className="profile__gm-textarea"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="쪽지 내용"
+              rows={3}
+            />
+            <button className="profile__gm-send" onClick={send}>
+              전원에게 쪽지 보내기
+            </button>
           </div>
-          <input
-            className="profile__gm-input"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="쪽지 제목"
-          />
-          <textarea
-            className="profile__gm-textarea"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="쪽지 내용"
-            rows={3}
-          />
-          <button className="profile__gm-send" onClick={send}>
-            전원에게 쪽지 보내기
-          </button>
-        </div>
+
+          <div className="profile__gm">
+            <span className="profile__section-label">GM 전용 — 교실 이벤트 목록</span>
+            <p className="profile__gm-note">
+              교실 상태: <strong>{CLASSROOM_STATUS_LABEL[classroom.status]}</strong>
+              {classroom.event && ` — ${classroom.event.title}`}
+            </p>
+            {classroom.status !== 'locked' && (
+              <button className="profile__gm-preset" onClick={closeInvestigation}>
+                교실 잠그기 / 초기화
+              </button>
+            )}
+            <div className="profile__gm-eventlist">
+              {EVENT_LIBRARY.map((item) => (
+                <div key={item.id} className="profile__gm-event">
+                  <div className="profile__gm-event-head">
+                    <span className="profile__gm-event-category">{item.category}</span>
+                    <span className="profile__gm-event-title">{item.title}</span>
+                  </div>
+                  <p className="profile__gm-event-desc">{item.description}</p>
+                  <button
+                    className="profile__gm-event-send"
+                    disabled={!item.implemented}
+                    onClick={() => {
+                      if (item.dispatchKind === 'popup') {
+                        sendBroadcast(item.popupKind!, item.title, item.popupBody!)
+                      } else {
+                        dispatchClassroomEvent(item)
+                      }
+                    }}
+                  >
+                    {item.implemented ? '발송' : '준비 중'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       )}
     </div>
   )
