@@ -76,7 +76,7 @@ export function MissionScreen() {
             {mission.missionIndex + 1}차 원정 · 관리자 관전
           </span>
           <span className="mission__score">
-            탐구자 {mission.wardWins} : {mission.sinWins} 괴이
+            선 {mission.wardWins} : {mission.sinWins} 악
           </span>
         </div>
         <MissionTrack />
@@ -89,11 +89,11 @@ export function MissionScreen() {
   const viewer = charOf(viewerId)
 
   if (mission.phase === 'gameover') {
-    const winnerLabel = mission.winner === 'ward' ? '탐구자 진영 승리' : '괴이 진영 승리'
+    const winnerLabel = mission.winner === 'ward' ? '선 진영 승리' : '악 진영 승리'
     return (
       <div className="mission mission--gameover">
         <h2>{winnerLabel}</h2>
-        <p>탐구자 {mission.wardWins}승 · 괴이 {mission.sinWins}승</p>
+        <p>선 {mission.wardWins}승 · 악 {mission.sinWins}승</p>
         <button onClick={resetMission}>새 원정 시작하기</button>
       </div>
     )
@@ -107,7 +107,7 @@ export function MissionScreen() {
           {TWO_FAILS_REQUIRED[mission.missionIndex] && ' (실패 카드 2장부터 실패)'}
         </span>
         <span className="mission__score">
-          탐구자 {mission.wardWins} : {mission.sinWins} 괴이
+          선 {mission.wardWins} : {mission.sinWins} 악
         </span>
       </div>
 

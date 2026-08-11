@@ -1,10 +1,10 @@
 import { CHARACTERS } from '../data/characters'
 
-// 3박4일 = 밤 3번 → 원정 기회는 최대 3회. 과반수(2선승)로 승부를 가리면
-// 늦어도 3번째(마지막 밤) 원정에서는 반드시 결판난다 (2-2는 불가능하므로).
-export const MISSION_SIZES = [4, 6, 7]
-export const TWO_FAILS_REQUIRED = [false, false, true]
-export const WINS_NEEDED = 2
+// 표준 아발론 10인 규칙: 원정 인원 3-4-4-5-5, 4차만 실패 카드 2장 이상이어야 실패.
+// 먼저 3승을 거두는 진영이 승리하므로, 4차까지 2:2일 때만 5차(최종) 원정까지 간다.
+export const MISSION_SIZES = [3, 4, 4, 5, 5]
+export const TWO_FAILS_REQUIRED = [false, false, false, true, false]
+export const WINS_NEEDED = 3
 export const MAX_REJECTIONS = 5
 
 export type MissionPhase = 'propose' | 'vote' | 'execute' | 'result' | 'gameover'
@@ -19,6 +19,8 @@ export interface MissionState {
   voteTally: { approve: number; reject: number } | null
   cardTally: { success: number; fail: number } | null
   missionResults: MissionOutcome[]
+  failCounts: (number | null)[]
+  teamHistory: (string[] | null)[]
   wardWins: number
   sinWins: number
   winner: 'ward' | 'sin' | null
@@ -32,6 +34,7 @@ export type MissionAction =
   | { type: 'SUBMIT_CARD'; viewerId: string; card: 'success' | 'fail' | null }
   | { type: 'CONTINUE' }
   | { type: 'RESET' }
+  | { type: 'FORGE_RESULT' }
 
 const ALL_IDS = CHARACTERS.map((c) => c.id)
 
@@ -55,6 +58,8 @@ export function initialMissionState(): MissionState {
     voteTally: null,
     cardTally: null,
     missionResults: MISSION_SIZES.map(() => null),
+    failCounts: MISSION_SIZES.map(() => null),
+    teamHistory: MISSION_SIZES.map(() => null),
     wardWins: 0,
     sinWins: 0,
     winner: null,
@@ -144,10 +149,16 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
       if (nextRejections >= MAX_REJECTIONS) {
         const results = [...state.missionResults]
         results[state.missionIndex] = 'fail'
+        const failCounts = [...state.failCounts]
+        failCounts[state.missionIndex] = 0
+        const teamHistory = [...state.teamHistory]
+        teamHistory[state.missionIndex] = state.proposedTeam
         return {
           ...state,
           voteTally: tally,
           missionResults: results,
+          failCounts,
+          teamHistory,
           sinWins: state.sinWins + 1,
           phase: 'result',
           lastNote: `찬성 ${tally.approve} · 반대 ${tally.reject} — 5회 연속 부결로 원정이 자동 실패했다.`,
@@ -174,12 +185,18 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
       )
       const results = [...state.missionResults]
       results[state.missionIndex] = result
+      const failCounts = [...state.failCounts]
+      failCounts[state.missionIndex] = fail
+      const teamHistory = [...state.teamHistory]
+      teamHistory[state.missionIndex] = state.proposedTeam
       const wardWins = state.wardWins + (result === 'success' ? 1 : 0)
       const sinWins = state.sinWins + (result === 'fail' ? 1 : 0)
       return {
         ...state,
         cardTally: { success, fail },
         missionResults: results,
+        failCounts,
+        teamHistory,
         wardWins,
         sinWins,
         phase: 'result',
@@ -187,6 +204,19 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
           result === 'success'
             ? `성공 ${success} · 실패 ${fail} — 원정 성공.`
             : `성공 ${success} · 실패 ${fail} — 원정 실패.`,
+      }
+    }
+
+    case 'FORGE_RESULT': {
+      if (state.missionResults[state.missionIndex] !== 'success') return state
+      const results = [...state.missionResults]
+      results[state.missionIndex] = 'fail'
+      return {
+        ...state,
+        missionResults: results,
+        wardWins: state.wardWins - 1,
+        sinWins: state.sinWins + 1,
+        lastNote: `${state.lastNote} — 누군가 결과를 조작했다. 원정 실패로 뒤바뀌었다.`,
       }
     }
 

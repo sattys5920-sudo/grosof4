@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
-import { CHARACTERS, ROOMS, roleLabel } from '../data/characters'
+import { CHARACTERS, roleLabel } from '../data/characters'
 import { Badge } from '../components/Badge'
 import { EVENT_LIBRARY } from '../data/eventLibrary'
 import { CLASSROOM_PUZZLES } from '../data/classroomPuzzles'
@@ -45,19 +45,35 @@ export function ProfileScreen() {
     closeInvestigation,
     missionsOpen,
     openMissions,
+    abilityUnlocked,
     abilityUsed,
     personalClues,
-    useWitnessMemory,
-    useFamilyInsight,
-    spreadDisinfo,
+    forgottenIdentity,
+    useRecordBook,
+    investigate,
+    protect,
+    checkCctv,
+    erode,
+    forgeResult,
+    revengerCheck,
+    mission,
     openDm,
+    createFeedPost,
   } = useGame()
   const viewer = viewerId ? CHARACTERS.find((c) => c.id === viewerId)! : null
   const [kind, setKind] = useState<BroadcastKind>('event')
   const [title, setTitle] = useState(PRESETS[0].title)
   const [body, setBody] = useState(PRESETS[0].body)
-  const [disinfoText, setDisinfoText] = useState('')
-  const [insightRoom, setInsightRoom] = useState(ROOMS[0].id)
+  const [targetId, setTargetId] = useState('')
+  const [missionPick, setMissionPick] = useState(0)
+  const [postTitle, setPostTitle] = useState('')
+  const [postBody, setPostBody] = useState('')
+  const [postCommentsOn, setPostCommentsOn] = useState(false)
+
+  const otherCharacters = CHARACTERS.filter((c) => c.id !== viewerId)
+  const completedMissions = mission.missionResults
+    .map((r, i) => ({ r, i }))
+    .filter((m) => m.r !== null)
 
   function applyPreset(preset: (typeof PRESETS)[number]) {
     setKind(preset.kind)
@@ -120,59 +136,133 @@ export function ProfileScreen() {
             <dd>{viewer.clueHint}</dd>
           </dl>
 
-          {viewer.role === '방관자' && (
-            <div className="profile__ability">
-              <span className="profile__section-label">특수 능력 — 목격자의 기억</span>
-              <p>1회 한정. 아직 풀리지 않은 조사실 단서 중 하나를 몰래 떠올릴 수 있다.</p>
-              <button disabled={abilityUsed} onClick={useWitnessMemory}>
-                {abilityUsed ? '사용 완료' : '기억 떠올리기'}
+          <div className="profile__ability">
+            <span className="profile__section-label">특수 능력 — {viewer.abilityName}</span>
+            <p>{viewer.abilityDescription}</p>
+
+            {!abilityUnlocked && viewer.role !== '잠입자' && viewer.role !== '망각자' && viewer.role !== '일반학생' && (
+              <p className="profile__ability-locked">조사실에서 단서를 확보하면 사용할 수 있게 된다.</p>
+            )}
+
+            {abilityUnlocked && viewer.role === '기록자' && (
+              <button disabled={abilityUsed} onClick={useRecordBook}>
+                {abilityUsed ? '사용 완료' : '출석부 펼치기'}
               </button>
-            </div>
-          )}
-          {viewer.role === '거짓유포자' && (
-            <div className="profile__ability">
-              <span className="profile__section-label">특수 능력 — 역정보 유포</span>
-              <p>1회 한정. 익명 제보로 위장한 가짜 정보를 전원에게 퍼뜨릴 수 있다.</p>
-              <textarea
-                rows={2}
-                value={disinfoText}
-                onChange={(e) => setDisinfoText(e.target.value)}
-                placeholder="퍼뜨릴 내용을 입력..."
-                disabled={abilityUsed}
-              />
-              <button
-                disabled={abilityUsed || !disinfoText.trim()}
-                onClick={() => {
-                  spreadDisinfo(disinfoText)
-                  setDisinfoText('')
-                }}
-              >
-                {abilityUsed ? '사용 완료' : '익명으로 퍼뜨리기'}
-              </button>
-            </div>
-          )}
-          {viewer.role === '경계인' && (
-            <div className="profile__ability">
-              <span className="profile__section-label">특수 능력 — 가족의 직감</span>
-              <p>1회 한정. 조사실 하나를 골라 그곳의 단서를 즉시 확인할 수 있다.</p>
+            )}
+
+            {abilityUnlocked && (viewer.role === '감찰자' || viewer.role === '복수자') && (
               <div className="profile__ability-row">
-                <select
-                  value={insightRoom}
-                  onChange={(e) => setInsightRoom(e.target.value as typeof insightRoom)}
-                  disabled={abilityUsed}
-                >
-                  {ROOMS.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
+                <select value={targetId} onChange={(e) => setTargetId(e.target.value)} disabled={abilityUsed}>
+                  <option value="">대상 선택</option>
+                  {otherCharacters.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {displayName(c.id)}
                     </option>
                   ))}
                 </select>
-                <button disabled={abilityUsed} onClick={() => useFamilyInsight(insightRoom)}>
+                <button
+                  disabled={abilityUsed || !targetId}
+                  onClick={() =>
+                    viewer.role === '감찰자' ? investigate(targetId) : revengerCheck(targetId)
+                  }
+                >
+                  {abilityUsed ? '사용 완료' : '조사하기'}
+                </button>
+              </div>
+            )}
+
+            {abilityUnlocked && viewer.role === '보호자' && (
+              <div className="profile__ability-row">
+                <select value={targetId} onChange={(e) => setTargetId(e.target.value)} disabled={abilityUsed}>
+                  <option value="">대상 선택</option>
+                  {otherCharacters.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {displayName(c.id)}
+                    </option>
+                  ))}
+                </select>
+                <button disabled={abilityUsed || !targetId} onClick={() => protect(targetId)}>
+                  {abilityUsed ? '사용 완료' : '보호하기'}
+                </button>
+              </div>
+            )}
+
+            {abilityUnlocked && viewer.role === '목격자' && (
+              <div className="profile__ability-row">
+                <select
+                  value={missionPick}
+                  onChange={(e) => setMissionPick(Number(e.target.value))}
+                  disabled={abilityUsed || completedMissions.length === 0}
+                >
+                  {completedMissions.length === 0 && <option value={0}>완료된 원정 없음</option>}
+                  {completedMissions.map((m) => (
+                    <option key={m.i} value={m.i}>
+                      {m.i + 1}차 원정
+                    </option>
+                  ))}
+                </select>
+                <button
+                  disabled={abilityUsed || completedMissions.length === 0}
+                  onClick={() => checkCctv(missionPick)}
+                >
                   {abilityUsed ? '사용 완료' : '확인하기'}
                 </button>
               </div>
-            </div>
-          )}
+            )}
+
+            {abilityUnlocked && viewer.role === '괴이의 사도' && (
+              <div className="profile__ability-row">
+                <select value={targetId} onChange={(e) => setTargetId(e.target.value)} disabled={abilityUsed}>
+                  <option value="">대상 선택</option>
+                  {otherCharacters
+                    .filter((c) => c.team === 'ward')
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {displayName(c.id)}
+                      </option>
+                    ))}
+                </select>
+                <button disabled={abilityUsed || !targetId} onClick={() => erode(targetId)}>
+                  {abilityUsed ? '사용 완료' : '표적으로 삼기'}
+                </button>
+              </div>
+            )}
+
+            {abilityUnlocked && viewer.role === '공범' && (
+              <button
+                disabled={
+                  abilityUsed ||
+                  mission.phase !== 'result' ||
+                  !viewerId ||
+                  !mission.proposedTeam.includes(viewerId) ||
+                  mission.missionResults[mission.missionIndex] !== 'success'
+                }
+                onClick={forgeResult}
+              >
+                {abilityUsed ? '사용 완료' : '결과 위조하기'}
+              </button>
+            )}
+
+            {viewer.role === '잠입자' && (
+              <p className="profile__ability-locked">
+                평소엔 아무것도 하지 않아도 된다 — 누군가 정체를 처음 확인할 때 자동으로 발동한다.
+              </p>
+            )}
+
+            {viewer.role === '망각자' && (
+              <p className="profile__ability-locked">
+                {forgottenIdentity
+                  ? `《기억 회복》 발동 — 지금까지의 원정 결과로 볼 때, 너는 ${forgottenIdentity === 'ward' ? '선' : '악'}이었다.`
+                  : '3차 원정이 끝나기 전까지는 자신의 정체를 알 수 없다.'}
+              </p>
+            )}
+
+            {viewer.role === '일반학생' && (
+              <p className="profile__ability-locked">
+                특별한 능력은 없다. 대신 5차 원정에 반드시 참가해야 한다.
+              </p>
+            )}
+          </div>
 
           {personalClues.length > 0 && (
             <div className="profile__personal-clues">
@@ -223,6 +313,44 @@ export function ProfileScreen() {
       {gmReveal && (
         <>
           <div className="profile__gm">
+            <span className="profile__section-label">GM 전용 — 새 공지 작성</span>
+            <p className="profile__gm-note">메인 피드에 새 게시글을 올린다. 댓글 허용 여부는 이후에도 다시 바꿀 수 있다.</p>
+            <input
+              className="profile__gm-input"
+              value={postTitle}
+              onChange={(e) => setPostTitle(e.target.value)}
+              placeholder="게시글 제목"
+            />
+            <textarea
+              className="profile__gm-textarea"
+              value={postBody}
+              onChange={(e) => setPostBody(e.target.value)}
+              placeholder="게시글 내용"
+              rows={3}
+            />
+            <label className="profile__gm-checkbox">
+              <input
+                type="checkbox"
+                checked={postCommentsOn}
+                onChange={(e) => setPostCommentsOn(e.target.checked)}
+              />
+              댓글 허용
+            </label>
+            <button
+              className="profile__gm-send"
+              disabled={!postTitle.trim() || !postBody.trim()}
+              onClick={() => {
+                createFeedPost(postTitle, postBody, postCommentsOn)
+                setPostTitle('')
+                setPostBody('')
+                setPostCommentsOn(false)
+              }}
+            >
+              게시하기
+            </button>
+          </div>
+
+          <div className="profile__gm">
             <span className="profile__section-label">GM 전용 — 빠른 쪽지 발송</span>
             <p className="profile__gm-note">
               모든 조사실·교실·원정 정보를 열람할 수 있고, 아래에서 전원에게 팝업 쪽지를 즉시 보낼 수 있다.
@@ -263,7 +391,7 @@ export function ProfileScreen() {
             </p>
             {!missionsOpen && (
               <button className="profile__gm-preset" onClick={openMissions}>
-                원정 열기 (3전 2선승)
+                원정 열기 (5원정 · 3선승)
               </button>
             )}
           </div>

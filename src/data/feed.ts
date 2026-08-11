@@ -10,7 +10,8 @@ export const INITIAL_FEED: FeedPost[] = [
     time: '00:02',
     hearts: 3,
     heartedByViewer: false,
-    comments: [{ id: 'c1', authorId: 'seojun', text: '대체 무슨 상황이야...' }],
+    commentsEnabled: true,
+    comments: [{ id: 'c1', authorId: 'seojun', text: '대체 무슨 상황이야...', secret: false }],
   },
   {
     id: 'post-2',
@@ -21,6 +22,7 @@ export const INITIAL_FEED: FeedPost[] = [
     time: '00:06',
     hearts: 1,
     heartedByViewer: false,
+    commentsEnabled: false,
     comments: [],
   },
   {
@@ -32,6 +34,7 @@ export const INITIAL_FEED: FeedPost[] = [
     time: '00:09',
     hearts: 5,
     heartedByViewer: false,
+    commentsEnabled: false,
     comments: [],
   },
 ]

@@ -1,6 +1,16 @@
 export type Team = 'ward' | 'sin' | 'veil'
 
-export type Role = '탐구자' | '방관자' | '거짓유포자' | '배신자' | '경계인'
+export type Role =
+  | '기록자'
+  | '감찰자'
+  | '보호자'
+  | '목격자'
+  | '일반학생'
+  | '괴이의 사도'
+  | '공범'
+  | '잠입자'
+  | '망각자'
+  | '복수자'
 
 export type RoomId = 'library' | 'infirmary' | 'broadcast' | 'rooftop'
 
@@ -16,6 +26,8 @@ export interface Character {
   clueHint: string
   avatarSeed: string
   revealText: string
+  abilityName: string
+  abilityDescription: string
 }
 
 export interface Room {
@@ -62,6 +74,7 @@ export interface FeedComment {
   id: string
   authorId: string
   text: string
+  secret: boolean
 }
 
 export interface FeedPost {
@@ -73,6 +86,7 @@ export interface FeedPost {
   time: string
   hearts: number
   heartedByViewer: boolean
+  commentsEnabled: boolean
   comments: FeedComment[]
 }
 

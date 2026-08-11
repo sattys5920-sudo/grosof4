@@ -107,6 +107,24 @@
   color: var(--sin);
 }
 
+.feed__comment-disabled {
+  font-size: 12px;
+  color: var(--bone-dim);
+  font-style: italic;
+  padding: 6px 0;
+}
+
+.feed__admin-toggle {
+  margin-left: auto;
+  background: none;
+  border: 1px dashed var(--veil);
+  color: var(--veil);
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
 .feed__comments {
   display: flex;
   flex-direction: column;
@@ -155,4 +173,18 @@
   font-family: var(--font-pixel);
   font-size: 10px;
   cursor: pointer;
+}
+
+.feed__comment-hidden {
+  color: var(--bone-dim);
+  font-style: italic;
+}
+
+.feed__secret-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--bone-dim);
 }

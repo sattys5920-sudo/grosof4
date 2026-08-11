@@ -59,6 +59,37 @@
   color: var(--bone);
 }
 
+.reveal__ability {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 320px;
+  padding: 14px 16px;
+  background: var(--veil-dim);
+  border: 1px solid var(--veil);
+  text-align: left;
+}
+
+.reveal__ability-label {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--veil);
+  letter-spacing: 0.5px;
+}
+
+.reveal__ability p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--bone-bright);
+}
+
+.reveal__ability-hint {
+  font-size: 11px;
+  color: var(--bone-dim);
+  font-style: italic;
+}
+
 .reveal__button {
   margin-top: 16px;
   font-family: var(--font-pixel);

@@ -3,13 +3,15 @@ import './MainFeedScreen.css'
 import { useGame } from '../state/GameContext'
 
 export function MainFeedScreen() {
-  const { feed, toggleHeart, addComment, displayName } = useGame()
+  const { feed, toggleHeart, addComment, displayName, viewerId, gmReveal, toggleCommentsEnabled } = useGame()
   const [openPostId, setOpenPostId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+  const [secret, setSecret] = useState(false)
 
   function submitComment(postId: string) {
-    addComment(postId, draft)
+    addComment(postId, draft, secret)
     setDraft('')
+    setSecret(false)
   }
 
   return (
@@ -40,22 +42,44 @@ export function MainFeedScreen() {
                 >
                   ♥ {post.hearts}
                 </button>
-                <button
-                  className="feed__comment-toggle"
-                  onClick={() => setOpenPostId(isOpen ? null : post.id)}
-                >
-                  댓글 {post.comments.length}
-                </button>
+                {post.commentsEnabled ? (
+                  <button
+                    className="feed__comment-toggle"
+                    onClick={() => setOpenPostId(isOpen ? null : post.id)}
+                  >
+                    댓글 {post.comments.length}
+                  </button>
+                ) : (
+                  <span className="feed__comment-disabled">댓글 비활성화</span>
+                )}
+                {gmReveal && (
+                  <button
+                    className="feed__admin-toggle"
+                    onClick={() => toggleCommentsEnabled(post.id)}
+                  >
+                    {post.commentsEnabled ? '[관리자] 댓글 닫기' : '[관리자] 댓글 열기'}
+                  </button>
+                )}
               </div>
 
-              {isOpen && (
+              {isOpen && post.commentsEnabled && (
                 <div className="feed__comments">
-                  {post.comments.map((c) => (
-                    <div key={c.id} className="feed__comment">
-                      <span className="feed__comment-author">{displayName(c.authorId)}</span>
-                      <span>{c.text}</span>
-                    </div>
-                  ))}
+                  {post.comments.map((c) => {
+                    const canSee = !c.secret || c.authorId === viewerId || gmReveal
+                    return (
+                      <div key={c.id} className="feed__comment">
+                        <span className="feed__comment-author">{displayName(c.authorId)}</span>
+                        {canSee ? (
+                          <span>
+                            {c.secret && '🔒 '}
+                            {c.text}
+                          </span>
+                        ) : (
+                          <span className="feed__comment-hidden">🔒 비밀 댓글</span>
+                        )}
+                      </div>
+                    )
+                  })}
                   <div className="feed__comment-composer">
                     <input
                       value={draft}
@@ -63,6 +87,14 @@ export function MainFeedScreen() {
                       onKeyDown={(e) => e.key === 'Enter' && submitComment(post.id)}
                       placeholder="댓글 남기기..."
                     />
+                    <label className="feed__secret-toggle">
+                      <input
+                        type="checkbox"
+                        checked={secret}
+                        onChange={(e) => setSecret(e.target.checked)}
+                      />
+                      비밀
+                    </label>
                     <button onClick={() => submitComment(post.id)}>등록</button>
                   </div>
                 </div>

@@ -53,7 +53,6 @@ interface GameState {
   attemptDuel: (choice: 'odd' | 'even') => void
   feed: FeedPost[]
   toggleHeart: (postId: string) => void
-  addComment: (postId: string, text: string) => void
   gmReveal: boolean
   broadcast: Broadcast | null
   sendBroadcast: (kind: BroadcastKind, title: string, body: string) => void
@@ -71,11 +70,22 @@ interface GameState {
   openDm: (id: string) => void
   closeDm: () => void
   sendDm: (text: string) => void
+  abilityUnlocked: boolean
   abilityUsed: boolean
   personalClues: string[]
-  useWitnessMemory: () => void
-  useFamilyInsight: (roomId: RoomId) => void
-  spreadDisinfo: (text: string) => void
+  forgottenIdentity: 'ward' | 'sin' | null
+  useRecordBook: () => void
+  investigate: (targetId: string) => void
+  protect: (targetId: string) => void
+  protectedId: string | null
+  checkCctv: (missionIndex: number) => void
+  erode: (targetId: string) => void
+  erosionTargetId: string | null
+  forgeResult: () => void
+  revengerCheck: (targetId: string) => void
+  createFeedPost: (title: string, body: string, commentsEnabled: boolean) => void
+  toggleCommentsEnabled: (postId: string) => void
+  addComment: (postId: string, text: string, secret: boolean) => void
 }
 
 const GameContext = createContext<GameState | null>(null)
@@ -136,8 +146,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [missionsOpen, setMissionsOpen] = useState(false)
   const [dmThreads, setDmThreads] = useState<Record<string, ChatMessage[]>>({})
   const [activeDmId, setActiveDmId] = useState<string | null>(null)
+  const [abilityUnlocked, setAbilityUnlocked] = useState(false)
   const [abilityUsed, setAbilityUsed] = useState(false)
   const [personalClues, setPersonalClues] = useState<string[]>([])
+  const [protectedId, setProtectedId] = useState<string | null>(null)
+  const [erosionTargetId, setErosionTargetId] = useState<string | null>(null)
+  const [decoyUsed, setDecoyUsed] = useState(false)
   const [mission, dispatch] = useReducer(missionReducer, undefined, initialMissionState)
 
   const isAdmin = viewerId === null && signedUp
@@ -264,15 +278,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   function submitRoomAnswer(roomId: RoomId, text: string) {
     if (!text.trim()) return
+    let solved = false
     setRoomEvents((prev) => {
       const state = prev[roomId]
       if (state.cleared || !state.event?.answer) return prev
       const correct = normalize(text) === normalize(state.event.answer)
       if (correct) {
+        solved = true
         return { ...prev, [roomId]: { ...state, cleared: true, clue: state.event.reward, note: null } }
       }
       return { ...prev, [roomId]: { ...state, note: '오답이다. 다시 생각해보자.' } }
     })
+    if (solved && viewerId && roomOccupancy[roomId].includes(viewerId)) {
+      setAbilityUnlocked(true)
+    }
   }
 
   function dispatchClassroomEvent(item: EventLibraryItem) {
@@ -350,21 +369,46 @@ export function GameProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  function addComment(postId: string, text: string) {
+  function addComment(postId: string, text: string, secret: boolean) {
     if (!text.trim() || !viewerId) return
     setFeed((prev) =>
       prev.map((p) =>
-        p.id === postId
+        p.id === postId && p.commentsEnabled
           ? {
               ...p,
               comments: [
                 ...p.comments,
-                { id: `${postId}-${p.comments.length + 1}`, authorId: viewerId, text: text.trim() },
+                { id: `${postId}-${p.comments.length + 1}`, authorId: viewerId, text: text.trim(), secret },
               ],
             }
           : p,
       ),
     )
+  }
+
+  function toggleCommentsEnabled(postId: string) {
+    setFeed((prev) =>
+      prev.map((p) => (p.id === postId ? { ...p, commentsEnabled: !p.commentsEnabled } : p)),
+    )
+  }
+
+  function createFeedPost(title: string, body: string, commentsEnabled: boolean) {
+    if (!title.trim() || !body.trim()) return
+    setFeed((prev) => [
+      {
+        id: `post-${Date.now()}`,
+        authorLabel: '[관리자]',
+        tag: '공지',
+        title: title.trim(),
+        body: body.trim(),
+        time: '방금',
+        hearts: 0,
+        heartedByViewer: false,
+        commentsEnabled,
+        comments: [],
+      },
+      ...prev,
+    ])
   }
 
   const BROADCAST_TAG: Record<BroadcastKind, string> = { event: '이벤트', sin: '괴이', notice: '공지' }
@@ -388,6 +432,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         time: '방금',
         hearts: 0,
         heartedByViewer: false,
+        commentsEnabled: false,
         comments: [],
       },
       ...prev,
@@ -398,26 +443,111 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setBroadcast(null)
   }
 
-  function useWitnessMemory() {
-    if (abilityUsed) return
-    const candidates = ROOMS.filter((r) => !roomEvents[r.id].cleared)
-    const pool = candidates.length > 0 ? candidates : ROOMS
-    const pick = pool[Math.floor(Math.random() * pool.length)]
-    setPersonalClues((prev) => [...prev, roomEvents[pick.id].event!.reward])
+  function canUseAbility() {
+    return abilityUnlocked && !abilityUsed && !!viewerId
+  }
+
+  // 잠입자를 대상으로 한 첫 정체 확인은 '선'처럼 위장된다.
+  function resolveTeamCheck(targetId: string): 'ward' | 'sin' {
+    const target = CHARACTERS.find((c) => c.id === targetId)!
+    if (target.role === '잠입자' && !decoyUsed) {
+      setDecoyUsed(true)
+      return 'ward'
+    }
+    return target.team === 'ward' ? 'ward' : 'sin'
+  }
+
+  function useRecordBook() {
+    if (!canUseAbility()) return
+    const others = CHARACTERS.filter((c) => c.id !== viewerId)
+    const shuffled = [...others].sort(() => Math.random() - 0.5)
+    const [a, b] = shuffled.slice(0, 2)
+    const lieOnA = Math.random() < 0.5
+    const teamLabel = (team: 'ward' | 'sin') => (team === 'ward' ? '선' : '악')
+    const trueA = resolveTeamCheck(a.id)
+    const trueB = resolveTeamCheck(b.id)
+    const shownA = lieOnA ? (trueA === 'ward' ? 'sin' : 'ward') : trueA
+    const shownB = !lieOnA ? (trueB === 'ward' ? 'sin' : 'ward') : trueB
+    setPersonalClues((prev) => [
+      ...prev,
+      `《출석부》 ${displayName(a.id)} = ${teamLabel(shownA)}, ${displayName(b.id)} = ${teamLabel(shownB)} — 둘 중 하나는 거짓이다.`,
+    ])
     setAbilityUsed(true)
   }
 
-  function useFamilyInsight(roomId: RoomId) {
-    if (abilityUsed) return
-    setPersonalClues((prev) => [...prev, roomEvents[roomId].event!.reward])
+  function investigate(targetId: string) {
+    if (!canUseAbility()) return
+    let resultText: string
+    if (protectedId === targetId) {
+      resultText = `《학생부 조사》 ${displayName(targetId)} — 보호받고 있어 판별 불가.`
+    } else {
+      const team = resolveTeamCheck(targetId)
+      resultText = `《학생부 조사》 ${displayName(targetId)} — 실패 카드를 ${team === 'sin' ? '낼 수 있다' : '낼 수 없다'}.`
+    }
+    setPersonalClues((prev) => [...prev, resultText])
     setAbilityUsed(true)
   }
 
-  function spreadDisinfo(text: string) {
-    if (abilityUsed || !text.trim()) return
-    sendBroadcast('notice', '[익명 제보]', text.trim())
+  function protect(targetId: string) {
+    if (!canUseAbility()) return
+    setProtectedId(targetId)
+    setPersonalClues((prev) => [...prev, `《동행》 ${displayName(targetId)}을(를) 보호하기 시작했다.`])
     setAbilityUsed(true)
   }
+
+  function checkCctv(missionIndex: number) {
+    if (!canUseAbility()) return
+    const count = mission.failCounts[missionIndex]
+    if (count === null || count === undefined) return
+    setPersonalClues((prev) => [
+      ...prev,
+      `《CCTV》 ${missionIndex + 1}차 원정 — 실패 카드 ${count}장.`,
+    ])
+    setAbilityUsed(true)
+  }
+
+  function erode(targetId: string) {
+    if (!canUseAbility()) return
+    setErosionTargetId(targetId)
+    setPersonalClues((prev) => [...prev, `《침식》 ${displayName(targetId)}을(를) 표적으로 삼았다.`])
+    setAbilityUsed(true)
+  }
+
+  function forgeResult() {
+    if (!canUseAbility() || !viewerId) return
+    if (!mission.proposedTeam.includes(viewerId)) return
+    if (mission.missionResults[mission.missionIndex] !== 'success') return
+    dispatch({ type: 'FORGE_RESULT' })
+    setAbilityUsed(true)
+  }
+
+  function revengerCheck(targetId: string) {
+    if (!canUseAbility()) return
+    const target = CHARACTERS.find((c) => c.id === targetId)!
+    let resultText: string
+    if (protectedId === targetId) {
+      resultText = `《공략》 ${displayName(targetId)} — 보호받고 있어 판별 불가.`
+    } else {
+      const team = resolveTeamCheck(targetId)
+      const trueRoleLabel = team === target.team ? target.role : team === 'ward' ? '선(위장 감지)' : '악'
+      resultText = `《공략》 ${displayName(targetId)}의 진짜 정체 — ${trueRoleLabel}.`
+    }
+    setPersonalClues((prev) => [...prev, resultText])
+    setAbilityUsed(true)
+  }
+
+  const forgottenIdentity: 'ward' | 'sin' | null = (() => {
+    if (!viewerId) return null
+    const viewer = CHARACTERS.find((c) => c.id === viewerId)!
+    if (viewer.role !== '망각자') return null
+    if (mission.missionResults[2] === null) return null
+    let fails = 0
+    for (let i = 0; i < 3; i++) {
+      const team = mission.teamHistory[i]
+      if (team && team.includes(viewerId) && mission.missionResults[i] === 'fail') fails++
+    }
+    return fails >= 2 ? 'sin' : 'ward'
+  })()
 
   function confirmProposal(team: string[]) {
     dispatch({ type: 'CONFIRM_PROPOSAL', team })
@@ -472,6 +602,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       feed,
       toggleHeart,
       addComment,
+      toggleCommentsEnabled,
+      createFeedPost,
       gmReveal,
       broadcast,
       sendBroadcast,
@@ -489,11 +621,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
       openDm,
       closeDm,
       sendDm,
+      abilityUnlocked,
       abilityUsed,
       personalClues,
-      useWitnessMemory,
-      useFamilyInsight,
-      spreadDisinfo,
+      forgottenIdentity,
+      useRecordBook,
+      investigate,
+      protect,
+      protectedId,
+      checkCctv,
+      erode,
+      erosionTargetId,
+      forgeResult,
+      revengerCheck,
     }),
     [
       viewerId,
@@ -516,8 +656,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
       mission,
       dmThreads,
       activeDmId,
+      abilityUnlocked,
       abilityUsed,
       personalClues,
+      protectedId,
+      erosionTargetId,
+      forgottenIdentity,
     ],
   )
 
