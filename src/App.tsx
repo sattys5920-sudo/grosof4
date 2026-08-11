@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import './App.css'
 import { GameProvider, useGame } from './state/GameContext'
 import { TabBar } from './components/TabBar'
 import { BroadcastPopup } from './components/BroadcastPopup'
 import { DmModal } from './components/DmModal'
+import { StoryIntroScreen } from './screens/StoryIntroScreen'
 import { SignupScreen } from './screens/SignupScreen'
 import { RoleRevealScreen } from './screens/RoleRevealScreen'
 import { MainFeedScreen } from './screens/MainFeedScreen'
@@ -50,6 +52,8 @@ function Shell() {
 
 function Gate() {
   const { signedUp, roleRevealed } = useGame()
+  const [introSeen, setIntroSeen] = useState(false)
+  if (!introSeen) return <StoryIntroScreen onEnter={() => setIntroSeen(true)} />
   if (!signedUp) return <SignupScreen />
   if (!roleRevealed) return <RoleRevealScreen />
   return <Shell />

@@ -34,9 +34,26 @@
   color: var(--veil);
 }
 
-.reveal__text {
-  margin: 8px 0 0;
+.reveal__card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   max-width: 320px;
+  padding: 16px 18px;
+  margin-top: 4px;
+  background: var(--void-2);
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.reveal__tagline {
+  font-size: 13px;
+  color: var(--veil);
+  font-style: italic;
+}
+
+.reveal__text {
+  margin: 0;
   font-size: 15px;
   line-height: 1.75;
   color: var(--bone);

@@ -1,6 +1,6 @@
 import './RoleRevealScreen.css'
 import { useGame } from '../state/GameContext'
-import { CHARACTERS, roleLabel } from '../data/characters'
+import { CHARACTERS, roleLabel, personalize } from '../data/characters'
 import { Badge } from '../components/Badge'
 
 export function RoleRevealScreen() {
@@ -12,7 +12,10 @@ export function RoleRevealScreen() {
       <span className="reveal__eyebrow">{nickname}, 안개가 당신을 삼키기 전에</span>
       <Badge team={viewer.team} size={64} />
       <span className={`reveal__team reveal__team--${viewer.team}`}>{roleLabel(viewer)}</span>
-      <p className="reveal__text">{viewer.revealText}</p>
+      <div className="reveal__card">
+        <span className="reveal__tagline">{viewer.tagline}</span>
+        <p className="reveal__text">{personalize(viewer.revealText, nickname)}</p>
+      </div>
       <button className="reveal__button" onClick={acknowledgeRole}>
         각오는 되었다
       </button>

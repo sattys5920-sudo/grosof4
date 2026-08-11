@@ -1,0 +1,62 @@
+.intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 430px;
+  min-height: 100svh;
+  padding: 56px 26px;
+  background: var(--void);
+}
+
+.intro__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.intro__eyebrow {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  color: var(--veil);
+  letter-spacing: 1px;
+}
+
+.intro__body p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: var(--bone);
+}
+
+.intro__incident {
+  padding: 12px 14px;
+  background: var(--void-2);
+  border-left: 2px solid var(--veil);
+  color: var(--bone-dim);
+}
+
+.intro__quote {
+  padding: 12px 14px;
+  background: var(--sin-dim);
+  border: 1px solid var(--sin);
+  color: var(--bone-bright);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.intro__enter {
+  align-self: stretch;
+  font-family: var(--font-pixel);
+  font-size: 13px;
+  padding: 13px 0;
+  cursor: pointer;
+  border: 1px solid var(--sin);
+  background: var(--sin-dim);
+  color: var(--bone-bright);
+}
+
+.intro__enter:hover {
+  background: var(--sin);
+}
