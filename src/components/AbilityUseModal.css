@@ -1,0 +1,125 @@
+.ability-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(5, 4, 3, 0.82);
+  backdrop-filter: blur(2px);
+}
+
+.ability-modal__box {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 380px;
+  max-height: 86vh;
+  background: var(--void-2);
+  border: 1px solid var(--veil);
+  box-shadow: 0 0 24px rgba(125, 106, 168, 0.35);
+}
+
+.ability-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  color: var(--veil);
+  flex-shrink: 0;
+}
+
+.ability-modal__close {
+  background: none;
+  border: none;
+  color: var(--bone-dim);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.ability-modal__chat {
+  padding: 16px 16px 4px;
+  overflow-y: auto;
+}
+
+.ability-modal__msg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 92%;
+}
+
+.ability-modal__msg-name {
+  font-size: 11px;
+  color: var(--veil);
+}
+
+.ability-modal__msg-text {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--veil-dim);
+  border: 1px solid var(--veil);
+  color: var(--bone-bright);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.ability-modal__control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px 4px;
+}
+
+.ability-modal__control select {
+  width: 100%;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  padding: 9px 10px;
+  color: var(--bone-bright);
+  font-size: 13.5px;
+  font-family: var(--font-body);
+}
+
+.ability-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px;
+}
+
+.ability-modal__cancel {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  padding: 9px 14px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--void-3);
+  color: var(--bone-dim);
+}
+
+.ability-modal__confirm {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  padding: 9px 14px;
+  cursor: pointer;
+  border: 1px solid var(--veil);
+  background: var(--void-3);
+  color: var(--bone-bright);
+}
+
+.ability-modal__confirm:hover:not(:disabled) {
+  background: var(--veil);
+  color: var(--void);
+}
+
+.ability-modal__confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

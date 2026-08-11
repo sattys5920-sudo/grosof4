@@ -220,3 +220,152 @@
   background: var(--veil-dim);
   color: var(--bone-bright);
 }
+
+.mdisc {
+  display: flex;
+  flex-direction: column;
+  background: var(--void-2);
+  border: 1px solid var(--line);
+}
+
+.mdisc.is-open {
+  border-color: var(--veil);
+}
+
+.mdisc__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.mdisc__title {
+  flex: 1;
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  color: var(--veil);
+  letter-spacing: 0.5px;
+}
+
+.mdisc__timer {
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  color: var(--ward);
+}
+
+.mdisc__timer.is-over {
+  color: var(--sin);
+}
+
+.mdisc__toggle {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  border: 1px solid var(--sin);
+  background: var(--void-3);
+  color: var(--bone-bright);
+}
+
+.mdisc__toggle:hover {
+  background: var(--sin);
+}
+
+.mdisc__locked {
+  margin: 0;
+  padding: 12px;
+  font-size: 12.5px;
+  color: var(--bone-dim);
+  font-style: italic;
+}
+
+.mdisc__log {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.mdisc__empty {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--bone-dim);
+  font-style: italic;
+  text-align: center;
+}
+
+.mdisc__msg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 85%;
+}
+
+.mdisc__msg.is-me {
+  align-self: flex-end;
+  text-align: right;
+}
+
+.mdisc__msg-name {
+  font-size: 11px;
+  color: var(--bone-dim);
+}
+
+.mdisc__msg-text {
+  margin: 0;
+  padding: 7px 10px;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--bone);
+}
+
+.mdisc__msg.is-gm .mdisc__msg-name {
+  color: var(--veil);
+}
+
+.mdisc__msg.is-gm .mdisc__msg-text {
+  background: var(--veil-dim);
+  border-color: var(--veil);
+  color: var(--bone-bright);
+}
+
+.mdisc__msg.is-me .mdisc__msg-text {
+  background: var(--ward-dim);
+  border-color: var(--ward);
+}
+
+.mdisc__composer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.mdisc__composer input {
+  flex: 1;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  padding: 8px 9px;
+  color: var(--bone-bright);
+  font-size: 13.5px;
+}
+
+.mdisc__composer input:focus {
+  outline: none;
+  border-color: var(--veil);
+}
+
+.mdisc__composer button {
+  background: var(--sin-dim);
+  border: 1px solid var(--sin);
+  color: var(--bone-bright);
+  padding: 0 14px;
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  cursor: pointer;
+}

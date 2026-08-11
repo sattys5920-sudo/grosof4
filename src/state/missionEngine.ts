@@ -11,6 +11,7 @@ export type MissionPhase = 'propose' | 'vote' | 'execute' | 'result' | 'gameover
 export type MissionOutcome = 'success' | 'fail' | null
 
 export interface MissionState {
+  turnOrder: string[]
   missionIndex: number
   leaderIdx: number
   phase: MissionPhase
@@ -36,20 +37,21 @@ export type MissionAction =
   | { type: 'RESET' }
   | { type: 'FORGE_RESULT' }
 
-const ALL_IDS = CHARACTERS.map((c) => c.id)
+const DEFAULT_ORDER = CHARACTERS.map((c) => c.id)
 
 function charTeam(id: string) {
   return CHARACTERS.find((c) => c.id === id)!.team
 }
 
-function pickAutoTeam(leaderId: string, size: number): string[] {
-  const rest = ALL_IDS.filter((id) => id !== leaderId)
+function pickAutoTeam(leaderId: string, size: number, turnOrder: string[]): string[] {
+  const rest = turnOrder.filter((id) => id !== leaderId)
   const shuffled = [...rest].sort(() => Math.random() - 0.5)
   return [leaderId, ...shuffled.slice(0, size - 1)]
 }
 
-export function initialMissionState(): MissionState {
+export function initialMissionState(turnOrder: string[] = DEFAULT_ORDER): MissionState {
   const state: MissionState = {
+    turnOrder,
     missionIndex: 0,
     leaderIdx: 0,
     phase: 'propose',
@@ -69,12 +71,12 @@ export function initialMissionState(): MissionState {
 }
 
 function autoFillIfNpc(state: MissionState): MissionState {
-  const leaderId = ALL_IDS[state.leaderIdx]
+  const leaderId = state.turnOrder[state.leaderIdx]
   const leader = CHARACTERS.find((c) => c.id === leaderId)!
   if (state.phase !== 'propose') return state
   return {
     ...state,
-    proposedTeam: pickAutoTeam(leaderId, MISSION_SIZES[state.missionIndex]),
+    proposedTeam: pickAutoTeam(leaderId, MISSION_SIZES[state.missionIndex], state.turnOrder),
     lastNote: `${leader.name}이(가) 원정대를 제안했다.`,
   }
 }
@@ -164,7 +166,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
           lastNote: `찬성 ${tally.approve} · 반대 ${tally.reject} — 5 회 연속 부결로 원정이 자동 실패했다.`,
         }
       }
-      const nextLeaderIdx = (state.leaderIdx + 1) % ALL_IDS.length
+      const nextLeaderIdx = (state.leaderIdx + 1) % state.turnOrder.length
       return autoFillIfNpc({
         ...state,
         voteTally: tally,
@@ -227,7 +229,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
       if (state.sinWins >= WINS_NEEDED) {
         return { ...state, phase: 'gameover', winner: 'sin' }
       }
-      const nextLeaderIdx = (state.leaderIdx + 1) % ALL_IDS.length
+      const nextLeaderIdx = (state.leaderIdx + 1) % state.turnOrder.length
       return autoFillIfNpc({
         ...state,
         missionIndex: state.missionIndex + 1,
@@ -241,7 +243,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
     }
 
     case 'RESET':
-      return initialMissionState()
+      return initialMissionState(state.turnOrder)
 
     default:
       return state

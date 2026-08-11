@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './MissionScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS } from '../data/characters'
@@ -6,8 +6,97 @@ import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
 import { MISSION_SIZES, TWO_FAILS_REQUIRED, WINS_NEEDED } from '../state/missionEngine'
 
+const DISCUSSION_MS = 3 * 60 * 1000
+
 function charOf(id: string) {
   return CHARACTERS.find((c) => c.id === id)!
+}
+
+function formatCountdown(ms: number) {
+  const total = Math.ceil(ms / 1000)
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+function MissionDiscussionPanel() {
+  const {
+    isAdmin,
+    viewerId,
+    missionMessages,
+    sendMissionMessage,
+    discussionOpen,
+    discussionOpenedAt,
+    setDiscussionOpen,
+    displayName,
+  } = useGame()
+  const [draft, setDraft] = useState('')
+  const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    if (!discussionOpen) return
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [discussionOpen])
+
+  const canChat = !!viewerId || isAdmin
+  const remainingMs = discussionOpenedAt ? Math.max(0, discussionOpenedAt + DISCUSSION_MS - now) : 0
+
+  function submit() {
+    sendMissionMessage(draft)
+    setDraft('')
+  }
+
+  return (
+    <div className={`mdisc ${discussionOpen ? 'is-open' : ''}`}>
+      <div className="mdisc__head">
+        <span className="mdisc__title">원정 토론</span>
+        {discussionOpen && discussionOpenedAt && (
+          <span className={`mdisc__timer ${remainingMs === 0 ? 'is-over' : ''}`}>
+            {remainingMs > 0 ? formatCountdown(remainingMs) : '시간 종료'}
+          </span>
+        )}
+        {isAdmin && (
+          <button className="mdisc__toggle" onClick={() => setDiscussionOpen(!discussionOpen)}>
+            {discussionOpen ? '토론 닫기' : '토론 열기'}
+          </button>
+        )}
+      </div>
+
+      {discussionOpen ? (
+        <>
+          <div className="mdisc__log">
+            {missionMessages.length === 0 && (
+              <p className="mdisc__empty">아직 아무도 말하지 않았다....... 3 분 동안 자유롭게 의논해보자.</p>
+            )}
+            {missionMessages.map((m) => {
+              const isMe = m.authorId === viewerId
+              const isGm = m.authorId === 'admin'
+              return (
+                <div key={m.id} className={`mdisc__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
+                  <span className="mdisc__msg-name">{displayName(m.authorId)}</span>
+                  <p className="mdisc__msg-text">{m.text}</p>
+                </div>
+              )
+            })}
+          </div>
+          {canChat && (
+            <div className="mdisc__composer">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submit()}
+                placeholder="원정 토론방에 메시지 보내기......"
+              />
+              <button onClick={submit}>전송</button>
+            </div>
+          )}
+        </>
+      ) : (
+        <p className="mdisc__locked">불가가 토론을 열면 대화할 수 있다.</p>
+      )}
+    </div>
+  )
 }
 
 function MissionTrack() {
@@ -46,7 +135,7 @@ export function MissionScreen() {
     displayName,
   } = useGame()
   const [draftTeam, setDraftTeam] = useState<string[]>([])
-  const leader = charOf(CHARACTERS[mission.leaderIdx].id)
+  const leader = charOf(mission.turnOrder[mission.leaderIdx])
   const isLeader = leader.id === viewerId
   const teamSize = MISSION_SIZES[mission.missionIndex]
   const onTeam = viewerId ? mission.proposedTeam.includes(viewerId) : false
@@ -82,6 +171,7 @@ export function MissionScreen() {
         <MissionTrack />
         {mission.lastNote && <p className="mission__note">{mission.lastNote}</p>}
         <p className="mission__lock-text">불가는 원정에 참여하지 않고 진행 상황만 지켜본다.</p>
+        <MissionDiscussionPanel />
       </div>
     )
   }
@@ -114,6 +204,8 @@ export function MissionScreen() {
       <MissionTrack />
 
       {mission.lastNote && <p className="mission__note">{mission.lastNote}</p>}
+
+      <MissionDiscussionPanel />
 
       {mission.phase === 'propose' && (
         <div className="mission__panel">

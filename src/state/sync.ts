@@ -24,6 +24,13 @@ import { initialMissionState, type MissionState } from './missionEngine'
 
 const SESSION_ID = 'live'
 
+export interface ClueItem {
+  id: string
+  title: string
+  text: string
+  source: string
+}
+
 export interface SessionDoc {
   claimedSlots: string[]
   roomOccupancy: Record<RoomId, string[]>
@@ -37,6 +44,10 @@ export interface SessionDoc {
   protectedId: string | null
   erosionTargetId: string | null
   decoyUsed: boolean
+  collectedClues: ClueItem[]
+  missionMessages: ChatMessage[]
+  discussionOpen: boolean
+  discussionOpenedAt: number | null
 }
 
 export interface PlayerDoc {
@@ -103,6 +114,10 @@ export function defaultSessionState(): SessionDoc {
     protectedId: null,
     erosionTargetId: null,
     decoyUsed: false,
+    collectedClues: [],
+    missionMessages: [],
+    discussionOpen: false,
+    discussionOpenedAt: null,
   }
 }
 
@@ -192,6 +207,32 @@ export async function claimRandomSlot(
   })
 }
 
+/** GM fallback: manually assign a specific unclaimed character slot to a nickname. */
+export async function assignRoleManuallySync(characterId: string, nickname: string) {
+  const sref = sessionRef()
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(sref)
+    const data = snap.exists() ? (snap.data() as SessionDoc) : defaultSessionState()
+    const claimed = data.claimedSlots ?? []
+    if (!snap.exists()) {
+      tx.set(sref, { ...defaultSessionState(), claimedSlots: [characterId] })
+    } else if (!claimed.includes(characterId)) {
+      tx.update(sref, { claimedSlots: arrayUnion(characterId) })
+    }
+    const character = CHARACTERS.find((c) => c.id === characterId)!
+    const pref = playerRef(characterId)
+    tx.set(pref, {
+      nickname: nickname.trim() || character.name,
+      grade: '1 학년',
+      photo: null,
+      abilityUnlocked: false,
+      abilityUsed: false,
+      personalClues: [],
+      gmDmMessages: [],
+    })
+  })
+}
+
 export async function patchPlayer(characterId: string, patch: Partial<PlayerDoc>) {
   await updateDoc(playerRef(characterId), patch)
 }
@@ -266,8 +307,23 @@ export async function sendBroadcastSync(broadcast: Broadcast) {
   await updateDoc(sessionRef(), { broadcast })
 }
 
-export async function openMissionsSync() {
-  await updateDoc(sessionRef(), { missionsOpen: true })
+export async function openMissionsSync(mission: MissionState) {
+  await updateDoc(sessionRef(), { missionsOpen: true, mission })
+}
+
+export async function addClueSync(clue: ClueItem) {
+  await updateDoc(sessionRef(), { collectedClues: arrayUnion(clue) })
+}
+
+export async function sendMissionMessageSync(msg: ChatMessage) {
+  await updateDoc(sessionRef(), { missionMessages: arrayUnion(msg) })
+}
+
+export async function setDiscussionOpenSync(open: boolean) {
+  await updateDoc(sessionRef(), {
+    discussionOpen: open,
+    discussionOpenedAt: open ? Date.now() : null,
+  })
 }
 
 export async function updateMissionSync(updater: (state: MissionState) => MissionState) {

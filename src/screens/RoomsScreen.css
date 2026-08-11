@@ -356,6 +356,16 @@
   border-color: var(--ward);
 }
 
+.rooms__msg.is-gm .rooms__msg-name {
+  color: var(--veil);
+}
+
+.rooms__msg.is-gm .rooms__msg-text {
+  background: var(--veil-dim);
+  border-color: var(--veil);
+  color: var(--bone-bright);
+}
+
 .rooms__composer {
   display: flex;
   gap: 8px;

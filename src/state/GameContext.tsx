@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { CHARACTERS } from '../data/characters'
+import { CHARACTERS, ROOMS } from '../data/characters'
 import type {
   Broadcast,
   BroadcastKind,
@@ -13,10 +13,12 @@ import type {
   RoomId,
   RoomPuzzle,
 } from '../data/types'
-import { missionReducer, type MissionState } from './missionEngine'
+import { initialMissionState, missionReducer, type MissionState } from './missionEngine'
 import { firebaseConfigured } from '../firebase'
 import {
+  addClueSync,
   addCommentSync,
+  assignRoleManuallySync,
   claimRandomSlot,
   createFeedPostSync,
   defaultSessionState,
@@ -31,7 +33,9 @@ import {
   sendBroadcastSync,
   sendClassroomMessageSync,
   sendGmDmMessageSync,
+  sendMissionMessageSync,
   sendRoomMessageSync,
+  setDiscussionOpenSync,
   subscribeAllPlayers,
   subscribeFeed,
   subscribeSession,
@@ -40,6 +44,7 @@ import {
   updateClassroomSync,
   updateMissionSync,
   updateRoomEventSync,
+  type ClueItem,
   type FeedPostDoc,
   type PlayerDoc,
   type SessionDoc,
@@ -95,7 +100,7 @@ interface GameState {
   sendBroadcast: (kind: BroadcastKind, title: string, body: string) => void
   dismissBroadcast: () => void
   missionsOpen: boolean
-  openMissions: () => void
+  openMissions: (firstPlayerId?: string) => void
   mission: MissionState
   confirmProposal: (team: string[]) => void
   castVote: (approve: boolean) => void
@@ -122,12 +127,37 @@ interface GameState {
   gmDmMessages: ChatMessage[]
   sendGmDm: (text: string) => void
   sendGmDmAsAdmin: (characterId: string, text: string) => void
+  collectedClues: ClueItem[]
+  missionMessages: ChatMessage[]
+  sendMissionMessage: (text: string) => void
+  discussionOpen: boolean
+  discussionOpenedAt: number | null
+  setDiscussionOpen: (open: boolean) => void
+  assignRoleManually: (characterId: string, nickname: string) => void
 }
 
 const GameContext = createContext<GameState | null>(null)
 
 function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, '')
+}
+
+function makeClue(data: { title: string; text: string }, source: string): ClueItem {
+  return {
+    id: `clue-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    title: data.title,
+    text: data.text,
+    source,
+  }
+}
+
+function makeGmDmMsg(text: string): ChatMessage {
+  return {
+    id: `dm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    authorId: 'admin',
+    text,
+    time: '지금',
+  }
 }
 
 function resolveTeamCheckPure(decoyUsedIn: boolean, targetId: string): { team: 'ward' | 'sin'; decoyUsed: boolean } {
@@ -268,10 +298,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   }
 
   function sendRoomMessage(roomId: RoomId, text: string) {
-    if (!text.trim() || !viewerId) return
+    const authorId = viewerId ?? (isAdminFlag ? 'admin' : null)
+    if (!text.trim() || !authorId) return
     const msg: ChatMessage = {
       id: `${roomId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      authorId: viewerId,
+      authorId,
       text: text.trim(),
       time: '지금',
     }
@@ -279,10 +310,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   }
 
   function sendClassroomMessage(text: string) {
-    if (!text.trim() || !viewerId) return
+    const authorId = viewerId ?? (isAdminFlag ? 'admin' : null)
+    if (!text.trim() || !authorId) return
     const msg: ChatMessage = {
       id: `cr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      authorId: viewerId,
+      authorId,
       text: text.trim(),
       time: '지금',
     }
@@ -314,17 +346,23 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   async function submitRoomAnswer(roomId: RoomId, text: string) {
     if (!text.trim()) return
     let solved = false
+    let clueToAdd: { title: string; text: string } | null = null
     await updateRoomEventSync(roomId, (state) => {
       if (state.cleared || !state.event?.answer) return state
       const correct = normalize(text) === normalize(state.event.answer)
       if (correct) {
         solved = true
+        clueToAdd = { title: state.event.title, text: state.event.reward }
         return { ...state, cleared: true, clue: state.event.reward, note: null }
       }
       return { ...state, note: '오답이다. 다시 생각해보자.' }
     })
     if (solved && viewerId && (session.roomOccupancy[roomId] ?? []).includes(viewerId)) {
       void patchPlayer(viewerId, { abilityUnlocked: true })
+    }
+    if (clueToAdd) {
+      const room = ROOMS.find((r) => r.id === roomId)!
+      void addClueSync(makeClue(clueToAdd, room.name))
     }
   }
 
@@ -343,6 +381,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       clue: null,
       note: null,
     }))
+    const room = ROOMS.find((r) => r.id === roomId)!
+    sendBroadcast('event', `${room.name}이(가) 열렸다`, `《${puzzle.title}》 — 지금 ${room.name}으로 가보자.......`)
   }
 
   function closeRoomInvestigation(roomId: RoomId) {
@@ -357,6 +397,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       hint: null,
       note: null,
     }))
+    sendBroadcast('event', '교실이 열렸다', `《${item.title}》 — 지금 교실로 모이자.......`)
   }
 
   function dispatchPuzzle(puzzle: ClassroomPuzzle) {
@@ -375,30 +416,41 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       note: null,
     }))
     void patchSession({ classroomMessages: [] })
+    sendBroadcast('event', '교실이 열렸다', `《${puzzle.title}》 — 지금 교실로 모이자.......`)
   }
 
   function closeInvestigation() {
     void updateClassroomSync(() => ({ status: 'locked', event: null, hint: null, note: null }))
   }
 
-  function submitPuzzleAnswer(text: string) {
+  async function submitPuzzleAnswer(text: string) {
     if (!text.trim()) return
-    void updateClassroomSync((prev) => {
+    let clueToAdd: { title: string; text: string } | null = null
+    await updateClassroomSync((prev) => {
       if (prev.status !== 'active' || !prev.event?.answer) return prev
       const correct = normalize(text) === normalize(prev.event.answer)
-      if (correct) return { ...prev, status: 'cleared', hint: prev.event.reward, note: null }
+      if (correct) {
+        clueToAdd = { title: prev.event.title, text: prev.event.reward }
+        return { ...prev, status: 'cleared', hint: prev.event.reward, note: null }
+      }
       return { ...prev, note: '오답이다. 다시 논의해보자.' }
     })
+    if (clueToAdd) void addClueSync(makeClue(clueToAdd, '교실'))
   }
 
-  function attemptDuel(choice: 'odd' | 'even') {
-    void updateClassroomSync((prev) => {
+  async function attemptDuel(choice: 'odd' | 'even') {
+    let clueToAdd: { title: string; text: string } | null = null
+    await updateClassroomSync((prev) => {
       if (prev.status !== 'active' || !prev.event) return prev
       const outcome: 'odd' | 'even' = Math.random() < 0.5 ? 'odd' : 'even'
       const win = outcome === choice
-      if (win) return { ...prev, status: 'cleared', hint: prev.event.reward, note: null }
+      if (win) {
+        clueToAdd = { title: prev.event.title, text: prev.event.reward }
+        return { ...prev, status: 'cleared', hint: prev.event.reward, note: null }
+      }
       return { ...prev, note: '괴이가 낮게 웃는다. "아니야." 다시 시도해볼 수 있다.' }
     })
+    if (clueToAdd) void addClueSync(makeClue(clueToAdd, '교실'))
   }
 
   function toggleHeart(postId: string) {
@@ -456,8 +508,19 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     setDismissedBroadcastIdLocal(session.broadcast.id)
   }
 
-  function openMissions() {
-    void openMissionsSync()
+  function sortedPlayerIds(): string[] {
+    const claimed = Object.keys(players)
+    return claimed.sort((a, b) => players[a].nickname.localeCompare(players[b].nickname, 'ko'))
+  }
+
+  function openMissions(firstPlayerId?: string) {
+    let turnOrder = sortedPlayerIds()
+    if (turnOrder.length === 0) turnOrder = CHARACTERS.map((c) => c.id)
+    if (firstPlayerId && turnOrder.includes(firstPlayerId)) {
+      const idx = turnOrder.indexOf(firstPlayerId)
+      turnOrder = [...turnOrder.slice(idx), ...turnOrder.slice(0, idx)]
+    }
+    void openMissionsSync(initialMissionState(turnOrder))
   }
 
   function confirmProposal(team: string[]) {
@@ -478,6 +541,28 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void updateMissionSync((m) => missionReducer(m, { type: 'RESET' }))
   }
 
+  function sendMissionMessage(text: string) {
+    const authorId = viewerId ?? (isAdminFlag ? 'admin' : null)
+    if (!text.trim() || !authorId) return
+    const msg: ChatMessage = {
+      id: `ms-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      authorId,
+      text: text.trim(),
+      time: '지금',
+    }
+    void sendMissionMessageSync(msg)
+  }
+
+  function setDiscussionOpen(open: boolean) {
+    if (!isAdminFlag) return
+    void setDiscussionOpenSync(open)
+  }
+
+  function assignRoleManually(characterId: string, nickname: string) {
+    if (!isAdminFlag || !nickname.trim()) return
+    void assignRoleManuallySync(characterId, nickname)
+  }
+
   function useRecordBook() {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
@@ -496,7 +581,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       const text = `《출석부》 ${displayName(a.id)} = ${teamLabel(shownA)}, ${displayName(b.id)} = ${teamLabel(shownB)} — 둘 중 하나는 거짓이다.`
       return {
         session: secondCheck.decoyUsed !== sess.decoyUsed ? { decoyUsed: secondCheck.decoyUsed } : undefined,
-        player: { abilityUsed: true, personalClues: [...player.personalClues, text] },
+        player: {
+          abilityUsed: true,
+          personalClues: [...player.personalClues, text],
+          gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(text)],
+        },
       }
     })
   }
@@ -516,7 +605,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       }
       return {
         session: decoyUsed !== sess.decoyUsed ? { decoyUsed } : undefined,
-        player: { abilityUsed: true, personalClues: [...player.personalClues, resultText] },
+        player: {
+          abilityUsed: true,
+          personalClues: [...player.personalClues, resultText],
+          gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(resultText)],
+        },
       }
     })
   }
@@ -528,7 +621,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       const text = `《동행》 ${displayName(targetId)}을(를) 보호하기 시작했다.`
       return {
         session: { protectedId: targetId },
-        player: { abilityUsed: true, personalClues: [...player.personalClues, text] },
+        player: {
+          abilityUsed: true,
+          personalClues: [...player.personalClues, text],
+          gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(text)],
+        },
       }
     })
   }
@@ -540,7 +637,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       const count = sess.mission.failCounts[missionIndex]
       if (count === null || count === undefined) return {}
       const text = `《CCTV》 ${missionIndex + 1} 차 원정 — 실패 카드 ${count} 장.`
-      return { player: { abilityUsed: true, personalClues: [...player.personalClues, text] } }
+      return {
+        player: {
+          abilityUsed: true,
+          personalClues: [...player.personalClues, text],
+          gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(text)],
+        },
+      }
     })
   }
 
@@ -551,7 +654,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       const text = `《침식》 ${displayName(targetId)}을(를) 표적으로 삼았다.`
       return {
         session: { erosionTargetId: targetId },
-        player: { abilityUsed: true, personalClues: [...player.personalClues, text] },
+        player: {
+          abilityUsed: true,
+          personalClues: [...player.personalClues, text],
+          gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(text)],
+        },
       }
     })
   }
@@ -563,7 +670,14 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       if (!sess.mission.proposedTeam.includes(viewerId)) return {}
       if (sess.mission.missionResults[sess.mission.missionIndex] !== 'success') return {}
       const nextMission = missionReducer(sess.mission, { type: 'FORGE_RESULT' })
-      return { session: { mission: nextMission }, player: { abilityUsed: true } }
+      const text = `《결과 위조》 ${sess.mission.missionIndex + 1} 차 원정의 결과를 몰래 조작했다.`
+      return {
+        session: { mission: nextMission },
+        player: {
+          abilityUsed: true,
+          gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(text)],
+        },
+      }
     })
   }
 
@@ -585,7 +699,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       }
       return {
         session: decoyUsed !== sess.decoyUsed ? { decoyUsed } : undefined,
-        player: { abilityUsed: true, personalClues: [...player.personalClues, resultText] },
+        player: {
+          abilityUsed: true,
+          personalClues: [...player.personalClues, resultText],
+          gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(resultText)],
+        },
       }
     })
   }
@@ -649,6 +767,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       gmDmMessages: myPlayer?.gmDmMessages ?? [],
       sendGmDm,
       sendGmDmAsAdmin,
+      collectedClues: session.collectedClues,
+      missionMessages: session.missionMessages,
+      sendMissionMessage,
+      discussionOpen: session.discussionOpen,
+      discussionOpenedAt: session.discussionOpenedAt,
+      setDiscussionOpen,
+      assignRoleManually,
       gmReveal: isAdmin,
       broadcast,
       sendBroadcast,

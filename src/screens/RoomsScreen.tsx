@@ -154,14 +154,17 @@ export function RoomsScreen() {
             <p className="rooms__empty">아직 대화가 없다....... 먼저 말을 걸어보자.</p>
           )}
           {roomMessages[openRoom].map((m) => (
-            <div key={m.id} className={`rooms__msg ${m.authorId === viewerId ? 'is-me' : ''}`}>
+            <div
+              key={m.id}
+              className={`rooms__msg ${m.authorId === viewerId ? 'is-me' : ''} ${m.authorId === 'admin' ? 'is-gm' : ''}`}
+            >
               <span className="rooms__msg-name">{displayName(m.authorId)}</span>
               <p className="rooms__msg-text">{m.text}</p>
             </div>
           ))}
         </div>
 
-        {iAmHere ? (
+        {iAmHere || isAdmin ? (
           <div className="rooms__composer">
             <input
               value={draft}
@@ -172,9 +175,7 @@ export function RoomsScreen() {
             <button onClick={submitChat}>전송</button>
           </div>
         ) : (
-          <p className="rooms__locked-note">
-            {isAdmin ? '불가는 관전 중이다....... 위의 + 버튼으로 문제를 발동할 수 있다.' : '입장한 사람만 대화할 수 있다.'}
-          </p>
+          <p className="rooms__locked-note">입장한 사람만 대화할 수 있다.</p>
         )}
 
         {sheetOpen && <EventDispatchSheet sections={sections} onClose={() => setSheetOpen(false)} />}

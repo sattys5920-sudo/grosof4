@@ -3,6 +3,7 @@ import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS, roleLabel } from '../data/characters'
 import { Badge } from '../components/Badge'
+import { AbilityUseModal } from '../components/AbilityUseModal'
 import type { BroadcastKind } from '../data/types'
 
 const PRESETS: { kind: BroadcastKind; label: string; title: string; body: string }[] = [
@@ -148,6 +149,9 @@ export function ProfileScreen() {
     forgeResult,
     revengerCheck,
     mission,
+    players,
+    collectedClues,
+    assignRoleManually,
   } = useGame()
   const viewer = viewerId ? CHARACTERS.find((c) => c.id === viewerId)! : null
   const [kind, setKind] = useState<BroadcastKind>('event')
@@ -155,11 +159,25 @@ export function ProfileScreen() {
   const [body, setBody] = useState(PRESETS[0].body)
   const [targetId, setTargetId] = useState('')
   const [missionPick, setMissionPick] = useState(0)
+  const [firstPlayerId, setFirstPlayerId] = useState('')
+  const [manualCharacterId, setManualCharacterId] = useState('')
+  const [manualNickname, setManualNickname] = useState('')
+  const [openClueId, setOpenClueId] = useState<string | null>(null)
+  const [abilityModalOpen, setAbilityModalOpen] = useState(false)
 
   const otherCharacters = CHARACTERS.filter((c) => c.id !== viewerId)
+  const sortedPlayerEntries = Object.entries(players).sort((a, b) =>
+    a[1].nickname.localeCompare(b[1].nickname, 'ko'),
+  )
+  const unclaimedCharacters = CHARACTERS.filter((c) => !players[c.id])
   const completedMissions = mission.missionResults
     .map((r, i) => ({ r, i }))
     .filter((m) => m.r !== null)
+  const accompliceReady =
+    mission.phase === 'result' &&
+    !!viewerId &&
+    mission.proposedTeam.includes(viewerId) &&
+    mission.missionResults[mission.missionIndex] === 'success'
 
   function applyPreset(preset: (typeof PRESETS)[number]) {
     setKind(preset.kind)
@@ -224,104 +242,31 @@ export function ProfileScreen() {
               <p className="profile__ability-locked">조사실에서 단서를 확보하면 사용할 수 있게 된다.</p>
             )}
 
-            {abilityUnlocked && viewer.role === '기록자' && (
-              <button disabled={abilityUsed} onClick={useRecordBook}>
-                {abilityUsed ? '사용 완료' : '출석부 펼치기'}
-              </button>
-            )}
-
-            {abilityUnlocked && (viewer.role === '감찰자' || viewer.role === '복수자') && (
-              <div className="profile__ability-row">
-                <select value={targetId} onChange={(e) => setTargetId(e.target.value)} disabled={abilityUsed}>
-                  <option value="">대상 선택</option>
-                  {otherCharacters.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {displayName(c.id)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  disabled={abilityUsed || !targetId}
-                  onClick={() =>
-                    viewer.role === '감찰자' ? investigate(targetId) : revengerCheck(targetId)
-                  }
-                >
-                  {abilityUsed ? '사용 완료' : '조사하기'}
-                </button>
-              </div>
-            )}
-
-            {abilityUnlocked && viewer.role === '보호자' && (
-              <div className="profile__ability-row">
-                <select value={targetId} onChange={(e) => setTargetId(e.target.value)} disabled={abilityUsed}>
-                  <option value="">대상 선택</option>
-                  {otherCharacters.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {displayName(c.id)}
-                    </option>
-                  ))}
-                </select>
-                <button disabled={abilityUsed || !targetId} onClick={() => protect(targetId)}>
-                  {abilityUsed ? '사용 완료' : '보호하기'}
-                </button>
-              </div>
-            )}
-
-            {abilityUnlocked && viewer.role === '목격자' && (
-              <div className="profile__ability-row">
-                <select
-                  value={missionPick}
-                  onChange={(e) => setMissionPick(Number(e.target.value))}
-                  disabled={abilityUsed || completedMissions.length === 0}
-                >
-                  {completedMissions.length === 0 && <option value={0}>완료된 원정 없음</option>}
-                  {completedMissions.map((m) => (
-                    <option key={m.i} value={m.i}>
-                      {m.i + 1} 차 원정
-                    </option>
-                  ))}
-                </select>
-                <button
-                  disabled={abilityUsed || completedMissions.length === 0}
-                  onClick={() => checkCctv(missionPick)}
-                >
-                  {abilityUsed ? '사용 완료' : '확인하기'}
-                </button>
-              </div>
-            )}
-
-            {abilityUnlocked && viewer.role === '괴이의 사도' && (
-              <div className="profile__ability-row">
-                <select value={targetId} onChange={(e) => setTargetId(e.target.value)} disabled={abilityUsed}>
-                  <option value="">대상 선택</option>
-                  {otherCharacters
-                    .filter((c) => c.team === 'ward')
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {displayName(c.id)}
-                      </option>
-                    ))}
-                </select>
-                <button disabled={abilityUsed || !targetId} onClick={() => erode(targetId)}>
-                  {abilityUsed ? '사용 완료' : '표적으로 삼기'}
-                </button>
-              </div>
-            )}
-
-            {abilityUnlocked && viewer.role === '공범' && (
-              <button
-                disabled={
-                  abilityUsed ||
-                  mission.phase !== 'result' ||
-                  !viewerId ||
-                  !mission.proposedTeam.includes(viewerId) ||
-                  mission.missionResults[mission.missionIndex] !== 'success'
-                }
-                onClick={forgeResult}
-              >
-                {abilityUsed ? '사용 완료' : '결과 위조하기'}
-              </button>
-            )}
+            {abilityUnlocked &&
+              ['기록자', '감찰자', '복수자', '보호자', '목격자', '괴이의 사도', '공범'].includes(viewer.role) && (
+                <>
+                  {abilityUsed ? (
+                    <p className="profile__ability-locked">
+                      사용 완료 — 불가와의 개인 대화에서 결과를 다시 확인할 수 있다.
+                    </p>
+                  ) : viewer.role === '공범' && !accompliceReady ? (
+                    <p className="profile__ability-locked">
+                      원정에 참가한 회차가 성공으로 끝난 직후에만 사용할 수 있다.
+                    </p>
+                  ) : viewer.role === '목격자' && completedMissions.length === 0 ? (
+                    <p className="profile__ability-locked">완료된 원정이 있어야 사용할 수 있다.</p>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setTargetId('')
+                        setAbilityModalOpen(true)
+                      }}
+                    >
+                      능력 사용하기
+                    </button>
+                  )}
+                </>
+              )}
 
             {viewer.role === '잠입자' && (
               <p className="profile__ability-locked">
@@ -353,7 +298,134 @@ export function ProfileScreen() {
             </div>
           )}
         </div>
-      ) : (
+      ) : null}
+
+      {viewer && abilityModalOpen && viewer.role === '기록자' && (
+        <AbilityUseModal
+          title="능력 사용 — 출석부 펼치기"
+          prompt="오늘 출석부를 펼쳐 볼까....... 무작위로 두 사람의 정체를 확인할 수 있지만, 그중 하나는 거짓 정보로 섞여서 나올 거야. 그래도 펼쳐볼까?"
+          confirmLabel="출석부 펼치기"
+          onConfirm={() => {
+            useRecordBook()
+            setAbilityModalOpen(false)
+          }}
+          onClose={() => setAbilityModalOpen(false)}
+        />
+      )}
+
+      {viewer && abilityModalOpen && (viewer.role === '감찰자' || viewer.role === '복수자') && (
+        <AbilityUseModal
+          title={`능력 사용 — ${viewer.role === '감찰자' ? '조사하기' : '공략하기'}`}
+          prompt={
+            viewer.role === '감찰자'
+              ? '오늘은 누구의 정체를 조사해 볼까?'
+              : '오늘은 누구를 공략해서 진짜 정체를 캐볼까?'
+          }
+          confirmLabel={viewer.role === '감찰자' ? '조사하기' : '공략하기'}
+          confirmDisabled={!targetId}
+          onConfirm={() => {
+            if (viewer.role === '감찰자') investigate(targetId)
+            else revengerCheck(targetId)
+            setAbilityModalOpen(false)
+          }}
+          onClose={() => setAbilityModalOpen(false)}
+        >
+          <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+            <option value="">대상 선택</option>
+            {otherCharacters.map((c) => (
+              <option key={c.id} value={c.id}>
+                {displayName(c.id)}
+              </option>
+            ))}
+          </select>
+        </AbilityUseModal>
+      )}
+
+      {viewer && abilityModalOpen && viewer.role === '보호자' && (
+        <AbilityUseModal
+          title="능력 사용 — 보호하기"
+          prompt="오늘은 누구를 곁에서 보호할까?"
+          confirmLabel="보호하기"
+          confirmDisabled={!targetId}
+          onConfirm={() => {
+            protect(targetId)
+            setAbilityModalOpen(false)
+          }}
+          onClose={() => setAbilityModalOpen(false)}
+        >
+          <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+            <option value="">대상 선택</option>
+            {otherCharacters.map((c) => (
+              <option key={c.id} value={c.id}>
+                {displayName(c.id)}
+              </option>
+            ))}
+          </select>
+        </AbilityUseModal>
+      )}
+
+      {viewer && abilityModalOpen && viewer.role === '목격자' && (
+        <AbilityUseModal
+          title="능력 사용 — CCTV 확인"
+          prompt="어느 원정의 CCTV 기록을 확인해 볼까?"
+          confirmLabel="확인하기"
+          confirmDisabled={completedMissions.length === 0}
+          onConfirm={() => {
+            checkCctv(missionPick)
+            setAbilityModalOpen(false)
+          }}
+          onClose={() => setAbilityModalOpen(false)}
+        >
+          <select value={missionPick} onChange={(e) => setMissionPick(Number(e.target.value))}>
+            {completedMissions.map((m) => (
+              <option key={m.i} value={m.i}>
+                {m.i + 1} 차 원정
+              </option>
+            ))}
+          </select>
+        </AbilityUseModal>
+      )}
+
+      {viewer && abilityModalOpen && viewer.role === '괴이의 사도' && (
+        <AbilityUseModal
+          title="능력 사용 — 표적으로 삼기"
+          prompt="오늘은 누구를 침식의 표적으로 삼을까?"
+          confirmLabel="표적으로 삼기"
+          confirmDisabled={!targetId}
+          onConfirm={() => {
+            erode(targetId)
+            setAbilityModalOpen(false)
+          }}
+          onClose={() => setAbilityModalOpen(false)}
+        >
+          <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+            <option value="">대상 선택</option>
+            {otherCharacters
+              .filter((c) => c.team === 'ward')
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {displayName(c.id)}
+                </option>
+              ))}
+          </select>
+        </AbilityUseModal>
+      )}
+
+      {viewer && abilityModalOpen && viewer.role === '공범' && (
+        <AbilityUseModal
+          title="능력 사용 — 결과 위조"
+          prompt="이번 원정 결과를 몰래 조작해 볼까....... 한번 위조하면 되돌릴 수 없어."
+          confirmLabel="위조하기"
+          confirmDisabled={!accompliceReady}
+          onConfirm={() => {
+            forgeResult()
+            setAbilityModalOpen(false)
+          }}
+          onClose={() => setAbilityModalOpen(false)}
+        />
+      )}
+
+      {!viewer && (
         <div className="profile__card">
           <div className="profile__card-head">
             <div className="profile__admin-badge">불가</div>
@@ -377,6 +449,30 @@ export function ProfileScreen() {
           ))}
         </div>
       </div>
+
+      {!gmReveal && collectedClues.length > 0 && (
+        <div className="profile__section profile__clues">
+          <span className="profile__section-label">단서 보관함</span>
+          <div className="profile__clue-list">
+            {collectedClues.map((clue) => {
+              const isOpen = openClueId === clue.id
+              return (
+                <div key={clue.id} className="profile__clue-item">
+                  <button
+                    className="profile__clue-toggle"
+                    onClick={() => setOpenClueId(isOpen ? null : clue.id)}
+                  >
+                    <span className="profile__clue-icon">🗝</span>
+                    <span className="profile__clue-title">{clue.title}</span>
+                    <span className="profile__clue-source">{clue.source}</span>
+                  </button>
+                  {isOpen && <p className="profile__clue-text">{clue.text}</p>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {!gmReveal && <PlayerGmDmPanel />}
 
@@ -416,15 +512,65 @@ export function ProfileScreen() {
             </button>
           </div>
 
+          {unclaimedCharacters.length > 0 && (
+            <div className="profile__gm">
+              <span className="profile__section-label">불가 전용 — 역할 수동 배정</span>
+              <p className="profile__gm-note">
+                랜덤 배정이 안 되거나 특정 인원에게 특정 역할을 주고 싶을 때 사용한다.
+              </p>
+              <div className="profile__gm-presets">
+                {unclaimedCharacters.map((c) => (
+                  <button
+                    key={c.id}
+                    className={`profile__gm-preset ${manualCharacterId === c.id ? 'is-active' : ''}`}
+                    onClick={() => setManualCharacterId(c.id)}
+                  >
+                    {c.name} · {c.role}
+                  </button>
+                ))}
+              </div>
+              <input
+                className="profile__gm-input"
+                value={manualNickname}
+                onChange={(e) => setManualNickname(e.target.value)}
+                placeholder="배정할 사람의 닉네임"
+              />
+              <button
+                className="profile__gm-send"
+                disabled={!manualCharacterId || !manualNickname.trim()}
+                onClick={() => {
+                  assignRoleManually(manualCharacterId, manualNickname)
+                  setManualCharacterId('')
+                  setManualNickname('')
+                }}
+              >
+                수동 배정하기
+              </button>
+            </div>
+          )}
+
           <div className="profile__gm">
             <span className="profile__section-label">불가 전용 — 원정</span>
             <p className="profile__gm-note">
               원정 상태: <strong>{missionsOpen ? '열림' : '잠김'}</strong>
             </p>
             {!missionsOpen && (
-              <button className="profile__gm-preset" onClick={openMissions}>
-                원정 열기 (5 원정 · 3 선승)
-              </button>
+              <>
+                <select value={firstPlayerId} onChange={(e) => setFirstPlayerId(e.target.value)}>
+                  <option value="">첫 순서: 가나다순 자동</option>
+                  {sortedPlayerEntries.map(([id, p]) => (
+                    <option key={id} value={id}>
+                      첫 순서: {p.nickname}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="profile__gm-preset"
+                  onClick={() => openMissions(firstPlayerId || undefined)}
+                >
+                  원정 열기 (5 원정 · 3 선승)
+                </button>
+              </>
             )}
             <p className="profile__gm-note">
               교실·조사실의 문제 발동은 각 채팅 화면 안의 + 버튼에서 진행한다.

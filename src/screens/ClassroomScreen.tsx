@@ -30,7 +30,7 @@ export function ClassroomScreen() {
 
   const event = classroom.event
   const isDuel = event?.kind === 'duel'
-  const canChat = !!viewerId
+  const canChat = !!viewerId || isAdmin
 
   function submit() {
     sendClassroomMessage(draft)
@@ -130,11 +130,12 @@ export function ClassroomScreen() {
         {classroomMessages.map((m) => {
           const author = CHARACTERS.find((c) => c.id === m.authorId)
           const isMe = m.authorId === viewerId
+          const isGm = m.authorId === 'admin'
           return (
-            <div key={m.id} className={`classroom__msg ${isMe ? 'is-me' : ''}`}>
+            <div key={m.id} className={`classroom__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
               <div className="classroom__msg-head">
                 <span className="classroom__msg-name">
-                  {m.authorId === 'admin' || author ? displayName(m.authorId) : '???'}
+                  {isGm || author ? displayName(m.authorId) : '???'}
                 </span>
               </div>
               <p className="classroom__msg-text">{m.text}</p>
@@ -143,7 +144,7 @@ export function ClassroomScreen() {
         })}
       </div>
 
-      {canChat ? (
+      {canChat && (
         <div className="classroom__composer">
           <input
             value={draft}
@@ -153,8 +154,6 @@ export function ClassroomScreen() {
           />
           <button onClick={submit}>전송</button>
         </div>
-      ) : (
-        isAdmin && <p className="classroom__admin-note">불가는 원정처럼 관전만 하며, 위의 + 버튼으로 이벤트를 발동할 수 있다.</p>
       )}
 
       {sheetOpen && <EventDispatchSheet sections={sections} onClose={() => setSheetOpen(false)} />}

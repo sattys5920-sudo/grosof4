@@ -219,6 +219,16 @@
   color: var(--bone);
 }
 
+.classroom__msg.is-gm .classroom__msg-name {
+  color: var(--veil);
+}
+
+.classroom__msg.is-gm .classroom__msg-text {
+  background: var(--veil-dim);
+  border-color: var(--veil);
+  color: var(--bone-bright);
+}
+
 .classroom__msg.is-me .classroom__msg-text {
   background: var(--ward-dim);
   border-color: var(--ward);

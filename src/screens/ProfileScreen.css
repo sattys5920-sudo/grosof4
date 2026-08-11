@@ -481,3 +481,64 @@
   border: 1px solid var(--line);
   border-top: none;
 }
+
+.profile__clues {
+  background: var(--void-2);
+  border: 1px solid var(--ward);
+  padding: 14px;
+}
+
+.profile__clue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile__clue-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile__clue-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  color: var(--bone-bright);
+  font-size: 13.5px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.profile__clue-toggle:hover {
+  border-color: var(--ward);
+}
+
+.profile__clue-icon {
+  color: var(--ward);
+  flex-shrink: 0;
+}
+
+.profile__clue-title {
+  flex: 1;
+}
+
+.profile__clue-source {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: var(--bone-dim);
+  flex-shrink: 0;
+}
+
+.profile__clue-text {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--void);
+  border: 1px solid var(--ward);
+  border-top: none;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--bone);
+}
