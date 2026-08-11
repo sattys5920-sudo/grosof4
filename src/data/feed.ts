@@ -1,0 +1,37 @@
+import type { FeedPost } from './types'
+
+export const INITIAL_FEED: FeedPost[] = [
+  {
+    id: 'post-1',
+    authorLabel: '[교내 방송]',
+    tag: '공지',
+    title: '전원 학교 밖 이동 금지',
+    body: '안개 결계가 해제될 때까지 정문·후문 모두 통행이 불가합니다. 지정된 장소에서 대기하십시오.',
+    time: '00:02',
+    hearts: 3,
+    heartedByViewer: false,
+    comments: [{ id: 'c1', authorId: 'seojun', text: '대체 무슨 상황이야...' }],
+  },
+  {
+    id: 'post-2',
+    authorLabel: '[관리자]',
+    tag: '안내',
+    title: '조사실 이용 안내',
+    body: '도서관·보건실·방송실·옥상, 총 4개 조사실이 개방되어 있습니다. 조사실 탭에서 입장할 수 있습니다.',
+    time: '00:06',
+    hearts: 1,
+    heartedByViewer: false,
+    comments: [],
+  },
+  {
+    id: 'post-3',
+    authorLabel: '[교내 방송]',
+    tag: '경고',
+    title: '조사 시간표 변경',
+    body: '전체 조사(교실) 시작 시각이 예고 없이 변경될 수 있습니다. 교실 탭 상태를 수시로 확인하십시오.',
+    time: '00:09',
+    hearts: 5,
+    heartedByViewer: false,
+    comments: [],
+  },
+]

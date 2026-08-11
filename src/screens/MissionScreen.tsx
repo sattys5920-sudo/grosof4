@@ -32,8 +32,17 @@ function MissionTrack() {
 }
 
 export function MissionScreen() {
-  const { viewerId, gmReveal, mission, confirmProposal, castVote, submitCard, continueMission, resetMission } =
-    useGame()
+  const {
+    viewerId,
+    gmReveal,
+    mission,
+    confirmProposal,
+    castVote,
+    submitCard,
+    continueMission,
+    resetMission,
+    displayName,
+  } = useGame()
   const viewer = charOf(viewerId)
   const [draftTeam, setDraftTeam] = useState<string[]>([])
   const leader = charOf(CHARACTERS[mission.leaderIdx].id)
@@ -79,7 +88,7 @@ export function MissionScreen() {
       {mission.phase === 'propose' && (
         <div className="mission__panel">
           <p className="mission__leader">
-            이번 원정대장: <strong>{leader.name}</strong>
+            이번 원정대장: <strong>{displayName(leader.id)}</strong>
             {isLeader && ' (나)'}
           </p>
           {isLeader ? (
@@ -96,7 +105,7 @@ export function MissionScreen() {
                       size={20}
                       revealed={isRevealedTo(viewer, c, gmReveal)}
                     />
-                    <span>{c.name}</span>
+                    <span>{displayName(c.id)}</span>
                   </button>
                 ))}
               </div>
@@ -116,7 +125,7 @@ export function MissionScreen() {
                   return (
                     <div key={id} className="mission__pick is-picked">
                       <Badge team={c.team} size={20} revealed={isRevealedTo(viewer, c, gmReveal)} />
-                      <span>{c.name}</span>
+                      <span>{displayName(c.id)}</span>
                     </div>
                   )
                 })}
@@ -132,7 +141,7 @@ export function MissionScreen() {
       {mission.phase === 'vote' && (
         <div className="mission__panel">
           <p className="mission__leader">
-            <strong>{leader.name}</strong>의 제안 — 부결 {mission.rejectionCount}/5
+            <strong>{displayName(leader.id)}</strong>의 제안 — 부결 {mission.rejectionCount}/5
           </p>
           <div className="mission__roster mission__roster--readonly">
             {mission.proposedTeam.map((id) => {
@@ -140,7 +149,7 @@ export function MissionScreen() {
               return (
                 <div key={id} className="mission__pick is-picked">
                   <Badge team={c.team} size={20} revealed={isRevealedTo(viewer, c, gmReveal)} />
-                  <span>{c.name}</span>
+                  <span>{displayName(c.id)}</span>
                 </div>
               )
             })}
@@ -165,7 +174,7 @@ export function MissionScreen() {
               return (
                 <div key={id} className="mission__pick is-picked">
                   <Badge team={c.team} size={20} revealed={isRevealedTo(viewer, c, gmReveal)} />
-                  <span>{c.name}</span>
+                  <span>{displayName(c.id)}</span>
                 </div>
               )
             })}

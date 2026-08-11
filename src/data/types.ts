@@ -22,3 +22,52 @@ export interface Room {
   capacity: number
   description: string
 }
+
+export interface ChatMessage {
+  id: string
+  authorId: string
+  text: string
+  time: string
+}
+
+export interface GroupEventSpec {
+  title: string
+  description: string
+  needed: number
+  reward: string
+}
+
+export type ClassroomStatus = 'locked' | 'active' | 'cleared'
+
+export interface ClassroomState {
+  status: ClassroomStatus
+  event: GroupEventSpec | null
+  participants: string[]
+  hint: string | null
+  presetIndex: number
+}
+
+export interface RoomEventState {
+  event: GroupEventSpec | null
+  participants: string[]
+  cleared: boolean
+  clue: string | null
+}
+
+export interface FeedComment {
+  id: string
+  authorId: string
+  text: string
+}
+
+export interface FeedPost {
+  id: string
+  authorLabel: string
+  tag: string
+  title: string
+  body: string
+  time: string
+  hearts: number
+  heartedByViewer: boolean
+  comments: FeedComment[]
+}

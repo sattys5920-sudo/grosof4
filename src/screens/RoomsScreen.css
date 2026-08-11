@@ -25,6 +25,18 @@
   color: var(--bone-dim);
 }
 
+.rooms__admin-btn {
+  align-self: flex-start;
+  margin-top: 4px;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  padding: 7px 12px;
+  cursor: pointer;
+  border: 1px dashed var(--veil);
+  background: var(--void-2);
+  color: var(--veil);
+}
+
 .rooms__grid {
   display: flex;
   flex-direction: column;
@@ -53,9 +65,20 @@
 }
 
 .rooms__card-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-title);
   font-size: 14px;
   color: var(--bone-bright);
+}
+
+.rooms__card-clue-tag {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--ward);
+  border: 1px solid var(--ward);
+  padding: 2px 5px;
 }
 
 .rooms__card-count {
@@ -177,12 +200,6 @@
   background: none;
 }
 
-.rooms__clues {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .rooms__clue {
   background: var(--void-3);
   border: 1px solid var(--line);
@@ -200,4 +217,105 @@
   font-size: 12px;
   color: var(--bone-dim);
   line-height: 1.5;
+}
+
+.rooms__clue-text--reward {
+  color: var(--bone-bright);
+}
+
+.rooms__clue-result {
+  margin: 8px 0 0;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: var(--ward);
+}
+
+.rooms__locked-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--bone-dim);
+  font-style: italic;
+}
+
+.rooms__chat-log {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 8px;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+}
+
+.rooms__chat-line {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.rooms__chat-author {
+  color: var(--bone-bright);
+  flex-shrink: 0;
+}
+
+.rooms__chat-text {
+  color: var(--bone);
+}
+
+.rooms__composer {
+  display: flex;
+  gap: 8px;
+}
+
+.rooms__composer input {
+  flex: 1;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  padding: 8px 9px;
+  color: var(--bone-bright);
+  font-size: 12px;
+}
+
+.rooms__composer input:focus {
+  outline: none;
+  border-color: var(--veil);
+}
+
+.rooms__composer button {
+  background: var(--sin-dim);
+  border: 1px solid var(--sin);
+  color: var(--bone-bright);
+  padding: 0 12px;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.rooms__admin-room {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--void-2);
+  border: 1px solid var(--line);
+  padding: 12px;
+}
+
+.rooms__admin-room-name {
+  font-family: var(--font-title);
+  font-size: 13px;
+  color: var(--veil);
+}
+
+.rooms__admin-line {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--bone);
+}
+
+.rooms__admin-line strong {
+  color: var(--bone-bright);
+  flex-shrink: 0;
 }

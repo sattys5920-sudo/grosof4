@@ -5,7 +5,8 @@ import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
 
 export function ProfileScreen() {
-  const { viewerId, setViewerId, gmReveal, setGmReveal } = useGame()
+  const { viewerId, setViewerId, nickname, setNickname, displayName, gmReveal, setGmReveal } =
+    useGame()
   const viewer = CHARACTERS.find((c) => c.id === viewerId)!
 
   return (
@@ -13,13 +14,20 @@ export function ProfileScreen() {
       <div className="profile__card">
         <div className="profile__card-head">
           <Badge team={viewer.team} size={56} />
-          <div>
-            <span className="profile__name">{viewer.name}</span>
+          <div className="profile__name-block">
+            <input
+              className="profile__name-input"
+              value={nickname}
+              maxLength={12}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder="닉네임을 입력하세요"
+            />
             <span className={`profile__role profile__role--${viewer.team}`}>
               {TEAM_LABEL[viewer.team]} · {viewer.role}
             </span>
           </div>
         </div>
+        <p className="profile__assigned">배정된 인물: {viewer.name}</p>
         <p className="profile__tagline">{viewer.tagline}</p>
         <dl className="profile__facts">
           <dt>사건 당시</dt>
@@ -40,7 +48,7 @@ export function ProfileScreen() {
               <div key={c.id} className="profile__roster-item">
                 <Badge team={c.team} size={26} revealed={revealed} />
                 <div className="profile__roster-info">
-                  <span className="profile__roster-name">{c.name}</span>
+                  <span className="profile__roster-name">{displayName(c.id)}</span>
                   <span className="profile__roster-role">
                     {revealed ? `${TEAM_LABEL[c.team]} · ${c.role}` : '정체 미상'}
                   </span>
@@ -56,7 +64,13 @@ export function ProfileScreen() {
         <span className="profile__section-label">프로토타입 도구</span>
         <label className="profile__dev-row">
           <span>시점 전환 (관전용 캐릭터 선택)</span>
-          <select value={viewerId} onChange={(e) => setViewerId(e.target.value)}>
+          <select
+            value={viewerId}
+            onChange={(e) => {
+              setViewerId(e.target.value)
+              setNickname(CHARACTERS.find((c) => c.id === e.target.value)!.name)
+            }}
+          >
             {CHARACTERS.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}

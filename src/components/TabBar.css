@@ -1,6 +1,6 @@
 .tabbar {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   border-top: 2px solid var(--line);
   background: var(--void-2);
   flex-shrink: 0;
@@ -20,8 +20,20 @@
 }
 
 .tabbar__icon {
+  position: relative;
+  display: inline-flex;
   font-size: 18px;
   line-height: 1;
+}
+
+.tabbar__ping {
+  position: absolute;
+  top: -2px;
+  right: -6px;
+  width: 6px;
+  height: 6px;
+  background: var(--sin);
+  box-shadow: 0 0 5px var(--sin);
 }
 
 .tabbar__label {

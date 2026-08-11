@@ -6,38 +6,68 @@ import type { RoomId } from '../data/types'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
 
-const CLUES: Record<RoomId, { title: string; text: string }[]> = {
-  library: [
-    { title: '졸업앨범', text: '한소율의 페이지만 유독 다른 종이 재질로 다시 인쇄되어 있다.' },
-    { title: '옛 학교신문 스크랩', text: '"자퇴 처리" 기사 옆에 누군가 손으로 물음표를 세 개 그려두었다.' },
-  ],
-  infirmary: [
-    { title: '방문 기록부', text: '실종 당일 오후 4시 12분, 한소율의 이름 옆에 진료 사유가 지워져 있다.' },
-    { title: '상비약 캐비닛', text: '자물쇠가 새것으로 교체된 흔적. 3년 전엔 없던 것.' },
-  ],
-  broadcast: [
-    { title: '송출 로그', text: '오늘 밤 방송은 이미 폐기된 3년 전 장비 채널에서 흘러나오고 있다.' },
-    { title: '녹음 테이프', text: '사건 당일 저녁 방송 사고 시점의 테이프 라벨이 찢겨 있다.' },
-  ],
-  rooftop: [
-    { title: '난간의 흠집', text: '난간 한쪽에 긁힌 자국과 색이 바랜 리본 조각이 묶여 있다.' },
-    { title: '마지막 목격 지점', text: '이곳에서 한소율을 마지막으로 봤다는 진술이 세 사람분 남아 있다.' },
-  ],
+function charOf(id: string) {
+  return CHARACTERS.find((c) => c.id === id)!
+}
+
+function AdminRoomLog({ roomId }: { roomId: RoomId }) {
+  const { roomMessages, displayName } = useGame()
+  const room = ROOMS.find((r) => r.id === roomId)!
+  return (
+    <div className="rooms__admin-room">
+      <span className="rooms__admin-room-name">{room.name}</span>
+      {roomMessages[roomId].length === 0 && <span className="rooms__empty">대화 없음</span>}
+      {roomMessages[roomId].map((m) => (
+        <div key={m.id} className="rooms__admin-line">
+          <strong>{displayName(m.authorId)}</strong>
+          <span>{m.text}</span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 export function RoomsScreen() {
-  const { viewerId, gmReveal, roomOccupancy, joinRoom, leaveRoom } = useGame()
+  const {
+    viewerId,
+    gmReveal,
+    roomOccupancy,
+    joinRoom,
+    leaveRoom,
+    roomMessages,
+    sendRoomMessage,
+    roomEvents,
+    attemptRoomEvent,
+    displayName,
+  } = useGame()
   const [openRoom, setOpenRoom] = useState<RoomId | null>(null)
-  const viewer = CHARACTERS.find((c) => c.id === viewerId)!
+  const [adminView, setAdminView] = useState(false)
+  const [draft, setDraft] = useState('')
+  const viewer = charOf(viewerId)
 
-  function charOf(id: string) {
-    return CHARACTERS.find((c) => c.id === id)!
+  if (adminView) {
+    return (
+      <div className="rooms">
+        <div className="rooms__detail-head">
+          <button className="rooms__back" onClick={() => setAdminView(false)}>
+            ← 조사실 목록
+          </button>
+          <h2>관리자 전체 열람</h2>
+          <p className="rooms__desc">모든 조사실의 대화를 한 번에 확인한다.</p>
+        </div>
+        {ROOMS.map((r) => (
+          <AdminRoomLog key={r.id} roomId={r.id} />
+        ))}
+      </div>
+    )
   }
 
   if (openRoom) {
     const room = ROOMS.find((r) => r.id === openRoom)!
     const occupants = roomOccupancy[openRoom]
     const iAmHere = occupants.includes(viewerId)
+    const roomEvent = roomEvents[openRoom]
+
     return (
       <div className="rooms">
         <div className="rooms__detail-head">
@@ -57,7 +87,7 @@ export function RoomsScreen() {
               return (
                 <div key={id} className="rooms__occupant">
                   <Badge team={c.team} size={22} revealed={isRevealedTo(viewer, c, gmReveal)} />
-                  <span>{c.name}</span>
+                  <span>{displayName(id)}</span>
                   {id === viewerId && <span className="rooms__me-tag">나</span>}
                 </div>
               )
@@ -79,14 +109,61 @@ export function RoomsScreen() {
         </div>
 
         <div className="rooms__section">
-          <span className="rooms__section-label">발견한 단서</span>
-          <div className="rooms__clues">
-            {CLUES[openRoom].map((clue) => (
-              <div key={clue.title} className="rooms__clue">
-                <span className="rooms__clue-title">{clue.title}</span>
-                <p className="rooms__clue-text">{clue.text}</p>
+          <span className="rooms__section-label">대화</span>
+          <div className="rooms__chat-log">
+            {roomMessages[openRoom].map((m) => (
+              <div key={m.id} className="rooms__chat-line">
+                <span className="rooms__chat-author">{displayName(m.authorId)}</span>
+                <span className="rooms__chat-text">{m.text}</span>
               </div>
             ))}
+          </div>
+          {iAmHere ? (
+            <div className="rooms__composer">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    sendRoomMessage(openRoom, draft)
+                    setDraft('')
+                  }
+                }}
+                placeholder={`${room.name}에서 대화하기...`}
+              />
+              <button
+                onClick={() => {
+                  sendRoomMessage(openRoom, draft)
+                  setDraft('')
+                }}
+              >
+                전송
+              </button>
+            </div>
+          ) : (
+            <p className="rooms__locked-note">입장한 사람만 대화할 수 있다.</p>
+          )}
+        </div>
+
+        <div className="rooms__section">
+          <span className="rooms__section-label">진행 중인 조사</span>
+          <div className="rooms__clue">
+            <span className="rooms__clue-title">{roomEvent.event!.title}</span>
+            <p className="rooms__clue-text">{roomEvent.event!.description}</p>
+            {roomEvent.cleared ? (
+              <>
+                <p className="rooms__clue-result">
+                  단서 확보 — 참여: {roomEvent.participants.map((id) => displayName(id)).join(', ')}
+                </p>
+                <p className="rooms__clue-text rooms__clue-text--reward">{roomEvent.clue}</p>
+              </>
+            ) : iAmHere ? (
+              <button className="rooms__join" onClick={() => attemptRoomEvent(openRoom)}>
+                함께 조사하기 ({occupants.length}/{room.capacity})
+              </button>
+            ) : (
+              <p className="rooms__locked-note">입장한 사람만 함께 조사할 수 있다.</p>
+            )}
           </div>
         </div>
       </div>
@@ -98,15 +175,24 @@ export function RoomsScreen() {
       <div className="rooms__intro">
         <span className="rooms__intro-label">조사실</span>
         <p>선착순으로 입장한다. 각 조사실에는 인원 제한이 있다.</p>
+        {gmReveal && (
+          <button className="rooms__admin-btn" onClick={() => setAdminView(true)}>
+            [관리자] 전체 대화 열람
+          </button>
+        )}
       </div>
       <div className="rooms__grid">
         {ROOMS.map((room) => {
           const occupants = roomOccupancy[room.id]
           const full = occupants.length >= room.capacity
+          const cleared = roomEvents[room.id].cleared
           return (
             <button key={room.id} className="rooms__card" onClick={() => setOpenRoom(room.id)}>
               <div className="rooms__card-top">
-                <span className="rooms__card-name">{room.name}</span>
+                <span className="rooms__card-name">
+                  {room.name}
+                  {cleared && <span className="rooms__card-clue-tag">단서 발견</span>}
+                </span>
                 <span className={`rooms__card-count ${full ? 'is-full' : ''}`}>
                   {occupants.length}/{room.capacity}
                 </span>

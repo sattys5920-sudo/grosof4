@@ -1,0 +1,158 @@
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px 24px;
+  flex: 1;
+}
+
+.feed__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.feed__intro-label {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--veil);
+  letter-spacing: 1px;
+}
+
+.feed__intro p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--bone-dim);
+}
+
+.feed__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feed__post {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--void-2);
+  border: 1px solid var(--line);
+  padding: 14px;
+}
+
+.feed__post-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.feed__tag {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  padding: 2px 6px;
+  border: 1px solid var(--veil);
+  color: var(--veil);
+}
+
+.feed__tag--warn {
+  border-color: var(--sin);
+  color: var(--sin);
+}
+
+.feed__author {
+  font-size: 11px;
+  color: var(--bone-bright);
+}
+
+.feed__time {
+  margin-left: auto;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: var(--bone-dim);
+}
+
+.feed__title {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: 14px;
+  color: var(--bone-bright);
+  text-wrap: balance;
+}
+
+.feed__body {
+  margin: 0;
+  font-size: 13px;
+  color: var(--bone);
+  line-height: 1.6;
+}
+
+.feed__actions {
+  display: flex;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.feed__heart,
+.feed__comment-toggle {
+  background: none;
+  border: none;
+  color: var(--bone-dim);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px 0;
+}
+
+.feed__heart.is-active {
+  color: var(--sin);
+}
+
+.feed__comments {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+}
+
+.feed__comment {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--bone);
+}
+
+.feed__comment-author {
+  color: var(--bone-bright);
+  flex-shrink: 0;
+}
+
+.feed__comment-composer {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.feed__comment-composer input {
+  flex: 1;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  padding: 7px 9px;
+  color: var(--bone-bright);
+  font-size: 12px;
+}
+
+.feed__comment-composer input:focus {
+  outline: none;
+  border-color: var(--veil);
+}
+
+.feed__comment-composer button {
+  background: var(--veil-dim);
+  border: 1px solid var(--veil);
+  color: var(--bone-bright);
+  padding: 0 12px;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  cursor: pointer;
+}

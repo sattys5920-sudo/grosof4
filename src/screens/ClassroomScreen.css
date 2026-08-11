@@ -1,0 +1,148 @@
+.classroom {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px 24px;
+  flex: 1;
+}
+
+.classroom--locked {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 14px;
+  flex: 1;
+}
+
+.classroom__lock-icon {
+  font-size: 32px;
+  color: var(--bone-dim);
+}
+
+.classroom__lock-text {
+  margin: 0;
+  max-width: 260px;
+  font-size: 13px;
+  color: var(--bone-dim);
+  line-height: 1.6;
+}
+
+.classroom__gm-btn {
+  align-self: center;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  padding: 9px 14px;
+  cursor: pointer;
+  border: 1px dashed var(--bone-dim);
+  background: var(--void-2);
+  color: var(--bone-dim);
+}
+
+.classroom__gm-btn:hover {
+  color: var(--bone-bright);
+  border-color: var(--veil);
+}
+
+.classroom__banner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  background: var(--sin-dim);
+  border: 1px solid var(--sin);
+}
+
+.classroom__banner-label {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: var(--bone-bright);
+  letter-spacing: 1px;
+}
+
+.classroom__banner h2 {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: 15px;
+  color: var(--bone-bright);
+  text-wrap: balance;
+}
+
+.classroom__banner p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--bone);
+  line-height: 1.55;
+}
+
+.classroom__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--void-2);
+  border: 1px solid var(--line);
+  padding: 14px;
+}
+
+.classroom__section-label {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--veil);
+  letter-spacing: 1px;
+}
+
+.classroom__participants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.classroom__participant {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--bone-bright);
+}
+
+.classroom__empty {
+  font-size: 12px;
+  color: var(--bone-dim);
+  font-style: italic;
+}
+
+.classroom__cta {
+  align-self: flex-start;
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  padding: 9px 16px;
+  cursor: pointer;
+  border: 1px solid var(--ward);
+  background: var(--ward-dim);
+  color: var(--bone-bright);
+}
+
+.classroom__waiting {
+  margin: 0;
+  font-size: 12px;
+  color: var(--bone-dim);
+  font-style: italic;
+}
+
+.classroom__hint {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  background: var(--ward-dim);
+  border: 1px solid var(--ward);
+}
+
+.classroom__hint p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--bone-bright);
+  line-height: 1.6;
+}

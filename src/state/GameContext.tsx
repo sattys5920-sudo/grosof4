@@ -1,18 +1,39 @@
 import { createContext, useContext, useMemo, useReducer, useState, type ReactNode } from 'react'
 import { CHARACTERS, ROOMS } from '../data/characters'
-import type { RoomId } from '../data/types'
+import { CLASSROOM_EVENTS, ROOM_EVENTS } from '../data/events'
+import { INITIAL_FEED } from '../data/feed'
+import type {
+  ChatMessage,
+  ClassroomState,
+  FeedPost,
+  RoomEventState,
+  RoomId,
+} from '../data/types'
 import { initialMissionState, missionReducer, type MissionState } from './missionEngine'
 
-export type TabId = 'home' | 'rooms' | 'mission' | 'profile'
+export type TabId = 'main' | 'classroom' | 'rooms' | 'mission' | 'profile'
 
 interface GameState {
   viewerId: string
   setViewerId: (id: string) => void
+  nickname: string
+  setNickname: (name: string) => void
+  displayName: (id: string) => string
   activeTab: TabId
   setActiveTab: (tab: TabId) => void
   roomOccupancy: Record<RoomId, string[]>
   joinRoom: (roomId: RoomId) => void
   leaveRoom: (roomId: RoomId) => void
+  roomMessages: Record<RoomId, ChatMessage[]>
+  sendRoomMessage: (roomId: RoomId, text: string) => void
+  roomEvents: Record<RoomId, RoomEventState>
+  attemptRoomEvent: (roomId: RoomId) => void
+  classroom: ClassroomState
+  startInvestigation: () => void
+  joinInvestigation: () => void
+  feed: FeedPost[]
+  toggleHeart: (postId: string) => void
+  addComment: (postId: string, text: string) => void
   gmReveal: boolean
   setGmReveal: (v: boolean) => void
   mission: MissionState
@@ -32,12 +53,47 @@ const INITIAL_OCCUPANCY: Record<RoomId, string[]> = {
   rooftop: [],
 }
 
+const INITIAL_ROOM_MESSAGES: Record<RoomId, ChatMessage[]> = {
+  library: [
+    { id: 'l1', authorId: 'jimin', text: '졸업앨범부터 뒤져보자, 페이지 순서가 좀 이상해', time: '00:11' },
+    { id: 'l2', authorId: 'haneul', text: '...나는 그냥 지켜볼게', time: '00:12' },
+  ],
+  infirmary: [{ id: 'i1', authorId: 'ayoung', text: '기록부에 그날 오후 진료 사유가 지워져 있어', time: '00:10' }],
+  broadcast: [
+    { id: 'b1', authorId: 'seungwoo', text: '이 채널, 3년 전에 폐기된 장비인데 왜 지금 살아있지', time: '00:13' },
+    { id: 'b2', authorId: 'gihoon', text: '...나 먼저 나갈게', time: '00:14' },
+  ],
+  rooftop: [],
+}
+
+function initialRoomEvents(): Record<RoomId, RoomEventState> {
+  const result = {} as Record<RoomId, RoomEventState>
+  for (const room of ROOMS) {
+    result[room.id] = { event: ROOM_EVENTS[room.id], participants: [], cleared: false, clue: null }
+  }
+  return result
+}
+
+function initialClassroom(): ClassroomState {
+  return { status: 'locked', event: null, participants: [], hint: null, presetIndex: 0 }
+}
+
 export function GameProvider({ children }: { children: ReactNode }) {
   const [viewerId, setViewerId] = useState(CHARACTERS[0].id)
-  const [activeTab, setActiveTab] = useState<TabId>('home')
+  const [nickname, setNickname] = useState(CHARACTERS[0].name)
+  const [activeTab, setActiveTab] = useState<TabId>('main')
   const [roomOccupancy, setRoomOccupancy] = useState(INITIAL_OCCUPANCY)
+  const [roomMessages, setRoomMessages] = useState(INITIAL_ROOM_MESSAGES)
+  const [roomEvents, setRoomEvents] = useState<Record<RoomId, RoomEventState>>(initialRoomEvents)
+  const [classroom, setClassroom] = useState<ClassroomState>(initialClassroom)
+  const [feed, setFeed] = useState<FeedPost[]>(INITIAL_FEED)
   const [gmReveal, setGmReveal] = useState(false)
   const [mission, dispatch] = useReducer(missionReducer, undefined, initialMissionState)
+
+  function displayName(id: string) {
+    if (id === viewerId) return nickname
+    return CHARACTERS.find((c) => c.id === id)?.name ?? '???'
+  }
 
   function currentRoomOf(id: string): RoomId | null {
     for (const room of ROOMS) {
@@ -67,6 +123,101 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }))
   }
 
+  function sendRoomMessage(roomId: RoomId, text: string) {
+    if (!text.trim()) return
+    setRoomMessages((prev) => ({
+      ...prev,
+      [roomId]: [
+        ...prev[roomId],
+        { id: `${roomId}-${prev[roomId].length + 1}`, authorId: viewerId, text: text.trim(), time: '지금' },
+      ],
+    }))
+  }
+
+  function attemptRoomEvent(roomId: RoomId) {
+    setRoomEvents((prev) => {
+      const state = prev[roomId]
+      if (state.cleared) return prev
+      const capacity = ROOMS.find((r) => r.id === roomId)!.capacity
+      const present = roomOccupancy[roomId]
+      const cleared = present.length >= capacity
+      return {
+        ...prev,
+        [roomId]: {
+          ...state,
+          participants: present,
+          cleared,
+          clue: cleared ? state.event!.reward : null,
+        },
+      }
+    })
+  }
+
+  function startInvestigation() {
+    setClassroom((prev) => {
+      const nextIndex = prev.presetIndex % CLASSROOM_EVENTS.length
+      return {
+        status: 'active',
+        event: CLASSROOM_EVENTS[nextIndex],
+        participants: [],
+        hint: null,
+        presetIndex: prev.presetIndex + 1,
+      }
+    })
+  }
+
+  function joinInvestigation() {
+    setClassroom((prev) => {
+      if (prev.status !== 'active' || !prev.event) return prev
+      if (prev.participants.includes(viewerId)) return prev
+      const others = CHARACTERS.map((c) => c.id).filter(
+        (id) => id !== viewerId && !prev.participants.includes(id),
+      )
+      const shuffled = [...others].sort(() => Math.random() - 0.5)
+      const needMore = Math.max(0, prev.event.needed - (prev.participants.length + 1))
+      const joinedNow = [viewerId, ...shuffled.slice(0, needMore)]
+      const participants = [...prev.participants, ...joinedNow]
+      const cleared = participants.length >= prev.event.needed
+      return {
+        ...prev,
+        participants,
+        status: cleared ? 'cleared' : 'active',
+        hint: cleared ? prev.event.reward : null,
+      }
+    })
+  }
+
+  function toggleHeart(postId: string) {
+    setFeed((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              heartedByViewer: !p.heartedByViewer,
+              hearts: p.hearts + (p.heartedByViewer ? -1 : 1),
+            }
+          : p,
+      ),
+    )
+  }
+
+  function addComment(postId: string, text: string) {
+    if (!text.trim()) return
+    setFeed((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              comments: [
+                ...p.comments,
+                { id: `${postId}-${p.comments.length + 1}`, authorId: viewerId, text: text.trim() },
+              ],
+            }
+          : p,
+      ),
+    )
+  }
+
   function confirmProposal(team: string[]) {
     dispatch({ type: 'CONFIRM_PROPOSAL', team })
   }
@@ -87,11 +238,24 @@ export function GameProvider({ children }: { children: ReactNode }) {
     () => ({
       viewerId,
       setViewerId,
+      nickname,
+      setNickname,
+      displayName,
       activeTab,
       setActiveTab,
       roomOccupancy,
       joinRoom,
       leaveRoom,
+      roomMessages,
+      sendRoomMessage,
+      roomEvents,
+      attemptRoomEvent,
+      classroom,
+      startInvestigation,
+      joinInvestigation,
+      feed,
+      toggleHeart,
+      addComment,
       gmReveal,
       setGmReveal,
       mission,
@@ -101,7 +265,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
       continueMission,
       resetMission,
     }),
-    [viewerId, activeTab, roomOccupancy, gmReveal, mission],
+    [
+      viewerId,
+      nickname,
+      activeTab,
+      roomOccupancy,
+      roomMessages,
+      roomEvents,
+      classroom,
+      feed,
+      gmReveal,
+      mission,
+    ],
   )
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>

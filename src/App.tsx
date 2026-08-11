@@ -1,7 +1,8 @@
 import './App.css'
 import { GameProvider, useGame } from './state/GameContext'
 import { TabBar } from './components/TabBar'
-import { HomeScreen } from './screens/HomeScreen'
+import { MainFeedScreen } from './screens/MainFeedScreen'
+import { ClassroomScreen } from './screens/ClassroomScreen'
 import { RoomsScreen } from './screens/RoomsScreen'
 import { MissionScreen } from './screens/MissionScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
@@ -9,8 +10,10 @@ import { ProfileScreen } from './screens/ProfileScreen'
 function Screen() {
   const { activeTab } = useGame()
   switch (activeTab) {
-    case 'home':
-      return <HomeScreen />
+    case 'main':
+      return <MainFeedScreen />
+    case 'classroom':
+      return <ClassroomScreen />
     case 'rooms':
       return <RoomsScreen />
     case 'mission':

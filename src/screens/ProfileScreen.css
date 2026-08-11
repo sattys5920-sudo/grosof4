@@ -21,16 +21,33 @@
   gap: 12px;
 }
 
-.profile__card-head > div {
+.profile__name-block {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
+  flex: 1;
 }
 
-.profile__name {
+.profile__name-input {
   font-family: var(--font-title);
   font-size: 16px;
   color: var(--bone-bright);
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  width: 100%;
+}
+
+.profile__name-input:focus {
+  outline: none;
+  border-color: var(--veil);
+}
+
+.profile__assigned {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: var(--bone-dim);
 }
 
 .profile__role {
