@@ -1,0 +1,145 @@
+.home {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.home__banner {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 16px;
+  background: var(--veil-dim);
+  border-bottom: 2px solid var(--line);
+}
+
+.home__banner-label {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: var(--veil);
+  letter-spacing: 1px;
+}
+
+.home__banner-text {
+  font-size: 12px;
+  color: var(--bone-bright);
+}
+
+.home__log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.home__system {
+  align-self: center;
+  max-width: 90%;
+  text-align: center;
+  padding: 8px 12px;
+  background: var(--sin-dim);
+  border: 1px solid var(--sin);
+  color: var(--bone-bright);
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.home__msg {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.home__msg.is-me {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.home__msg.is-me .home__msg-head {
+  flex-direction: row-reverse;
+}
+
+.home__msg-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 78%;
+}
+
+.home__msg-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.home__msg-name {
+  font-size: 11px;
+  color: var(--bone-dim);
+}
+
+.home__time {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: var(--bone-dim);
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.home__msg-text {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--bone);
+}
+
+.home__msg.is-me .home__msg-text {
+  background: var(--ward-dim);
+  border-color: var(--ward);
+}
+
+.home__composer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 2px solid var(--line);
+  background: var(--void-2);
+  flex-shrink: 0;
+}
+
+.home__composer input {
+  flex: 1;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  padding: 9px 10px;
+  color: var(--bone-bright);
+  font-size: 13px;
+}
+
+.home__composer input:focus {
+  outline: none;
+  border-color: var(--veil);
+}
+
+.home__composer button {
+  background: var(--sin-dim);
+  border: 1px solid var(--sin);
+  color: var(--bone-bright);
+  padding: 0 14px;
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.home__composer button:hover {
+  background: var(--sin);
+}

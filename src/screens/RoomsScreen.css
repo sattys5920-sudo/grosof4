@@ -1,0 +1,203 @@
+.rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px 20px;
+  flex: 1;
+}
+
+.rooms__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rooms__intro-label {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--veil);
+  letter-spacing: 1px;
+}
+
+.rooms__intro p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--bone-dim);
+}
+
+.rooms__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rooms__card {
+  text-align: left;
+  background: var(--void-2);
+  border: 1px solid var(--line);
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rooms__card:hover {
+  border-color: var(--veil);
+}
+
+.rooms__card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.rooms__card-name {
+  font-family: var(--font-title);
+  font-size: 14px;
+  color: var(--bone-bright);
+}
+
+.rooms__card-count {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  color: var(--ward);
+}
+
+.rooms__card-count.is-full {
+  color: var(--sin);
+}
+
+.rooms__card-desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--bone-dim);
+  line-height: 1.5;
+}
+
+.rooms__card-avatars {
+  display: flex;
+  gap: 6px;
+  min-height: 18px;
+}
+
+.rooms__detail-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rooms__back {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--bone-dim);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.rooms__detail-head h2 {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: 16px;
+  color: var(--bone-bright);
+}
+
+.rooms__desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--bone-dim);
+  line-height: 1.5;
+}
+
+.rooms__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.rooms__section-label {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--veil);
+  letter-spacing: 1px;
+}
+
+.rooms__occupants {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rooms__occupant {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.rooms__me-tag {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: var(--ward);
+  border: 1px solid var(--ward);
+  padding: 1px 5px;
+}
+
+.rooms__empty {
+  font-size: 12px;
+  color: var(--bone-dim);
+  font-style: italic;
+}
+
+.rooms__join,
+.rooms__leave {
+  align-self: flex-start;
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  padding: 8px 14px;
+  cursor: pointer;
+  border: 1px solid var(--ward);
+  background: var(--ward-dim);
+  color: var(--bone-bright);
+}
+
+.rooms__leave {
+  border-color: var(--sin);
+  background: var(--sin-dim);
+}
+
+.rooms__join:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: var(--line);
+  background: none;
+}
+
+.rooms__clues {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rooms__clue {
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  padding: 10px;
+}
+
+.rooms__clue-title {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--bone-bright);
+}
+
+.rooms__clue-text {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--bone-dim);
+  line-height: 1.5;
+}

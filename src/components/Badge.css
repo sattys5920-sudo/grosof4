@@ -1,0 +1,82 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  image-rendering: pixelated;
+}
+
+.badge--ward {
+  background: var(--ward-dim);
+  border: 2px solid var(--ward);
+}
+.badge--sin {
+  background: var(--sin-dim);
+  border: 2px solid var(--sin);
+}
+.badge--veil {
+  background: var(--veil-dim);
+  border: 2px solid var(--veil);
+}
+
+.badge--unknown {
+  background: var(--void-3);
+  border: 2px dashed var(--bone-dim);
+  color: var(--bone-dim);
+  font-family: var(--font-pixel);
+  line-height: 1;
+}
+
+.badge__mark {
+  display: block;
+  width: 58%;
+  height: 58%;
+}
+
+/* ward: eye shape, stepped */
+.badge--ward .badge__mark {
+  background: var(--ward);
+  clip-path: polygon(
+    50% 0%,
+    75% 15%,
+    100% 50%,
+    75% 85%,
+    50% 100%,
+    25% 85%,
+    0% 50%,
+    25% 15%
+  );
+}
+.badge--ward .badge__mark::after {
+  content: '';
+}
+
+/* sin: horned mask, stepped */
+.badge--sin .badge__mark {
+  background: var(--sin);
+  clip-path: polygon(
+    20% 0%,
+    35% 25%,
+    30% 0%,
+    45% 30%,
+    55% 30%,
+    70% 0%,
+    65% 25%,
+    80% 0%,
+    75% 45%,
+    100% 60%,
+    75% 65%,
+    75% 100%,
+    25% 100%,
+    25% 65%,
+    0% 60%,
+    25% 45%
+  );
+}
+
+/* veil: half-diamond, split */
+.badge--veil .badge__mark {
+  background: linear-gradient(135deg, var(--veil) 50%, var(--bone-dim) 50%);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}

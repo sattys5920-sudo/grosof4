@@ -1,0 +1,72 @@
+.shell {
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background: var(--void);
+  border-inline: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.shell__fog {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 20% -10%, rgba(125, 106, 168, 0.12), transparent 55%),
+    radial-gradient(ellipse at 90% 0%, rgba(168, 56, 47, 0.08), transparent 50%);
+}
+
+.shell__header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 2px solid var(--line);
+  background: var(--void-2);
+  flex-shrink: 0;
+}
+
+.shell__title {
+  font-family: var(--font-title);
+  font-size: 14px;
+  color: var(--bone-bright);
+  letter-spacing: 1px;
+}
+
+.shell__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--bone-dim);
+}
+
+.shell__dot {
+  width: 6px;
+  height: 6px;
+  background: var(--sin);
+  box-shadow: 0 0 6px var(--sin);
+  animation: pulse 2s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.shell__body {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}

@@ -1,0 +1,91 @@
+@font-face {
+  font-family: 'Galmuri9';
+  src: url('/fonts/Galmuri9.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galmuri11';
+  src: url('/fonts/Galmuri11.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galmuri11';
+  src: url('/fonts/Galmuri11-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Galmuri14';
+  src: url('/fonts/Galmuri14.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  /* base */
+  --void: #0a0908;
+  --void-2: #131110;
+  --void-3: #1c1815;
+  --line: #332c26;
+  --bone: #d9cfbf;
+  --bone-dim: #8a8073;
+  --bone-bright: #f0e8d8;
+
+  /* faction accents */
+  --sin: #a8382f;
+  --sin-dim: #4a1f1c;
+  --ward: #6b8451;
+  --ward-dim: #2c3924;
+  --veil: #7d6aa8;
+  --veil-dim: #362d4a;
+
+  --font-pixel: 'Galmuri9', monospace;
+  --font-body: 'Galmuri11', monospace;
+  --font-title: 'Galmuri14', monospace;
+
+  color-scheme: dark;
+  color: var(--bone);
+  background: var(--void);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100svh;
+  background: var(--void);
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  justify-content: center;
+}
+
+button,
+input,
+textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--sin-dim);
+  color: var(--bone-bright);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+}
