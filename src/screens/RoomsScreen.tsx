@@ -2,29 +2,14 @@ import { useState } from 'react'
 import './RoomsScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS, ROOMS } from '../data/characters'
+import { ROOM_PUZZLE_BANK } from '../data/events'
 import type { RoomId } from '../data/types'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
+import { EventDispatchSheet, type DispatchSection } from '../components/EventDispatchSheet'
 
 function charOf(id: string) {
   return CHARACTERS.find((c) => c.id === id)!
-}
-
-function AdminRoomLog({ roomId }: { roomId: RoomId }) {
-  const { roomMessages, displayName } = useGame()
-  const room = ROOMS.find((r) => r.id === roomId)!
-  return (
-    <div className="rooms__admin-room">
-      <span className="rooms__admin-room-name">{room.name}</span>
-      {roomMessages[roomId].length === 0 && <span className="rooms__empty">대화 없음</span>}
-      {roomMessages[roomId].map((m) => (
-        <div key={m.id} className="rooms__admin-line">
-          <strong>{displayName(m.authorId)}</strong>
-          <span>{m.text}</span>
-        </div>
-      ))}
-    </div>
-  )
 }
 
 export function RoomsScreen() {
@@ -39,35 +24,24 @@ export function RoomsScreen() {
     sendRoomMessage,
     roomEvents,
     submitRoomAnswer,
+    dispatchRoomPuzzle,
+    closeRoomInvestigation,
     displayName,
   } = useGame()
   const [openRoom, setOpenRoom] = useState<RoomId | null>(null)
   const [draft, setDraft] = useState('')
   const [answer, setAnswer] = useState('')
+  const [sheetOpen, setSheetOpen] = useState(false)
   const viewer = viewerId ? charOf(viewerId) : null
 
   function revealedFor(c: ReturnType<typeof charOf>) {
     return viewer ? isRevealedTo(viewer, c, gmReveal) : gmReveal
   }
 
-  if (isAdmin) {
-    return (
-      <div className="rooms">
-        <div className="rooms__intro">
-          <span className="rooms__intro-label">관리자 전체 열람</span>
-          <p>모든 조사실의 대화를 한 번에 확인한다.</p>
-        </div>
-        {ROOMS.map((r) => (
-          <AdminRoomLog key={r.id} roomId={r.id} />
-        ))}
-      </div>
-    )
-  }
-
   if (openRoom) {
     const room = ROOMS.find((r) => r.id === openRoom)!
     const occupants = roomOccupancy[openRoom]
-    const iAmHere = occupants.includes(viewerId ?? '')
+    const iAmHere = !!viewerId && occupants.includes(viewerId)
     const roomEvent = roomEvents[openRoom]
 
     function submitChat() {
@@ -79,32 +53,63 @@ export function RoomsScreen() {
       setAnswer('')
     }
 
+    const sections: DispatchSection[] = [
+      {
+        label: '방탈출 문제',
+        items: ROOM_PUZZLE_BANK.map((puzzle) => ({
+          id: puzzle.id,
+          category: puzzle.category,
+          title: puzzle.title,
+          brief: puzzle.brief,
+          answer: puzzle.answer,
+          onSend: () => dispatchRoomPuzzle(openRoom!, puzzle),
+        })),
+      },
+    ]
+
     return (
       <div className="rooms">
         <div className={`rooms__pin ${roomEvent.cleared ? 'is-cleared' : ''}`}>
           <button className="rooms__back" onClick={() => setOpenRoom(null)}>
             ← 조사실 목록
           </button>
-          <span className="rooms__pin-title">{room.name}</span>
+          <div className="rooms__pin-head">
+            <span className="rooms__pin-title">{room.name}</span>
+            {gmReveal && (
+              <div className="rooms__pin-gm">
+                {roomEvent.event && (
+                  <button className="rooms__pin-reset" onClick={() => closeRoomInvestigation(openRoom!)}>
+                    초기화
+                  </button>
+                )}
+                <button className="rooms__pin-plus" onClick={() => setSheetOpen(true)} aria-label="문제 발송">
+                  +
+                </button>
+              </div>
+            )}
+          </div>
           <div className="rooms__pin-occupants">
-            <span className="rooms__pin-count">{occupants.length}/{room.capacity}</span>
+            <span className="rooms__pin-count">
+              {occupants.length}/{room.capacity}
+            </span>
             {occupants.map((id) => {
               const c = charOf(id)
               return <Badge key={id} team={c.team} size={18} revealed={revealedFor(c)} />
             })}
-            {iAmHere ? (
-              <button className="rooms__pin-toggle" onClick={() => leaveRoom(openRoom!)}>
-                나가기
-              </button>
-            ) : (
-              <button
-                className="rooms__pin-toggle"
-                disabled={occupants.length >= room.capacity}
-                onClick={() => joinRoom(openRoom!)}
-              >
-                {occupants.length >= room.capacity ? '인원 초과' : '입장'}
-              </button>
-            )}
+            {!isAdmin &&
+              (iAmHere ? (
+                <button className="rooms__pin-toggle" onClick={() => leaveRoom(openRoom!)}>
+                  나가기
+                </button>
+              ) : (
+                <button
+                  className="rooms__pin-toggle"
+                  disabled={occupants.length >= room.capacity}
+                  onClick={() => joinRoom(openRoom!)}
+                >
+                  {occupants.length >= room.capacity ? '인원 초과' : '입장'}
+                </button>
+              ))}
           </div>
 
           {!roomEvent.event && <p className="rooms__pin-ambient">{room.ambientText}</p>}
@@ -130,7 +135,7 @@ export function RoomsScreen() {
                   <button onClick={submitPuzzleAnswer}>제출</button>
                 </div>
               )}
-              {!roomEvent.cleared && !iAmHere && (
+              {!roomEvent.cleared && !iAmHere && !isAdmin && (
                 <p className="rooms__pin-note">입장한 사람만 함께 풀 수 있다.</p>
               )}
               {roomEvent.note && <p className="rooms__pin-note">{roomEvent.note}</p>}
@@ -146,7 +151,7 @@ export function RoomsScreen() {
 
         <div className="rooms__log">
           {roomMessages[openRoom].length === 0 && (
-            <p className="rooms__empty">아직 대화가 없다.</p>
+            <p className="rooms__empty">아직 대화가 없다....... 먼저 말을 걸어보자.</p>
           )}
           {roomMessages[openRoom].map((m) => (
             <div key={m.id} className={`rooms__msg ${m.authorId === viewerId ? 'is-me' : ''}`}>
@@ -167,8 +172,12 @@ export function RoomsScreen() {
             <button onClick={submitChat}>전송</button>
           </div>
         ) : (
-          <p className="rooms__locked-note">입장한 사람만 대화할 수 있다.</p>
+          <p className="rooms__locked-note">
+            {isAdmin ? '불가는 관전 중이다....... 위의 + 버튼으로 문제를 발동할 수 있다.' : '입장한 사람만 대화할 수 있다.'}
+          </p>
         )}
+
+        {sheetOpen && <EventDispatchSheet sections={sections} onClose={() => setSheetOpen(false)} />}
       </div>
     )
   }

@@ -127,10 +127,52 @@
   border-bottom-color: var(--ward);
 }
 
+.rooms__pin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .rooms__pin-title {
   font-family: var(--font-title);
   font-size: 17px;
   color: var(--bone-bright);
+}
+
+.rooms__pin-gm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rooms__pin-reset {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  padding: 5px 8px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--void-3);
+  color: var(--bone-dim);
+}
+
+.rooms__pin-reset:hover {
+  border-color: var(--sin);
+  color: var(--bone-bright);
+}
+
+.rooms__pin-plus {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--veil);
+  background: var(--veil-dim);
+  color: var(--bone-bright);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.rooms__pin-plus:hover {
+  background: var(--veil);
 }
 
 .rooms__pin-occupants {
@@ -357,30 +399,3 @@
   background: var(--void-2);
 }
 
-.rooms__admin-room {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0 16px 10px;
-  background: var(--void-2);
-  border: 1px solid var(--line);
-  padding: 12px;
-}
-
-.rooms__admin-room-name {
-  font-family: var(--font-title);
-  font-size: 15px;
-  color: var(--veil);
-}
-
-.rooms__admin-line {
-  display: flex;
-  gap: 6px;
-  font-size: 13.5px;
-  color: var(--bone);
-}
-
-.rooms__admin-line strong {
-  color: var(--bone-bright);
-  flex-shrink: 0;
-}

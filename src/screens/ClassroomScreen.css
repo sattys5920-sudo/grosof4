@@ -5,40 +5,80 @@
   min-height: 0;
 }
 
-.classroom--locked {
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 14px;
-  padding: 14px 16px;
-}
-
-.classroom__lock-icon {
-  font-size: 32px;
-  color: var(--bone-dim);
-}
-
-.classroom__lock-text {
-  margin: 0;
-  max-width: 260px;
-  font-size: 14.5px;
-  color: var(--bone-dim);
-  line-height: 1.65;
-}
-
 .classroom__pin {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 12px 16px;
-  background: var(--sin-dim);
-  border-bottom: 2px solid var(--sin);
+  background: var(--void-2);
+  border-bottom: 2px solid var(--line);
   flex-shrink: 0;
+}
+
+.classroom__pin:has(.classroom__pin-title) {
+  background: var(--sin-dim);
+  border-bottom-color: var(--sin);
 }
 
 .classroom__pin.is-cleared {
   background: var(--ward-dim);
   border-bottom-color: var(--ward);
+}
+
+.classroom__pin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.classroom__pin-heading {
+  font-family: var(--font-title);
+  font-size: 15px;
+  color: var(--bone-bright);
+}
+
+.classroom__pin-gm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.classroom__pin-reset {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  padding: 5px 8px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--void-3);
+  color: var(--bone-dim);
+}
+
+.classroom__pin-reset:hover {
+  border-color: var(--sin);
+  color: var(--bone-bright);
+}
+
+.classroom__pin-plus {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--veil);
+  background: var(--veil-dim);
+  color: var(--bone-bright);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.classroom__pin-plus:hover {
+  background: var(--veil);
+}
+
+.classroom__pin-ambient {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--bone-dim);
+  font-style: italic;
+  line-height: 1.6;
 }
 
 .classroom__pin-tag {

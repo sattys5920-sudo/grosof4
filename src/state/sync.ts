@@ -46,6 +46,7 @@ export interface PlayerDoc {
   abilityUnlocked: boolean
   abilityUsed: boolean
   personalClues: string[]
+  gmDmMessages: ChatMessage[]
 }
 
 export interface FeedPostDoc {
@@ -185,6 +186,7 @@ export async function claimRandomSlot(
       abilityUnlocked: false,
       abilityUsed: false,
       personalClues: [],
+      gmDmMessages: [],
     })
     return assigned.id
   })
@@ -192,6 +194,10 @@ export async function claimRandomSlot(
 
 export async function patchPlayer(characterId: string, patch: Partial<PlayerDoc>) {
   await updateDoc(playerRef(characterId), patch)
+}
+
+export async function sendGmDmMessageSync(characterId: string, msg: ChatMessage) {
+  await updateDoc(playerRef(characterId), { gmDmMessages: arrayUnion(msg) })
 }
 
 export async function patchSession(patch: Partial<SessionDoc>) {

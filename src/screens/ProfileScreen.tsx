@@ -1,12 +1,9 @@
 import { useState } from 'react'
 import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
-import { CHARACTERS, ROOMS, roleLabel } from '../data/characters'
+import { CHARACTERS, roleLabel } from '../data/characters'
 import { Badge } from '../components/Badge'
-import { EVENT_LIBRARY } from '../data/eventLibrary'
-import { CLASSROOM_PUZZLES } from '../data/classroomPuzzles'
-import { ROOM_PUZZLE_BANK } from '../data/events'
-import type { BroadcastKind, RoomId } from '../data/types'
+import type { BroadcastKind } from '../data/types'
 
 const PRESETS: { kind: BroadcastKind; label: string; title: string; body: string }[] = [
   {
@@ -24,10 +21,107 @@ const PRESETS: { kind: BroadcastKind; label: string; title: string; body: string
   {
     kind: 'notice',
     label: '공지',
-    title: '관리자 공지',
+    title: '불가의 공지',
     body: '내용을 입력하세요.',
   },
 ]
+
+function PlayerGmDmPanel() {
+  const { gmDmMessages, sendGmDm } = useGame()
+  const [draft, setDraft] = useState('')
+
+  function submit() {
+    sendGmDm(draft)
+    setDraft('')
+  }
+
+  return (
+    <div className="profile__section profile__dm">
+      <span className="profile__section-label">불가에게 개인 메시지</span>
+      <p className="profile__gm-note">다른 부원에게는 보이지 않는, 불가와 나 사이의 개인 대화다.</p>
+      <div className="profile__dm-log">
+        {gmDmMessages.length === 0 && (
+          <p className="profile__dm-empty">아직 대화가 없다....... 궁금한 게 있으면 먼저 말을 걸어보자.</p>
+        )}
+        {gmDmMessages.map((m) => (
+          <div key={m.id} className={`profile__dm-msg ${m.authorId === 'admin' ? 'is-gm' : 'is-me'}`}>
+            <span className="profile__dm-msg-name">{m.authorId === 'admin' ? '불가' : '나'}</span>
+            <p className="profile__dm-msg-text">{m.text}</p>
+          </div>
+        ))}
+      </div>
+      <div className="profile__dm-composer">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && submit()}
+          placeholder="불가에게 메시지 보내기......"
+        />
+        <button onClick={submit}>전송</button>
+      </div>
+    </div>
+  )
+}
+
+function AdminGmDmPanel() {
+  const { players, sendGmDmAsAdmin } = useGame()
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+
+  function toggle(characterId: string) {
+    setOpenId((prev) => (prev === characterId ? null : characterId))
+    setDraft('')
+  }
+
+  function submit(characterId: string) {
+    sendGmDmAsAdmin(characterId, draft)
+    setDraft('')
+  }
+
+  return (
+    <div className="profile__gm">
+      <span className="profile__section-label">불가 전용 — 개인 대화</span>
+      <p className="profile__gm-note">부원 각자와 나눈 개인 대화를 확인하고 답장할 수 있다.</p>
+      <div className="profile__dm-roster">
+        {CHARACTERS.map((c) => {
+          const player = players[c.id]
+          const messages = player?.gmDmMessages ?? []
+          const isOpen = openId === c.id
+          return (
+            <div key={c.id} className="profile__dm-thread">
+              <button className="profile__dm-thread-toggle" onClick={() => toggle(c.id)} disabled={!player}>
+                <span>{player ? player.nickname : `${c.name} (미참가)`}</span>
+                {messages.length > 0 && <span className="profile__dm-thread-count">{messages.length}</span>}
+              </button>
+              {isOpen && player && (
+                <div className="profile__dm-thread-body">
+                  <div className="profile__dm-log">
+                    {messages.length === 0 && <p className="profile__dm-empty">아직 대화가 없다.</p>}
+                    {messages.map((m) => (
+                      <div key={m.id} className={`profile__dm-msg ${m.authorId === 'admin' ? 'is-gm' : 'is-me'}`}>
+                        <span className="profile__dm-msg-name">{m.authorId === 'admin' ? '불가' : player.nickname}</span>
+                        <p className="profile__dm-msg-text">{m.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="profile__dm-composer">
+                    <input
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && submit(c.id)}
+                      placeholder={`${player.nickname}에게 답장하기......`}
+                    />
+                    <button onClick={() => submit(c.id)}>전송</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 export function ProfileScreen() {
   const {
@@ -40,10 +134,6 @@ export function ProfileScreen() {
     displayName,
     gmReveal,
     sendBroadcast,
-    classroom,
-    dispatchClassroomEvent,
-    dispatchPuzzle,
-    closeInvestigation,
     missionsOpen,
     openMissions,
     abilityUnlocked,
@@ -58,13 +148,9 @@ export function ProfileScreen() {
     forgeResult,
     revengerCheck,
     mission,
-    roomEvents,
-    dispatchRoomPuzzle,
-    closeRoomInvestigation,
   } = useGame()
   const viewer = viewerId ? CHARACTERS.find((c) => c.id === viewerId)! : null
   const [kind, setKind] = useState<BroadcastKind>('event')
-  const [targetRoomId, setTargetRoomId] = useState<RoomId>(ROOMS[0].id)
   const [title, setTitle] = useState(PRESETS[0].title)
   const [body, setBody] = useState(PRESETS[0].body)
   const [targetId, setTargetId] = useState('')
@@ -91,12 +177,6 @@ export function ProfileScreen() {
     const reader = new FileReader()
     reader.onload = () => updatePhoto(reader.result as string)
     reader.readAsDataURL(file)
-  }
-
-  const CLASSROOM_STATUS_LABEL: Record<typeof classroom.status, string> = {
-    locked: '잠김',
-    active: '진행 중',
-    cleared: '완료',
   }
 
   return (
@@ -276,16 +356,10 @@ export function ProfileScreen() {
       ) : (
         <div className="profile__card">
           <div className="profile__card-head">
-            <div className="profile__admin-badge">GM</div>
+            <div className="profile__admin-badge">불가</div>
             <div className="profile__name-block">
-              <input
-                className="profile__name-input"
-                value={nickname}
-                maxLength={12}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="닉네임을 입력하세요"
-              />
-              <span className="profile__role">관리자 계정</span>
+              <span className="profile__name-static">{nickname}</span>
+              <span className="profile__role">진행자 계정</span>
             </div>
           </div>
           <p className="profile__tagline">역할이 배정되지 않는다. 진행과 연출만 담당한다.</p>
@@ -304,10 +378,12 @@ export function ProfileScreen() {
         </div>
       </div>
 
+      {!gmReveal && <PlayerGmDmPanel />}
+
       {gmReveal && (
         <>
           <div className="profile__gm">
-            <span className="profile__section-label">GM 전용 — 빠른 쪽지 발송</span>
+            <span className="profile__section-label">불가 전용 — 빠른 쪽지 발송</span>
             <p className="profile__gm-note">
               모든 조사실·교실·원정 정보를 열람할 수 있고, 아래에서 전원에게 팝업 쪽지를 즉시 보낼 수 있다.
             </p>
@@ -341,7 +417,7 @@ export function ProfileScreen() {
           </div>
 
           <div className="profile__gm">
-            <span className="profile__section-label">GM 전용 — 원정</span>
+            <span className="profile__section-label">불가 전용 — 원정</span>
             <p className="profile__gm-note">
               원정 상태: <strong>{missionsOpen ? '열림' : '잠김'}</strong>
             </p>
@@ -350,110 +426,12 @@ export function ProfileScreen() {
                 원정 열기 (5 원정 · 3 선승)
               </button>
             )}
-          </div>
-
-          <div className="profile__gm">
-            <span className="profile__section-label">GM 전용 — 교실 단체조사 문제 (10)</span>
             <p className="profile__gm-note">
-              교실 상태: <strong>{CLASSROOM_STATUS_LABEL[classroom.status]}</strong>
-              {classroom.event && ` — ${classroom.event.title}`}
+              교실·조사실의 문제 발동은 각 채팅 화면 안의 + 버튼에서 진행한다.
             </p>
-            {classroom.status !== 'locked' && (
-              <button className="profile__gm-preset" onClick={closeInvestigation}>
-                교실 잠그기 / 초기화
-              </button>
-            )}
-            <div className="profile__gm-eventlist">
-              {CLASSROOM_PUZZLES.map((puzzle) => (
-                <div key={puzzle.id} className="profile__gm-event">
-                  <div className="profile__gm-event-head">
-                    <span className="profile__gm-event-category">{puzzle.category}</span>
-                    <span className="profile__gm-event-title">{puzzle.title}</span>
-                  </div>
-                  <p className="profile__gm-event-desc">{puzzle.brief}</p>
-                  <button className="profile__gm-event-send" onClick={() => dispatchPuzzle(puzzle)}>
-                    발송
-                  </button>
-                </div>
-              ))}
-            </div>
           </div>
 
-          <div className="profile__gm">
-            <span className="profile__section-label">GM 전용 — 조사실 문제 발동 (50)</span>
-            <p className="profile__gm-note">
-              대상 조사실을 고른 뒤, 문제 목록에서 발송한다. 조사실은 문제를 발동하기 전까지 대화만 가능한 분위기 상태로 유지된다.
-            </p>
-            <div className="profile__gm-presets">
-              {ROOMS.map((room) => {
-                const state = roomEvents[room.id]
-                const statusLabel = state.cleared ? '단서 확보' : state.event ? '조사 중' : '분위기'
-                return (
-                  <button
-                    key={room.id}
-                    className={`profile__gm-preset ${targetRoomId === room.id ? 'is-active' : ''}`}
-                    onClick={() => setTargetRoomId(room.id)}
-                  >
-                    {room.name} · {statusLabel}
-                  </button>
-                )
-              })}
-            </div>
-            {roomEvents[targetRoomId].event && (
-              <button
-                className="profile__gm-preset"
-                onClick={() => closeRoomInvestigation(targetRoomId)}
-              >
-                {ROOMS.find((r) => r.id === targetRoomId)!.name} 조사 종료 / 분위기로 되돌리기
-              </button>
-            )}
-            <div className="profile__gm-eventlist">
-              {ROOM_PUZZLE_BANK.map((puzzle) => (
-                <div key={puzzle.id} className="profile__gm-event">
-                  <div className="profile__gm-event-head">
-                    <span className="profile__gm-event-category">{puzzle.category}</span>
-                    <span className="profile__gm-event-title">{puzzle.title}</span>
-                  </div>
-                  <p className="profile__gm-event-desc">{puzzle.brief}</p>
-                  <p className="profile__gm-event-answer">정답: {puzzle.answer}</p>
-                  <button
-                    className="profile__gm-event-send"
-                    onClick={() => dispatchRoomPuzzle(targetRoomId, puzzle)}
-                  >
-                    {ROOMS.find((r) => r.id === targetRoomId)!.name}에 발송
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="profile__gm">
-            <span className="profile__section-label">GM 전용 — 기타 이벤트</span>
-            <div className="profile__gm-eventlist">
-              {EVENT_LIBRARY.map((item) => (
-                <div key={item.id} className="profile__gm-event">
-                  <div className="profile__gm-event-head">
-                    <span className="profile__gm-event-category">{item.category}</span>
-                    <span className="profile__gm-event-title">{item.title}</span>
-                  </div>
-                  <p className="profile__gm-event-desc">{item.description}</p>
-                  <button
-                    className="profile__gm-event-send"
-                    disabled={!item.implemented}
-                    onClick={() => {
-                      if (item.dispatchKind === 'popup') {
-                        sendBroadcast(item.popupKind!, item.title, item.popupBody!)
-                      } else {
-                        dispatchClassroomEvent(item)
-                      }
-                    }}
-                  >
-                    {item.implemented ? '발송' : '준비 중'}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+          <AdminGmDmPanel />
         </>
       )}
     </div>

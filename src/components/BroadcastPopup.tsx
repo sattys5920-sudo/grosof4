@@ -4,7 +4,7 @@ import { useGame } from '../state/GameContext'
 const KIND_LABEL: Record<string, string> = {
   event: '긴급 이벤트',
   sin: '괴이 출현',
-  notice: '관리자 쪽지',
+  notice: '불가의 쪽지',
 }
 
 export function BroadcastPopup() {

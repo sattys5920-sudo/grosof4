@@ -66,7 +66,7 @@ export function MainFeedScreen() {
                 className="feed__admin-toggle"
                 onClick={() => toggleCommentsEnabled(openPost.id)}
               >
-                {openPost.commentsEnabled ? '[관리자] 댓글 닫기' : '[관리자] 댓글 열기'}
+                {openPost.commentsEnabled ? '[불가] 댓글 닫기' : '[불가] 댓글 열기'}
               </button>
             )}
           </div>
@@ -127,7 +127,7 @@ export function MainFeedScreen() {
         <div className="feed__intro-row">
           <div>
             <span className="feed__intro-label">방송실 게시판</span>
-            <p>학교 관리자와 방송실 명의로 올라오는 공지를 확인한다.</p>
+            <p>불가가 방송실 명의로 올리는 공지를 확인한다.</p>
           </div>
           {gmReveal && (
             <button
@@ -176,7 +176,7 @@ export function MainFeedScreen() {
 
       <div className="feed__list">
         {feed.length === 0 && (
-          <p className="feed__empty">아직 게시된 공지가 없다....... 관리자가 올리는 글을 기다려보자.</p>
+          <p className="feed__empty">아직 게시된 공지가 없다....... 불가가 올리는 글을 기다려보자.</p>
         )}
         {feed.map((post) => (
           <button key={post.id} className="feed__post" onClick={() => setOpenPostId(post.id)}>

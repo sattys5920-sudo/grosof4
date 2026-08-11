@@ -73,7 +73,7 @@ export function MissionScreen() {
       <div className="mission">
         <div className="mission__head">
           <span className="mission__index">
-            {mission.missionIndex + 1} 차 원정 · 관리자 관전
+            {mission.missionIndex + 1} 차 원정 · 불가 관전
           </span>
           <span className="mission__score">
             선 {mission.wardWins} : {mission.sinWins} 악
@@ -81,7 +81,7 @@ export function MissionScreen() {
         </div>
         <MissionTrack />
         {mission.lastNote && <p className="mission__note">{mission.lastNote}</p>}
-        <p className="mission__lock-text">관리자는 원정에 참여하지 않고 진행 상황만 지켜본다.</p>
+        <p className="mission__lock-text">불가는 원정에 참여하지 않고 진행 상황만 지켜본다.</p>
       </div>
     )
   }

@@ -30,6 +30,7 @@ import {
   runAbilityTransaction,
   sendBroadcastSync,
   sendClassroomMessageSync,
+  sendGmDmMessageSync,
   sendRoomMessageSync,
   subscribeAllPlayers,
   subscribeFeed,
@@ -117,6 +118,10 @@ interface GameState {
   createFeedPost: (title: string, body: string, commentsEnabled: boolean) => void
   toggleCommentsEnabled: (postId: string) => void
   addComment: (postId: string, text: string, secret: boolean) => void
+  players: Record<string, PlayerDoc>
+  gmDmMessages: ChatMessage[]
+  sendGmDm: (text: string) => void
+  sendGmDmAsAdmin: (characterId: string, text: string) => void
 }
 
 const GameContext = createContext<GameState | null>(null)
@@ -137,7 +142,7 @@ const BROADCAST_TAG: Record<BroadcastKind, string> = { event: '이벤트', sin: 
 const BROADCAST_LABEL: Record<BroadcastKind, string> = {
   event: '[긴급 이벤트]',
   sin: '[괴이 출현]',
-  notice: '[관리자 쪽지]',
+  notice: '[불가의 쪽지]',
 }
 
 function FirebaseSetupNotice() {
@@ -204,7 +209,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const personalClues = myPlayer?.personalClues ?? []
 
   function displayName(id: string) {
-    if (id === 'admin') return isAdminFlag ? nickname : '관리자'
+    if (id === 'admin') return '불가'
     if (id === viewerId) return nickname
     return players[id]?.nickname ?? CHARACTERS.find((c) => c.id === id)?.name ?? '???'
   }
@@ -216,7 +221,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     adminCode: string,
   ) {
     if (adminCode.trim() === ADMIN_CODE) {
-      const finalNickname = newNickname.trim() || '관리자'
+      const finalNickname = '불가'
       localStorage.setItem(LS.isAdmin, 'true')
       localStorage.setItem(LS.adminNickname, finalNickname)
       localStorage.setItem(LS.roleRevealed, 'true')
@@ -282,6 +287,28 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       time: '지금',
     }
     void sendClassroomMessageSync(msg)
+  }
+
+  function sendGmDm(text: string) {
+    if (!text.trim() || !viewerId) return
+    const msg: ChatMessage = {
+      id: `dm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      authorId: viewerId,
+      text: text.trim(),
+      time: '지금',
+    }
+    void sendGmDmMessageSync(viewerId, msg)
+  }
+
+  function sendGmDmAsAdmin(characterId: string, text: string) {
+    if (!text.trim() || !isAdminFlag) return
+    const msg: ChatMessage = {
+      id: `dm-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      authorId: 'admin',
+      text: text.trim(),
+      time: '지금',
+    }
+    void sendGmDmMessageSync(characterId, msg)
   }
 
   async function submitRoomAnswer(roomId: RoomId, text: string) {
@@ -399,7 +426,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function createFeedPost(title: string, body: string, commentsEnabled: boolean) {
     if (!title.trim() || !body.trim()) return
     void createFeedPostSync({
-      authorLabel: '[관리자]',
+      authorLabel: '[불가]',
       tag: '공지',
       title: title.trim(),
       body: body.trim(),
@@ -618,6 +645,10 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       addComment,
       toggleCommentsEnabled,
       createFeedPost,
+      players,
+      gmDmMessages: myPlayer?.gmDmMessages ?? [],
+      sendGmDm,
+      sendGmDmAsAdmin,
       gmReveal: isAdmin,
       broadcast,
       sendBroadcast,
@@ -660,6 +691,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       abilityUsed,
       personalClues,
       forgottenIdentity,
+      players,
+      myPlayer,
     ],
   )
 
