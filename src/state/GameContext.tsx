@@ -168,9 +168,11 @@ interface GameState {
   hallEvent: HallEventState
   dispatchHallEvent: (eventId: string) => void
   advanceHallLog: () => void
+  advanceHallObject: () => void
   finishHallEvent: () => void
   resolveHallObject: (objectId: string, choice: 'open' | 'leave') => void
   submitHallPuzzleAnswer: (objectId: string, text: string) => void
+  joinHallMinigame: (objectId: string) => void
   feed: FeedPost[]
   toggleHeart: (postId: string) => void
   gmReveal: boolean
@@ -822,6 +824,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     const nextHallEvent: HallEventState = {
       eventId,
       logIndex: 0,
+      objectIndex: 0,
       objectResults: {},
       startedAtMs: Date.now(),
       completedEventIds: session.hallEvent.completedEventIds,
@@ -838,6 +841,14 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void patchSession({ hallEvent: { ...session.hallEvent, logIndex: nextLogIndex } })
   }
 
+  function advanceHallObject() {
+    if (!isAdminFlag) return
+    const event = hallEventById(session.hallEvent.eventId ?? '')
+    if (!event) return
+    const nextObjectIndex = Math.min(session.hallEvent.objectIndex + 1, event.objects.length)
+    void patchSession({ hallEvent: { ...session.hallEvent, objectIndex: nextObjectIndex } })
+  }
+
   function finishHallEvent() {
     if (!isAdminFlag) return
     const event = hallEventById(session.hallEvent.eventId ?? '')
@@ -847,7 +858,14 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       ? session.hallEvent.completedEventIds
       : [...session.hallEvent.completedEventIds, event.id]
     void patchSession({
-      hallEvent: { eventId: null, logIndex: 0, objectResults: {}, startedAtMs: null, completedEventIds },
+      hallEvent: {
+        eventId: null,
+        logIndex: 0,
+        objectIndex: 0,
+        objectResults: {},
+        startedAtMs: null,
+        completedEventIds,
+      },
     })
   }
 
@@ -867,6 +885,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         actorId: viewerId,
         puzzleSolved: false,
         puzzleAttempts: 0,
+        minigameParticipants: {},
       }
       const nextObjectResults = { ...he.objectResults, [objectId]: result }
       let playerPatch: Partial<PlayerDoc> | undefined
@@ -914,6 +933,39 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       }
       return {
         session: { hallEvent: { ...he, objectResults: { ...he.objectResults, [objectId]: nextResult } } },
+      }
+    })
+  }
+
+  function joinHallMinigame(objectId: string) {
+    if (!viewerId) return
+    void runAbilityTransaction(viewerId, (sess, player) => {
+      const he = sess.hallEvent
+      if (!he.eventId) return {}
+      const event = hallEventById(he.eventId)
+      if (!event) return {}
+      const obj = event.objects.find((o) => o.id === objectId)
+      if (!obj || obj.kind !== 'minigame') return {}
+      const existing = he.objectResults[objectId]
+      if (existing && existing.minigameParticipants[viewerId] !== undefined) return {}
+      const won = Math.random() < 0.5
+      const nextResult: HallObjectResult = {
+        status: 'opened',
+        actorId: existing?.actorId ?? null,
+        puzzleSolved: false,
+        puzzleAttempts: 0,
+        minigameParticipants: { ...(existing?.minigameParticipants ?? {}), [viewerId]: won },
+      }
+      const playerPatch: Partial<PlayerDoc> = {}
+      if (won) {
+        playerPatch.coins = player.coins + (obj.minigameWinCoins ?? 2)
+      } else {
+        if (obj.hpDamage) playerPatch.hp = Math.max(0, player.hp - obj.hpDamage)
+        if (obj.staminaDamage) playerPatch.stamina = Math.max(0, player.stamina - obj.staminaDamage)
+      }
+      return {
+        session: { hallEvent: { ...he, objectResults: { ...he.objectResults, [objectId]: nextResult } } },
+        player: playerPatch,
       }
     })
   }
@@ -1429,9 +1481,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       hallEvent: session.hallEvent,
       dispatchHallEvent,
       advanceHallLog,
+      advanceHallObject,
       finishHallEvent,
       resolveHallObject,
       submitHallPuzzleAnswer,
+      joinHallMinigame,
       feed,
       toggleHeart,
       addComment,

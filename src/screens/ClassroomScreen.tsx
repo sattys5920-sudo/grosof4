@@ -10,7 +10,12 @@ import { ChatAvatar } from '../components/ChatAvatar'
 import { AbilityUseModal } from '../components/AbilityUseModal'
 
 const HALL_TIME_LIMIT_MS = 60 * 60 * 1000
-const KIND_LABEL: Record<HallObject['kind'], string> = { hazard: '위험', puzzle: '문제', item: '아이템' }
+const KIND_LABEL: Record<HallObject['kind'], string> = {
+  hazard: '위험',
+  puzzle: '문제',
+  item: '아이템',
+  minigame: '미니게임',
+}
 
 function formatRemaining(ms: number) {
   const total = Math.max(0, Math.ceil(ms / 1000))
@@ -36,9 +41,11 @@ export function ClassroomScreen() {
     hallEvent,
     dispatchHallEvent,
     advanceHallLog,
+    advanceHallObject,
     finishHallEvent,
     resolveHallObject,
     submitHallPuzzleAnswer,
+    joinHallMinigame,
   } = useGame()
   const [draft, setDraft] = useState('')
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -79,6 +86,42 @@ export function ClassroomScreen() {
     const result = hallEvent.objectResults[obj.id]
     const status = result?.status ?? 'idle'
     const actorName = result?.actorId ? displayName(result.actorId) : null
+
+    if (obj.kind === 'minigame') {
+      const participants = result?.minigameParticipants ?? {}
+      const entries = Object.entries(participants)
+      const myResult = viewerId ? participants[viewerId] : undefined
+      return (
+        <div key={obj.id} className="hallobj hallobj--minigame">
+          <div className="hallobj__head">
+            <span className="hallobj__label">{obj.label}</span>
+            <span className={`hallobj__kind hallobj__kind--${obj.kind}`}>{KIND_LABEL[obj.kind]}</span>
+          </div>
+          <p className="hallobj__note">{obj.minigameRule}</p>
+          {!isAdmin && myResult === undefined && (
+            <button className="hallobj__minigame-join" onClick={() => joinHallMinigame(obj.id)}>
+              참여하기
+            </button>
+          )}
+          {myResult !== undefined && (
+            <p className={`hallobj__minigame-mine ${myResult ? 'is-win' : 'is-lose'}`}>
+              {myResult
+                ? `승리! 코인 ${obj.minigameWinCoins ?? 2}개를 얻었다.`
+                : `패배....... ${obj.hpDamage ? `HP -${obj.hpDamage}` : obj.staminaDamage ? `스태미나 -${obj.staminaDamage}` : ''}`}
+            </p>
+          )}
+          {entries.length > 0 && (
+            <div className="hallobj__minigame-list">
+              {entries.map(([pid, won]) => (
+                <span key={pid} className={`hallobj__minigame-entry ${won ? 'is-win' : 'is-lose'}`}>
+                  {displayName(pid)} {won ? '승' : '패'}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    }
 
     return (
       <div key={obj.id} className={`hallobj hallobj--${status}`}>
@@ -224,7 +267,15 @@ export function ClassroomScreen() {
 
             {logsRevealed && (
               <div className="hallevent__objects">
-                {activeEvent.objects.map(renderObject)}
+                {activeEvent.objects.slice(0, hallEvent.objectIndex).map(renderObject)}
+                {hallEvent.objectIndex < activeEvent.objects.length && gmReveal && (
+                  <button className="hallevent__next-log" onClick={advanceHallObject}>
+                    다음 오브젝트 ({hallEvent.objectIndex}/{activeEvent.objects.length})
+                  </button>
+                )}
+                {hallEvent.objectIndex === 0 && !gmReveal && (
+                  <p className="hallevent__waiting">불가가 첫 번째 물건을 공개할 때까지 기다려 보자.......</p>
+                )}
               </div>
             )}
 

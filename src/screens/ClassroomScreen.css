@@ -578,3 +578,55 @@
   color: var(--sin);
   font-style: italic;
 }
+
+.hallobj--minigame {
+  border-color: var(--ward);
+}
+
+.hallobj__minigame-join {
+  align-self: flex-start;
+  font-family: var(--font-pixel);
+  font-size: 10.5px;
+  padding: 7px 12px;
+  cursor: pointer;
+  border: 1px solid var(--ward);
+  background: var(--void-3);
+  color: var(--bone-bright);
+}
+
+.hallobj__minigame-mine {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.hallobj__minigame-mine.is-win {
+  color: var(--ward);
+}
+
+.hallobj__minigame-mine.is-lose {
+  color: var(--sin);
+}
+
+.hallobj__minigame-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hallobj__minigame-entry {
+  font-size: 11px;
+  padding: 3px 7px;
+  border: 1px solid var(--line);
+  color: var(--bone-dim);
+}
+
+.hallobj__minigame-entry.is-win {
+  border-color: var(--ward);
+  color: var(--ward);
+}
+
+.hallobj__minigame-entry.is-lose {
+  border-color: var(--sin);
+  color: var(--sin);
+}

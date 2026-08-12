@@ -129,6 +129,7 @@ export function defaultSessionState(): SessionDoc {
     hallEvent: {
       eventId: null,
       logIndex: 0,
+      objectIndex: 0,
       objectResults: {},
       startedAtMs: null,
       completedEventIds: [],

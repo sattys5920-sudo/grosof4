@@ -183,7 +183,7 @@ export interface HallPuzzle {
   solution: string
 }
 
-export type HallObjectKind = 'hazard' | 'puzzle' | 'item'
+export type HallObjectKind = 'hazard' | 'puzzle' | 'item' | 'minigame'
 
 export interface HallObject {
   id: string
@@ -195,6 +195,8 @@ export interface HallObject {
   puzzleId?: string
   itemShopId?: string
   itemCoins?: number
+  minigameRule?: string
+  minigameWinCoins?: number
 }
 
 export interface HallEvent {
@@ -214,11 +216,13 @@ export interface HallObjectResult {
   actorId: string | null
   puzzleSolved: boolean
   puzzleAttempts: number
+  minigameParticipants: Record<string, boolean>
 }
 
 export interface HallEventState {
   eventId: string | null
   logIndex: number
+  objectIndex: number
   objectResults: Record<string, HallObjectResult>
   startedAtMs: number | null
   completedEventIds: string[]
