@@ -226,6 +226,8 @@ interface GameState {
   resetAllData: () => void
   shopOpen: boolean
   setShopOpen: (open: boolean) => void
+  classroomOpen: boolean
+  setClassroomOpen: (open: boolean) => void
   storyDay: 0 | 1 | 2 | 3 | 4
   revealStoryDay: (day: 1 | 2 | 3 | 4) => void
   truthRevealed: boolean
@@ -276,7 +278,7 @@ const BROADCAST_TAG: Record<BroadcastKind, string> = { event: '이벤트', sin: 
 const BROADCAST_LABEL: Record<BroadcastKind, string> = {
   event: '[긴급 이벤트]',
   sin: '[괴이 출현]',
-  notice: '[불가의 쪽지]',
+  notice: '[교내 방송]',
 }
 
 function FirebaseSetupNotice() {
@@ -432,7 +434,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     }
     if (msgs.length > lastDmCountRef.current) {
       const last = msgs[msgs.length - 1]
-      if (last.authorId === 'admin') setTopAlert({ id: last.id, text: `불가: ${last.text}` })
+      if (last.authorId === 'admin') setTopAlert({ id: last.id, text: `교내 방송: ${last.text}` })
     }
     lastDmCountRef.current = msgs.length
   }, [myPlayer?.gmDmMessages, viewerId, isAdminFlag])
@@ -502,7 +504,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   }
 
   function displayName(id: string) {
-    if (id === 'admin') return '불가'
+    if (id === 'admin') return '교내 방송'
     if (id === viewerId) return nickname
     return players[id]?.nickname ?? CHARACTERS.find((c) => c.id === id)?.name ?? '???'
   }
@@ -789,7 +791,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function createFeedPost(title: string, body: string, commentsEnabled: boolean) {
     if (!title.trim() || !body.trim()) return
     void createFeedPostSync({
-      authorLabel: '[불가]',
+      authorLabel: '[교내 방송]',
       tag: '공지',
       title: title.trim(),
       body: body.trim(),
@@ -893,6 +895,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function setShopOpen(open: boolean) {
     if (!isAdminFlag) return
     void patchSession({ shopOpen: open })
+  }
+
+  function setClassroomOpen(open: boolean) {
+    if (!isAdminFlag) return
+    void patchSession({ classroomOpen: open })
   }
 
   function assignRoleManually(characterId: string, nickname: string) {
@@ -1295,6 +1302,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       resetAllData,
       shopOpen: session.shopOpen,
       setShopOpen,
+      classroomOpen: session.classroomOpen ?? true,
+      setClassroomOpen,
       storyDay: session.storyDay,
       revealStoryDay,
       truthRevealed: session.truthRevealed,

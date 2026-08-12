@@ -27,6 +27,8 @@ export function ClassroomScreen() {
     closeInvestigation,
     displayName,
     players,
+    classroomOpen,
+    setClassroomOpen,
   } = useGame()
   const [draft, setDraft] = useState('')
   const [answer, setAnswer] = useState('')
@@ -34,7 +36,7 @@ export function ClassroomScreen() {
 
   const event = classroom.event
   const isDuel = event?.kind === 'duel'
-  const canChat = !!viewerId || isAdmin
+  const canChat = (!!viewerId && classroomOpen) || isAdmin
 
   function submit() {
     sendClassroomMessage(draft)
@@ -77,6 +79,9 @@ export function ClassroomScreen() {
           <span className="classroom__pin-heading">강당</span>
           {gmReveal && (
             <div className="classroom__pin-gm">
+              <button className="classroom__pin-reset" onClick={() => setClassroomOpen(!classroomOpen)}>
+                강당 {classroomOpen ? '닫기' : '열기'}
+              </button>
               {classroom.status !== 'locked' && (
                 <button className="classroom__pin-reset" onClick={closeInvestigation}>
                   초기화
@@ -89,9 +94,15 @@ export function ClassroomScreen() {
           )}
         </div>
 
-        {classroom.status === 'locked' && <p className="classroom__pin-ambient">{CLASSROOM_AMBIENT_TEXT}</p>}
+        {!classroomOpen && !gmReveal && (
+          <p className="classroom__pin-ambient">강당 문이 아직 잠겨 있다....... 열릴 때까지 기다려야 한다.</p>
+        )}
 
-        {event && (
+        {(classroomOpen || gmReveal) && classroom.status === 'locked' && (
+          <p className="classroom__pin-ambient">{CLASSROOM_AMBIENT_TEXT}</p>
+        )}
+
+        {(classroomOpen || gmReveal) && event && (
           <>
             {event.category && <span className="classroom__pin-tag">{event.category}</span>}
             <span className="classroom__pin-title">{event.title}</span>
@@ -138,33 +149,35 @@ export function ClassroomScreen() {
         )}
       </div>
 
-      <div className="classroom__log">
-        {classroomMessages.length === 0 && (
-          <p className="classroom__empty">아직 아무도 말하지 않았다....... 함께 의논해보자.</p>
-        )}
-        {classroomMessages.map((m) => {
-          const author = CHARACTERS.find((c) => c.id === m.authorId)
-          const isMe = m.authorId === viewerId
-          const isGm = m.authorId === 'admin'
-          const name = isGm || author ? displayName(m.authorId) : '???'
-          return (
-            <div key={m.id} className={`classroom__msg-row ${isMe ? 'is-me' : ''}`}>
-              {!isMe && (
-                <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />
-              )}
-              <div className={`classroom__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
-                <div className="classroom__msg-head">
-                  <span className="classroom__msg-name">{name}</span>
+      {(classroomOpen || gmReveal) && (
+        <div className="classroom__log">
+          {classroomMessages.length === 0 && (
+            <p className="classroom__empty">아직 아무도 말하지 않았다....... 함께 의논해보자.</p>
+          )}
+          {classroomMessages.map((m) => {
+            const author = CHARACTERS.find((c) => c.id === m.authorId)
+            const isMe = m.authorId === viewerId
+            const isGm = m.authorId === 'admin'
+            const name = isGm || author ? displayName(m.authorId) : '???'
+            return (
+              <div key={m.id} className={`classroom__msg-row ${isMe ? 'is-me' : ''}`}>
+                {!isMe && (
+                  <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />
+                )}
+                <div className={`classroom__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
+                  <div className="classroom__msg-head">
+                    <span className="classroom__msg-name">{name}</span>
+                  </div>
+                  <p className="classroom__msg-text">{m.text}</p>
                 </div>
-                <p className="classroom__msg-text">{m.text}</p>
+                {isMe && (
+                  <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />
+                )}
               </div>
-              {isMe && (
-                <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />
-              )}
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
 
       {canChat && (
         <div className="classroom__composer">

@@ -14,7 +14,7 @@ export function ChatAvatar({
   if (authorId === 'admin') {
     return (
       <span className="chat-avatar chat-avatar--gm" style={{ width: size, height: size, fontSize: size * 0.28 }}>
-        불가
+        방송
       </span>
     )
   }

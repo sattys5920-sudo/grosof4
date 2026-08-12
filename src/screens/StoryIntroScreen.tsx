@@ -7,8 +7,8 @@ export function StoryIntroScreen({ onEnter }: { onEnter: () => void }) {
       <div className="intro__body">
         <span className="intro__eyebrow">{SCHOOL_NAME} · {CLUB_NAME}</span>
         <p>
-          서울 시내의 오래된 사립고등학교. {CLUB_NAME} 부원 열 명이 어쩌다 보니 다 같이 학교에
-          남아 자정을 넘긴다.
+          서울 시내의 오래된 사립고등학교. {CLUB_NAME} 부원 열 명이 다 같이 학교에 남아 자정을
+          넘긴다.
         </p>
         <p className="intro__incident">{INCIDENT_SUMMARY}</p>
         <p>

@@ -152,7 +152,7 @@ export function MissionScreen() {
     return (
       <div className="mission mission--locked">
         <span className="mission__lock-icon">▧</span>
-        <p className="mission__lock-text">조사는 아직 열리지 않았다. GM이 열 때까지 기다려야 한다.</p>
+        <p className="mission__lock-text">조사는 아직 열리지 않았다. 아직은 때가 아니다....... 조금 더 기다려야 한다.</p>
       </div>
     )
   }

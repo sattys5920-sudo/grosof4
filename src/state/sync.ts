@@ -52,6 +52,7 @@ export interface SessionDoc {
   discussionOpen: boolean
   discussionOpenedAt: number | null
   shopOpen: boolean
+  classroomOpen: boolean
   storyDay: 0 | 1 | 2 | 3 | 4
   truthRevealed: boolean
   endingKey: EndingKey | null
@@ -122,6 +123,7 @@ export function defaultSessionState(): SessionDoc {
     mission: initialMissionState(),
     disguiseArmed: false,
     shopOpen: false,
+    classroomOpen: true,
     collectedClues: [],
     missionMessages: [],
     discussionOpen: false,
