@@ -10,7 +10,7 @@ import { ChatAvatar } from '../components/ChatAvatar'
 const MAX_CLASSROOM_ATTEMPTS = 3
 
 const CLASSROOM_AMBIENT_TEXT =
-  '교실은 조용하다....... 다들 각자 자리에 앉아 서로 눈치만 보고 있다. 아직 무엇을 조사해야 할지는 불가가 정하지 않았다.......'
+  '교실은 조용하다....... 다들 각자 자리에 앉아 서로 눈치만 보고 있다. 아직 아무것도 열리지 않았다.......'
 
 export function ClassroomScreen() {
   const {

@@ -152,8 +152,8 @@ interface GameState {
   investigate: (targetId: string) => void
   armShield: () => void
   checkCctv: (missionIndex: number) => void
-  erode: (targetId: string) => void
-  erosionTargetId: string | null
+  discern: (targetId: string) => void
+  usedDiscernToday: boolean
   forgeResult: () => void
   revengerCheck: (targetId: string) => void
   armDisguise: () => void
@@ -317,6 +317,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const photo = isAdminFlag ? null : myPlayer?.photo ?? null
   const abilityUnlocked = myPlayer?.abilityUnlocked ?? false
   const abilityUseCount = myPlayer?.abilityUseCount ?? 0
+  const usedDiscernToday = myPlayer?.lastDiscernDate === new Date().toISOString().slice(0, 10)
   const viewerRole = viewerId ? CHARACTERS.find((c) => c.id === viewerId)?.role : undefined
   const abilityMaxUses = viewerRole ? ABILITY_MAX_USES[viewerRole] ?? 1 : 1
   const personalClues = myPlayer?.personalClues ?? []
@@ -515,7 +516,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       return {
         ...prev,
         attemptsUsed,
-        note: remaining > 0 ? '오답이다. 다시 논의해보자.' : '기회를 모두 소진했다....... 불가가 다시 열어줄 때까지 기다려야 한다.',
+        note: remaining > 0 ? '오답이다. 다시 논의해보자.' : '기회를 모두 소진했다....... 다시 열릴 때까지 기다려야 한다.',
       }
     })
     if (clueToAdd) void addClueSync(makeClue(clueToAdd, '교실'))
@@ -668,7 +669,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       const b = CHARACTERS.find((c) => c.id === targetBId)
       if (!a || !b) return {}
       const lieOnA = Math.random() < 0.5
-      const teamLabel = (team: 'ward' | 'sin') => (team === 'ward' ? '선' : '악')
+      const teamLabel = (team: 'ward' | 'sin') => (team === 'ward' ? '학생' : '괴이')
       const firstCheck = resolveTeamCheckPure(sess.disguiseArmed, a.id)
       const secondCheck = resolveTeamCheckPure(firstCheck.disguiseArmed, b.id)
       const trueA = firstCheck.team
@@ -739,30 +740,38 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     })
   }
 
-  function erode(targetId: string) {
-    if (!viewerId) return
-    void runAbilityTransaction(viewerId, (_sess, player) => {
-      if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('괴이의 사도')) return {}
-      const text = `《침식》 ${displayName(targetId)}을(를) 표적으로 삼았다.`
-      return {
-        session: { erosionTargetId: targetId },
-        player: {
-          abilityUseCount: player.abilityUseCount + 1,
-          personalClues: [...player.personalClues, text],
-          gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(text)],
-        },
-      }
-    })
+  function discern(targetId: string) {
+    if (!viewerId || targetId === viewerId) return
+    void runCombatTransaction(
+      viewerId,
+      () => targetId,
+      (_sess, me, target) => {
+        if (!me.abilityUnlocked || me.abilityUseCount >= abilityMax('괴이의 사도')) return {}
+        const today = new Date().toISOString().slice(0, 10)
+        if (me.lastDiscernDate === today) return {}
+        if (!target) return {}
+        const targetChar = CHARACTERS.find((c) => c.id === targetId)!
+        const text = `《분별》 ${displayName(targetId)}의 능력 — ${targetChar.abilityName} (지금까지 ${target.abilityUseCount} 회 발동).`
+        return {
+          me: {
+            abilityUseCount: me.abilityUseCount + 1,
+            lastDiscernDate: today,
+            personalClues: [...me.personalClues, text],
+            gmDmMessages: [...me.gmDmMessages, makeGmDmMsg(text)],
+          },
+        }
+      },
+    )
   }
 
   function forgeResult() {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
-      if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('공범')) return {}
+      if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('파괴자')) return {}
       if (!sess.mission.proposedTeam.includes(viewerId)) return {}
       if (sess.mission.missionResults[sess.mission.missionIndex] !== 'success') return {}
       const nextMission = missionReducer(sess.mission, { type: 'FORGE_RESULT' })
-      const text = `《결과 위조》 ${sess.mission.missionIndex + 1} 차 원정의 결과를 몰래 조작했다.`
+      const text = `《파괴》 ${sess.mission.missionIndex + 1} 차 원정의 결과를 몰래 조작했다.`
       return {
         session: { mission: nextMission },
         player: {
@@ -780,8 +789,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       const target = CHARACTERS.find((c) => c.id === targetId)!
       const check = resolveTeamCheckPure(sess.disguiseArmed, targetId)
       const trueRoleLabel =
-        check.team === target.team ? target.role : check.team === 'ward' ? '선(위장 감지)' : '악'
-      const resultText = `《공략》 ${displayName(targetId)}의 진짜 정체 — ${trueRoleLabel}.`
+        check.team === target.team ? target.role : check.team === 'ward' ? '학생(위장 감지)' : '괴이'
+      const resultText = `《투시》 ${displayName(targetId)}의 진짜 정체 — ${trueRoleLabel}.`
       return {
         session: check.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: check.disguiseArmed } : undefined,
         player: {
@@ -1010,8 +1019,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       investigate,
       armShield,
       checkCctv,
-      erode,
-      erosionTargetId: session.erosionTargetId,
+      discern,
+      usedDiscernToday,
       forgeResult,
       revengerCheck,
       armDisguise,
@@ -1042,6 +1051,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       abilityUnlocked,
       abilityUseCount,
       abilityMaxUses,
+      usedDiscernToday,
       personalClues,
       forgottenIdentity,
       hp,

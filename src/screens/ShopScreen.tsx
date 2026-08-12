@@ -33,7 +33,7 @@ export function ShopScreen() {
       )}
 
       {!shopOpen && !gmReveal && (
-        <p className="shop__closed">지금은 매점이 닫혀 있다....... 불가가 열어줄 때까지 기다리자.</p>
+        <p className="shop__closed">지금은 매점이 닫혀 있다....... 아직 열리지 않았다.</p>
       )}
 
       {(shopOpen || gmReveal) && (

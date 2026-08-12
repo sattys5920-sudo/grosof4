@@ -93,7 +93,7 @@ function MissionDiscussionPanel() {
           )}
         </>
       ) : (
-        <p className="mdisc__locked">불가가 토론을 열면 대화할 수 있다.</p>
+        <p className="mdisc__locked">토론은 아직 열리지 않았다.</p>
       )}
     </div>
   )
@@ -179,11 +179,11 @@ export function MissionScreen() {
   const viewer = charOf(viewerId)
 
   if (mission.phase === 'gameover') {
-    const winnerLabel = mission.winner === 'ward' ? '선 진영 승리' : '악 진영 승리'
+    const winnerLabel = mission.winner === 'ward' ? '학생 진영 승리' : '괴이 진영 승리'
     return (
       <div className="mission mission--gameover">
         <h2>{winnerLabel}</h2>
-        <p>선 {mission.wardWins} 승 · 악 {mission.sinWins} 승</p>
+        <p>학생 {mission.wardWins} 승 · 괴이 {mission.sinWins} 승</p>
         <button onClick={resetMission}>새 원정 시작하기</button>
       </div>
     )

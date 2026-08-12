@@ -44,7 +44,6 @@ export interface SessionDoc {
   broadcast: Broadcast | null
   missionsOpen: boolean
   mission: MissionState
-  erosionTargetId: string | null
   disguiseArmed: boolean
   collectedClues: ClueItem[]
   missionMessages: ChatMessage[]
@@ -59,6 +58,7 @@ export interface PlayerDoc {
   photo: string | null
   abilityUnlocked: boolean
   abilityUseCount: number
+  lastDiscernDate: string | null
   personalClues: string[]
   gmDmMessages: ChatMessage[]
   hp: number
@@ -113,7 +113,6 @@ export function defaultSessionState(): SessionDoc {
     broadcast: null,
     missionsOpen: false,
     mission: initialMissionState(),
-    erosionTargetId: null,
     disguiseArmed: false,
     shopOpen: false,
     collectedClues: [],
@@ -202,6 +201,7 @@ export async function claimRandomSlot(
       photo,
       abilityUnlocked: true,
       abilityUseCount: 0,
+      lastDiscernDate: null,
       personalClues: [],
       gmDmMessages: [],
       hp: 100,
@@ -234,6 +234,7 @@ export async function assignRoleManuallySync(characterId: string, nickname: stri
       photo: null,
       abilityUnlocked: true,
       abilityUseCount: 0,
+      lastDiscernDate: null,
       personalClues: [],
       gmDmMessages: [],
       hp: 100,

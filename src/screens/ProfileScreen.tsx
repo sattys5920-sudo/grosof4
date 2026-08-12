@@ -147,7 +147,8 @@ export function ProfileScreen() {
     investigate,
     armShield,
     checkCctv,
-    erode,
+    discern,
+    usedDiscernToday,
     forgeResult,
     revengerCheck,
     armDisguise,
@@ -258,14 +259,14 @@ export function ProfileScreen() {
             <span className="profile__section-label">특수 능력 — {viewer.abilityName}</span>
             <p>{viewer.abilityDescription}</p>
 
-            {['기록자', '감찰자', '복수자', '보호자', '목격자', '괴이의 사도', '공범'].includes(viewer.role) && (
+            {['기록자', '감찰자', '복수자', '보호자', '목격자', '괴이의 사도', '파괴자'].includes(viewer.role) && (
                 <>
                   {usesLeft <= 0 ? (
                     <p className="profile__ability-locked">
                       사용 완료 ({abilityUseCount}/{abilityMaxUses}) — 불가와의 개인 대화에서 결과를 다시 확인할 수
                       있다.
                     </p>
-                  ) : viewer.role === '공범' && !accompliceReady ? (
+                  ) : viewer.role === '파괴자' && !accompliceReady ? (
                     <p className="profile__ability-locked">
                       원정에 참가한 회차가 성공으로 끝난 직후에만 사용할 수 있다. (남은 횟수 {usesLeft}/
                       {abilityMaxUses})
@@ -273,6 +274,10 @@ export function ProfileScreen() {
                   ) : viewer.role === '목격자' && completedMissions.length === 0 ? (
                     <p className="profile__ability-locked">
                       완료된 원정이 있어야 사용할 수 있다. (남은 횟수 {usesLeft}/{abilityMaxUses})
+                    </p>
+                  ) : viewer.role === '괴이의 사도' && usedDiscernToday ? (
+                    <p className="profile__ability-locked">
+                      오늘은 이미 사용했다....... 내일 다시 사용할 수 있다. (남은 횟수 {usesLeft}/{abilityMaxUses})
                     </p>
                   ) : (
                     <button
@@ -310,15 +315,13 @@ export function ProfileScreen() {
             {viewer.role === '망각자' && (
               <p className="profile__ability-locked">
                 {forgottenIdentity
-                  ? `《기억 회복》 발동 — 지금까지의 원정 결과로 볼 때, 너는 ${forgottenIdentity === 'ward' ? '선' : '악'}이었다.`
+                  ? `《기억 회복》 발동 — 지금까지의 원정 결과로 볼 때, 너는 ${forgottenIdentity === 'ward' ? '학생' : '괴이'}이었다.`
                   : '3 차 원정이 끝나기 전까지는 자신의 정체를 알 수 없다.'}
               </p>
             )}
 
             {viewer.role === '일반학생' && (
-              <p className="profile__ability-locked">
-                특별한 능력은 없다. 대신 5 차 원정에 반드시 참가해야 한다.
-              </p>
+              <p className="profile__ability-locked">따로 발동하는 능력은 없다. 다만 무언가 해야 한다는 느낌이 강하게 든다.</p>
             )}
           </div>
 
@@ -366,13 +369,13 @@ export function ProfileScreen() {
 
       {viewer && abilityModalOpen && (viewer.role === '감찰자' || viewer.role === '복수자') && (
         <AbilityUseModal
-          title={`능력 사용 — ${viewer.role === '감찰자' ? '조사하기' : '공략하기'}`}
+          title={`능력 사용 — ${viewer.role === '감찰자' ? '조사하기' : '투시하기'}`}
           prompt={
             viewer.role === '감찰자'
               ? '오늘은 누구의 정체를 조사해 볼까?'
-              : '오늘은 누구를 공략해서 진짜 정체를 캐볼까?'
+              : '오늘은 누구를 투시해서 진짜 정체를 캐볼까?'
           }
-          confirmLabel={viewer.role === '감찰자' ? '조사하기' : '공략하기'}
+          confirmLabel={viewer.role === '감찰자' ? '조사하기' : '투시하기'}
           confirmDisabled={!targetId}
           onConfirm={() => {
             if (viewer.role === '감찰자') investigate(targetId)
@@ -429,34 +432,32 @@ export function ProfileScreen() {
 
       {viewer && abilityModalOpen && viewer.role === '괴이의 사도' && (
         <AbilityUseModal
-          title="능력 사용 — 표적으로 삼기"
-          prompt="오늘은 누구를 침식의 표적으로 삼을까?"
-          confirmLabel="표적으로 삼기"
+          title="능력 사용 — 분별"
+          prompt="오늘은 누구의 능력과 발동 전적을 분별해 볼까?"
+          confirmLabel="분별하기"
           confirmDisabled={!targetId}
           onConfirm={() => {
-            erode(targetId)
+            discern(targetId)
             setAbilityModalOpen(false)
           }}
           onClose={() => setAbilityModalOpen(false)}
         >
           <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
             <option value="">대상 선택</option>
-            {otherCharacters
-              .filter((c) => c.team === 'ward')
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {displayName(c.id)}
-                </option>
-              ))}
+            {otherCharacters.map((c) => (
+              <option key={c.id} value={c.id}>
+                {displayName(c.id)}
+              </option>
+            ))}
           </select>
         </AbilityUseModal>
       )}
 
-      {viewer && abilityModalOpen && viewer.role === '공범' && (
+      {viewer && abilityModalOpen && viewer.role === '파괴자' && (
         <AbilityUseModal
-          title="능력 사용 — 결과 위조"
-          prompt="이번 원정 결과를 몰래 조작해 볼까....... 한번 위조하면 되돌릴 수 없어."
-          confirmLabel="위조하기"
+          title="능력 사용 — 파괴 발동"
+          prompt="이번 원정 결과를 몰래 조작해 볼까....... 한번 발동하면 되돌릴 수 없어."
+          confirmLabel="파괴하기"
           confirmDisabled={!accompliceReady}
           onConfirm={() => {
             forgeResult()
