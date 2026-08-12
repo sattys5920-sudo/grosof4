@@ -27,6 +27,7 @@ export interface Character {
   storyDay1: string
   storyDay2: string
   storyDay3: string
+  storyDay4: string
 }
 
 export type EndingKey = 'ward-broken' | 'ward-unbroken' | 'sin-broken' | 'sin-unbroken'

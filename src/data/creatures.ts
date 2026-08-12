@@ -256,7 +256,7 @@ export const CREATURES: Creature[] = [
     name: '야간자율학습귀',
     category: '귀신',
     difficulty: 'medium',
-    intro: '불 꺼진 교실, 아무도 없어야 할 자리에 한 학생이 조용히 문제집을 넘기고 있다.......',
+    intro: '불 꺼진 강당, 아무도 없어야 할 자리에 한 학생이 조용히 문제집을 넘기고 있다.......',
     hp: 57,
     atk: 7,
     def: 2,

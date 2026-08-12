@@ -3,6 +3,7 @@ import './App.css'
 import { GameProvider, useGame } from './state/GameContext'
 import { TabBar } from './components/TabBar'
 import { BroadcastPopup } from './components/BroadcastPopup'
+import { TopBarAlert } from './components/TopBarAlert'
 import { StoryIntroScreen } from './screens/StoryIntroScreen'
 import { SignupScreen } from './screens/SignupScreen'
 import { RoleRevealScreen } from './screens/RoleRevealScreen'
@@ -53,6 +54,7 @@ function Shell() {
           <span className="shell__dot" />
           안개 결계 · 자정 이후
         </span>
+        <TopBarAlert />
       </header>
       <main className="shell__body">
         <Screen />

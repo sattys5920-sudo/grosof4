@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS, DAY4_REVEAL_TEXT, ENDING_SCRIPTS, roleLabel } from '../data/characters'
@@ -32,8 +32,12 @@ const PRESETS: { kind: BroadcastKind; label: string; title: string; body: string
 ]
 
 function PlayerGmDmPanel() {
-  const { gmDmMessages, sendGmDm } = useGame()
+  const { gmDmMessages, sendGmDm, markDmRead } = useGame()
   const [draft, setDraft] = useState('')
+
+  useEffect(() => {
+    markDmRead()
+  }, [gmDmMessages.length, markDmRead])
 
   function submit() {
     sendGmDm(draft)
@@ -69,13 +73,14 @@ function PlayerGmDmPanel() {
 }
 
 function AdminGmDmPanel() {
-  const { players, sendGmDmAsAdmin } = useGame()
+  const { players, sendGmDmAsAdmin, markDmThreadRead } = useGame()
   const [openId, setOpenId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
 
   function toggle(characterId: string) {
     setOpenId((prev) => (prev === characterId ? null : characterId))
     setDraft('')
+    markDmThreadRead(characterId)
   }
 
   function submit(characterId: string) {
@@ -177,6 +182,8 @@ export function ProfileScreen() {
     resetAllData,
     storyDay,
     revealStoryDay,
+    truthRevealed,
+    revealTruth,
     endingKey,
     sendEnding,
   } = useGame()
@@ -267,14 +274,14 @@ export function ProfileScreen() {
           </div>
           {incapacitated && (
             <p className="profile__ability-locked">
-              빈사 상태다....... HP나 스태미나가 모두 바닥나 지금은 조사실에 들어갈 수 없다. 매점에서 음식이나 약을
+              빈사 상태다....... HP나 스태미나가 모두 바닥나 지금은 구관에 들어갈 수 없다. 매점에서 음식이나 약을
               구해 회복해야 한다.
             </p>
           )}
 
           {Object.entries(inventory).some(([, count]) => count > 0) && (
             <div className="profile__section profile__inventory">
-              <span className="profile__section-label">아이템</span>
+              <span className="profile__section-label">아이템 가방</span>
               <div className="profile__clue-list">
                 {SHOP_ITEMS.filter((item) => (inventory[item.id] ?? 0) > 0).map((item) => (
                   <div key={item.id} className="profile__inventory-item">
@@ -310,12 +317,12 @@ export function ProfileScreen() {
                     </p>
                   ) : viewer.role === '파괴자' && !accompliceReady ? (
                     <p className="profile__ability-locked">
-                      원정에 참가한 회차가 성공으로 끝난 직후에만 사용할 수 있다. (남은 횟수 {usesLeft}/
+                      조사에 참가한 회차가 성공으로 끝난 직후에만 사용할 수 있다. (남은 횟수 {usesLeft}/
                       {abilityMaxUses})
                     </p>
                   ) : viewer.role === '목격자' && completedMissions.length === 0 ? (
                     <p className="profile__ability-locked">
-                      완료된 원정이 있어야 사용할 수 있다. (남은 횟수 {usesLeft}/{abilityMaxUses})
+                      완료된 조사가 있어야 사용할 수 있다. (남은 횟수 {usesLeft}/{abilityMaxUses})
                     </p>
                   ) : viewer.role === '괴이의 사도' && usedDiscernToday ? (
                     <p className="profile__ability-locked">
@@ -357,8 +364,8 @@ export function ProfileScreen() {
             {viewer.role === '망각자' && (
               <p className="profile__ability-locked">
                 {forgottenIdentity
-                  ? `《기억 회복》 발동 — 지금까지의 원정 결과로 볼 때, 너는 ${forgottenIdentity === 'ward' ? '학생' : '괴이'}이었다.`
-                  : '3 차 원정이 끝나기 전까지는 자신의 정체를 알 수 없다.'}
+                  ? `《기억 회복》 발동 — 지금까지의 조사 결과로 볼 때, 너는 ${forgottenIdentity === 'ward' ? '학생' : '괴이'}이었다.`
+                  : '3 차 조사가 끝나기 전까지는 자신의 정체를 알 수 없다.'}
               </p>
             )}
 
@@ -387,7 +394,13 @@ export function ProfileScreen() {
           )}
           {storyDay >= 4 && (
             <div className="profile__personal-clues">
-              <span className="profile__section-label">4 일차 — 전말</span>
+              <span className="profile__section-label">4 일차</span>
+              <p>{viewer.storyDay4}</p>
+            </div>
+          )}
+          {truthRevealed && (
+            <div className="profile__personal-clues">
+              <span className="profile__section-label">전말</span>
               <p>{DAY4_REVEAL_TEXT}</p>
             </div>
           )}
@@ -471,7 +484,7 @@ export function ProfileScreen() {
       {viewer && abilityModalOpen && viewer.role === '보호자' && (
         <AbilityUseModal
           title="능력 사용 — 수호 발동"
-          prompt="지금 《수호》를 발동할까....... 발동 직후 진행되는 원정에서 실패 카드 1 장이 무효화된다. 언제 발동할지는 신중하게 고르자."
+          prompt="지금 《수호》를 발동할까....... 발동 직후 진행되는 조사에서 실패 카드 1 장이 무효화된다. 언제 발동할지는 신중하게 고르자."
           confirmLabel="발동하기"
           onConfirm={() => {
             armShield()
@@ -484,7 +497,7 @@ export function ProfileScreen() {
       {viewer && abilityModalOpen && viewer.role === '목격자' && (
         <AbilityUseModal
           title="능력 사용 — CCTV 확인"
-          prompt="어느 원정의 CCTV 기록을 확인해 볼까?"
+          prompt="어느 조사의 CCTV 기록을 확인해 볼까?"
           confirmLabel="확인하기"
           confirmDisabled={completedMissions.length === 0}
           onConfirm={() => {
@@ -496,7 +509,7 @@ export function ProfileScreen() {
           <select value={missionPick} onChange={(e) => setMissionPick(Number(e.target.value))}>
             {completedMissions.map((m) => (
               <option key={m.i} value={m.i}>
-                {m.i + 1} 차 원정
+                {m.i + 1} 차 조사
               </option>
             ))}
           </select>
@@ -529,7 +542,7 @@ export function ProfileScreen() {
       {viewer && abilityModalOpen && viewer.role === '파괴자' && (
         <AbilityUseModal
           title="능력 사용 — 파괴 발동"
-          prompt="이번 원정 결과를 몰래 조작해 볼까....... 한번 발동하면 되돌릴 수 없어."
+          prompt="이번 조사 결과를 몰래 조작해 볼까....... 한번 발동하면 되돌릴 수 없어."
           confirmLabel="파괴하기"
           confirmDisabled={!accompliceReady}
           onConfirm={() => {
@@ -620,7 +633,7 @@ export function ProfileScreen() {
           <div className="profile__gm">
             <span className="profile__section-label">불가 전용 — 빠른 쪽지 발송</span>
             <p className="profile__gm-note">
-              모든 조사실·교실·원정 정보를 열람할 수 있고, 아래에서 전원에게 팝업 쪽지를 즉시 보낼 수 있다.
+              모든 구관·강당·조사 정보를 열람할 수 있고, 아래에서 전원에게 팝업 쪽지를 즉시 보낼 수 있다.
             </p>
             <div className="profile__gm-presets">
               {PRESETS.map((p) => (
@@ -694,9 +707,9 @@ export function ProfileScreen() {
           )}
 
           <div className="profile__gm">
-            <span className="profile__section-label">불가 전용 — 원정</span>
+            <span className="profile__section-label">불가 전용 — 조사</span>
             <p className="profile__gm-note">
-              원정 상태: <strong>{missionsOpen ? '열림' : '잠김'}</strong>
+              조사 상태: <strong>{missionsOpen ? '열림' : '잠김'}</strong>
             </p>
             {!missionsOpen && (
               <>
@@ -712,19 +725,19 @@ export function ProfileScreen() {
                   className="profile__gm-preset"
                   onClick={() => openMissions(firstPlayerId || undefined)}
                 >
-                  원정 열기 (5 원정 · 3 선승)
+                  조사 열기 (5 조사 · 3 선승)
                 </button>
               </>
             )}
             <p className="profile__gm-note">
-              교실·조사실의 문제 발동은 각 채팅 화면 안의 + 버튼에서 진행한다.
+              강당·구관의 문제 발동은 각 채팅 화면 안의 + 버튼에서 진행한다.
             </p>
           </div>
 
           <div className="profile__gm">
             <span className="profile__section-label">불가 전용 — 단서 마스터 목록 (스포일러)</span>
             <p className="profile__gm-note">
-              교실 문제 10 개가 순서대로 공개하는 진짜 단서 전체다. 플레이어들이 실제로 모았는지와
+              강당 문제 10 개가 순서대로 공개하는 진짜 단서 전체다. 플레이어들이 실제로 모았는지와
               무관하게 항상 전부 보인다 — 진행 페이스를 가늠할 때 참고한다.
             </p>
             <button className="profile__gm-preset" onClick={() => setMasterListOpen(!masterListOpen)}>
@@ -753,9 +766,9 @@ export function ProfileScreen() {
           <div className="profile__gm">
             <span className="profile__section-label">불가 전용 — 일차별 서사 전달</span>
             <p className="profile__gm-note">
-              하루가 지날 때마다 눌러서 그날의 이야기를 전원에게 한 번에 전달한다. 1~3 일차는 각자
-              캐릭터의 개인 서사, 4 일차는 모두에게 동일한 전말 공개다. 프로필 화면과 각자의 개인
-              대화에 동시에 남고, 순서대로만 진행할 수 있다.
+              하루가 지날 때마다 눌러서 그날의 개인화된 기억을 전원에게 한 번에 전달한다. 프로필
+              화면과 각자의 개인 대화에 동시에 남고, 순서대로만 진행할 수 있다. 4 일차까지 마치면
+              전말을 별도로 전송할 수 있다.
             </p>
             <div className="profile__gm-presets">
               {([1, 2, 3, 4] as const).map((day) => (
@@ -768,6 +781,9 @@ export function ProfileScreen() {
                   {storyDay >= day ? `${day} 일차 전달 완료` : `${day} 일차 전달하기`}
                 </button>
               ))}
+              <button className="profile__gm-preset" onClick={revealTruth} disabled={storyDay !== 4 || truthRevealed}>
+                {truthRevealed ? '전말 전송 완료' : '전말 전송'}
+              </button>
             </div>
           </div>
 

@@ -35,6 +35,7 @@ import {
   patchSession,
   resetAllDataSync,
   revealStoryDaySync,
+  revealTruthSync,
   sendEndingSync,
   runAbilityTransaction,
   runCombatTransaction,
@@ -100,6 +101,8 @@ const LS = {
   cachedNickname: 'gwae_cachedNickname',
   notifyRoomEvents: 'gwae_notifyRoomEvents',
   notifyGeneralBroadcasts: 'gwae_notifyGeneralBroadcasts',
+  lastSeenDmCount: 'gwae_lastSeenDmCount',
+  gmDmSeenCounts: 'gwae_gmDmSeenCounts',
 } as const
 
 export type TabId = 'main' | 'classroom' | 'rooms' | 'mission' | 'shop' | 'profile'
@@ -146,6 +149,11 @@ interface GameState {
   notifyGeneralBroadcasts: boolean
   setNotifyGeneralBroadcasts: (on: boolean) => void
   enableAllNotifications: () => void
+  topAlert: { id: string; text: string } | null
+  dismissTopAlert: () => void
+  hasUnreadDm: boolean
+  markDmRead: () => void
+  markDmThreadRead: (characterId: string) => void
   missionsOpen: boolean
   openMissions: (firstPlayerId?: string) => void
   mission: MissionState
@@ -200,6 +208,8 @@ interface GameState {
   setShopOpen: (open: boolean) => void
   storyDay: 0 | 1 | 2 | 3 | 4
   revealStoryDay: (day: 1 | 2 | 3 | 4) => void
+  truthRevealed: boolean
+  revealTruth: () => void
   endingKey: EndingKey | null
   sendEnding: (key: EndingKey) => void
 }
@@ -294,6 +304,17 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const [notifyGeneralBroadcasts, setNotifyGeneralBroadcastsLocal] = useState<boolean>(
     () => localStorage.getItem(LS.notifyGeneralBroadcasts) !== 'false',
   )
+  const [lastSeenDmCount, setLastSeenDmCountLocal] = useState<number>(
+    () => Number(localStorage.getItem(LS.lastSeenDmCount) ?? '0'),
+  )
+  const [gmDmSeenCounts, setGmDmSeenCountsLocal] = useState<Record<string, number>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(LS.gmDmSeenCounts) ?? '{}')
+    } catch {
+      return {}
+    }
+  })
+  const [topAlert, setTopAlert] = useState<{ id: string; text: string } | null>(null)
   const [activeTab, setActiveTab] = useState<TabId>('main')
   const [session, setSession] = useState<SessionDoc>(defaultSessionState)
   const [players, setPlayers] = useState<Record<string, PlayerDoc>>({})
@@ -322,12 +343,14 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   //  느린 네트워크에서도 안전하도록 충분히 길게 기다린 뒤에만 초기화로 간주한다.)
   const hasSeenSelfRef = useRef(false)
   useEffect(() => {
-    if (!playersLoaded || isAdminFlag || !viewerId) return
+    // 각오를 밝히기(역할 공개 확인) 전까지는 절대 되돌리지 않는다 — 읽는 도중
+    // 네트워크가 잠깐 끊기거나 화면이 꺼졌다 켜져도 롤 카드가 갑자기 사라지면 안 된다.
+    if (!playersLoaded || isAdminFlag || !viewerId || !roleRevealed) return
     if (players[viewerId]) {
       hasSeenSelfRef.current = true
       return
     }
-    const delay = hasSeenSelfRef.current ? 1500 : 15000
+    const delay = hasSeenSelfRef.current ? 8000 : 20000
     const timer = setTimeout(() => {
       localStorage.removeItem(LS.viewerId)
       localStorage.removeItem(LS.roleRevealed)
@@ -337,7 +360,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       setCachedNicknameLocal('')
     }, delay)
     return () => clearTimeout(timer)
-  }, [playersLoaded, players, viewerId, isAdminFlag])
+  }, [playersLoaded, players, viewerId, isAdminFlag, roleRevealed])
 
   const signedUp = isAdminFlag || viewerId !== null
   const isAdmin = isAdminFlag
@@ -358,6 +381,88 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const atk = BASE_ATK + (myPlayer?.weaponAtkBonus ?? 0)
   const def = myPlayer?.armorDefBonus ?? 0
   const incapacitated = hp <= 0 || stamina <= 0
+
+  // 새 공지·괴이 출현이 뜨면 (알림 설정을 켜둔 경우) 상단바에도 짧게 알려 준다.
+  const lastAlertedBroadcastIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    const bc = session.broadcast
+    if (!bc || bc.id === lastAlertedBroadcastIdRef.current) return
+    lastAlertedBroadcastIdRef.current = bc.id
+    const suppressed = bc.kind === 'sin' ? !notifyRoomEvents : !notifyGeneralBroadcasts
+    if (suppressed) return
+    setTopAlert({ id: bc.id, text: bc.title })
+  }, [session.broadcast, notifyRoomEvents, notifyGeneralBroadcasts])
+
+  // 불가가 나에게 새 쪽지를 보내면 상단바에 알려 준다 (최초 로딩 시점의 기존 대화는 제외).
+  const dmInitRef = useRef(false)
+  const lastDmCountRef = useRef(0)
+  useEffect(() => {
+    if (!viewerId || isAdminFlag) return
+    const msgs = myPlayer?.gmDmMessages ?? []
+    if (!dmInitRef.current) {
+      dmInitRef.current = true
+      lastDmCountRef.current = msgs.length
+      return
+    }
+    if (msgs.length > lastDmCountRef.current) {
+      const last = msgs[msgs.length - 1]
+      if (last.authorId === 'admin') setTopAlert({ id: last.id, text: `불가: ${last.text}` })
+    }
+    lastDmCountRef.current = msgs.length
+  }, [myPlayer?.gmDmMessages, viewerId, isAdminFlag])
+
+  // 불가 화면에서는 누구든 새로 보낸 쪽지가 오면 상단바에 알려 준다.
+  const gmDmInitRef = useRef(false)
+  const lastGmInboxTotalRef = useRef(0)
+  useEffect(() => {
+    if (!isAdminFlag) return
+    let total = 0
+    let latestFrom: string | null = null
+    let latestMsg: ChatMessage | null = null
+    for (const [pid, p] of Object.entries(players)) {
+      const fromPlayer = (p.gmDmMessages ?? []).filter((m) => m.authorId !== 'admin')
+      total += fromPlayer.length
+      const last = fromPlayer[fromPlayer.length - 1]
+      if (last && (!latestMsg || Number(last.id.split('-')[1]) > Number(latestMsg.id.split('-')[1]))) {
+        latestMsg = last
+        latestFrom = pid
+      }
+    }
+    if (!gmDmInitRef.current) {
+      gmDmInitRef.current = true
+      lastGmInboxTotalRef.current = total
+      return
+    }
+    if (total > lastGmInboxTotalRef.current && latestMsg && latestFrom) {
+      const senderName = players[latestFrom]?.nickname ?? CHARACTERS.find((c) => c.id === latestFrom)?.name ?? '???'
+      setTopAlert({ id: latestMsg.id, text: `${senderName}: ${latestMsg.text}` })
+    }
+    lastGmInboxTotalRef.current = total
+  }, [players, isAdminFlag])
+
+  function dismissTopAlert() {
+    setTopAlert(null)
+  }
+
+  const hasUnreadDm = isAdminFlag
+    ? Object.entries(players).some(
+        ([pid, p]) => (p.gmDmMessages ?? []).filter((m) => m.authorId !== 'admin').length > (gmDmSeenCounts[pid] ?? 0),
+      )
+    : (myPlayer?.gmDmMessages?.length ?? 0) > lastSeenDmCount
+
+  function markDmRead() {
+    if (!viewerId) return
+    const count = myPlayer?.gmDmMessages?.length ?? 0
+    localStorage.setItem(LS.lastSeenDmCount, String(count))
+    setLastSeenDmCountLocal(count)
+  }
+
+  function markDmThreadRead(characterId: string) {
+    const count = (players[characterId]?.gmDmMessages ?? []).filter((m) => m.authorId !== 'admin').length
+    const next = { ...gmDmSeenCounts, [characterId]: count }
+    localStorage.setItem(LS.gmDmSeenCounts, JSON.stringify(next))
+    setGmDmSeenCountsLocal(next)
+  }
 
   function displayName(id: string) {
     if (id === 'admin') return '불가'
@@ -502,7 +607,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       note: null,
       attemptsUsed: 0,
     }))
-    sendBroadcast('event', '교실이 열렸다', `《${item.title}》 — 지금 교실로 모이자.......`)
+    sendBroadcast('event', '강당이 열렸다', `《${item.title}》 — 지금 강당으로 모이자.......`, false)
   }
 
   function dispatchPuzzle(puzzle: ClassroomPuzzle) {
@@ -524,7 +629,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       attemptsUsed: 0,
     }))
     void patchSession({ classroomMessages: [] })
-    sendBroadcast('event', '교실이 열렸다', `《${puzzle.title}》 — 지금 교실로 모이자.......`)
+    sendBroadcast('event', '강당이 열렸다', `《${puzzle.title}》 — 지금 강당으로 모이자.......`, false)
   }
 
   function closeInvestigation() {
@@ -550,7 +655,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         note: remaining > 0 ? '오답이다. 다시 논의해보자.' : '기회를 모두 소진했다....... 다시 열릴 때까지 기다려야 한다.',
       }
     })
-    if (clueToAdd) void addClueSync(makeClue(clueToAdd, '교실'))
+    if (clueToAdd) void addClueSync(makeClue(clueToAdd, '강당'))
   }
 
   async function attemptDuel(choice: 'odd' | 'even') {
@@ -565,7 +670,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       }
       return { ...prev, note: '괴이가 낮게 웃는다. "아니야." 다시 시도해볼 수 있다.' }
     })
-    if (clueToAdd) void addClueSync(makeClue(clueToAdd, '교실'))
+    if (clueToAdd) void addClueSync(makeClue(clueToAdd, '강당'))
   }
 
   function toggleHeart(postId: string) {
@@ -602,11 +707,12 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     })
   }
 
-  function sendBroadcast(kind: BroadcastKind, title: string, body: string) {
+  function sendBroadcast(kind: BroadcastKind, title: string, body: string, postToFeed = true) {
     if (!title.trim() || !body.trim()) return
     const id = `bc-${Date.now()}`
     const bc: Broadcast = { id, kind, title: title.trim(), body: body.trim() }
     void sendBroadcastSync(bc)
+    if (!postToFeed) return
     void createFeedPostSync({
       authorLabel: BROADCAST_LABEL[kind],
       tag: BROADCAST_TAG[kind],
@@ -713,6 +819,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void revealStoryDaySync(day)
   }
 
+  function revealTruth() {
+    if (!isAdminFlag) return
+    void revealTruthSync()
+  }
+
   function sendEnding(key: EndingKey) {
     if (!isAdminFlag) return
     void sendEndingSync(key)
@@ -772,7 +883,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void runAbilityTransaction(viewerId, (sess, player) => {
       if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('보호자')) return {}
       if (sess.mission.shielded) return {}
-      const text = '《수호》를 발동했다 — 다음 원정 결과에서 실패 카드 1 장이 무효화된다.'
+      const text = '《수호》를 발동했다 — 다음 조사 결과에서 실패 카드 1 장이 무효화된다.'
       return {
         session: { mission: { ...sess.mission, shielded: true } },
         player: {
@@ -790,7 +901,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('목격자')) return {}
       const count = sess.mission.failCounts[missionIndex]
       if (count === null || count === undefined) return {}
-      const text = `《CCTV》 ${missionIndex + 1} 차 원정 — 실패 카드 ${count} 장.`
+      const text = `《CCTV》 ${missionIndex + 1} 차 조사 — 실패 카드 ${count} 장.`
       return {
         player: {
           abilityUseCount: player.abilityUseCount + 1,
@@ -832,7 +943,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       if (!sess.mission.proposedTeam.includes(viewerId)) return {}
       if (sess.mission.missionResults[sess.mission.missionIndex] !== 'success') return {}
       const nextMission = missionReducer(sess.mission, { type: 'FORGE_RESULT' })
-      const text = `《파괴》 ${sess.mission.missionIndex + 1} 차 원정의 결과를 몰래 조작했다.`
+      const text = `《파괴》 ${sess.mission.missionIndex + 1} 차 조사의 결과를 몰래 조작했다.`
       return {
         session: { mission: nextMission },
         player: {
@@ -1082,6 +1193,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       setShopOpen,
       storyDay: session.storyDay,
       revealStoryDay,
+      truthRevealed: session.truthRevealed,
+      revealTruth,
       endingKey: session.endingKey,
       sendEnding,
       gmReveal: isAdmin,
@@ -1094,6 +1207,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       notifyGeneralBroadcasts,
       setNotifyGeneralBroadcasts,
       enableAllNotifications,
+      topAlert,
+      dismissTopAlert,
+      hasUnreadDm,
+      markDmRead,
+      markDmThreadRead,
       missionsOpen: session.missionsOpen,
       openMissions,
       mission: session.mission,
@@ -1159,6 +1277,10 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       myPlayer,
       notifyRoomEvents,
       notifyGeneralBroadcasts,
+      topAlert,
+      hasUnreadDm,
+      lastSeenDmCount,
+      gmDmSeenCounts,
     ],
   )
 

@@ -50,7 +50,7 @@ function MissionDiscussionPanel() {
   return (
     <div className={`mdisc ${discussionOpen ? 'is-open' : ''}`}>
       <div className="mdisc__head">
-        <span className="mdisc__title">원정 토론</span>
+        <span className="mdisc__title">조사 토론</span>
         {discussionOpen && discussionOpenedAt && (
           <span className={`mdisc__timer ${remainingMs === 0 ? 'is-over' : ''}`}>
             {remainingMs > 0 ? formatCountdown(remainingMs) : '시간 종료'}
@@ -86,7 +86,7 @@ function MissionDiscussionPanel() {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && submit()}
-                placeholder="원정 토론방에 메시지 보내기......"
+                placeholder="조사 토론방에 메시지 보내기......"
               />
               <button onClick={submit}>전송</button>
             </div>
@@ -152,7 +152,7 @@ export function MissionScreen() {
     return (
       <div className="mission mission--locked">
         <span className="mission__lock-icon">▧</span>
-        <p className="mission__lock-text">원정은 아직 열리지 않았다. GM이 열 때까지 기다려야 한다.</p>
+        <p className="mission__lock-text">조사는 아직 열리지 않았다. GM이 열 때까지 기다려야 한다.</p>
       </div>
     )
   }
@@ -162,7 +162,7 @@ export function MissionScreen() {
       <div className="mission">
         <div className="mission__head">
           <span className="mission__index">
-            {mission.missionIndex + 1} 차 원정 · 불가 관전
+            {mission.missionIndex + 1} 차 조사 · 불가 관전
           </span>
           <span className="mission__score">
             선 {mission.wardWins} : {mission.sinWins} 악
@@ -170,7 +170,7 @@ export function MissionScreen() {
         </div>
         <MissionTrack />
         {mission.lastNote && <p className="mission__note">{mission.lastNote}</p>}
-        <p className="mission__lock-text">불가는 원정에 참여하지 않고 진행 상황만 지켜본다.</p>
+        <p className="mission__lock-text">불가는 조사에 참여하지 않고 진행 상황만 지켜본다.</p>
         <MissionDiscussionPanel />
       </div>
     )
@@ -184,7 +184,7 @@ export function MissionScreen() {
       <div className="mission mission--gameover">
         <h2>{winnerLabel}</h2>
         <p>학생 {mission.wardWins} 승 · 괴이 {mission.sinWins} 승</p>
-        <button onClick={resetMission}>새 원정 시작하기</button>
+        <button onClick={resetMission}>새 조사 시작하기</button>
       </div>
     )
   }
@@ -193,7 +193,7 @@ export function MissionScreen() {
     <div className="mission">
       <div className="mission__head">
         <span className="mission__index">
-          {mission.missionIndex + 1} 차 원정 · 필요 인원 {teamSize} 명
+          {mission.missionIndex + 1} 차 조사 · 필요 인원 {teamSize} 명
           {TWO_FAILS_REQUIRED[mission.missionIndex] && ' (실패 카드 2 장부터 실패)'}
         </span>
         <span className="mission__score">
@@ -210,7 +210,7 @@ export function MissionScreen() {
       {mission.phase === 'propose' && (
         <div className="mission__panel">
           <p className="mission__leader">
-            이번 원정대장: <strong>{displayName(leader.id)}</strong>
+            이번 조사대장: <strong>{displayName(leader.id)}</strong>
             {isLeader && ' (나)'}
           </p>
           {isLeader ? (
@@ -236,7 +236,7 @@ export function MissionScreen() {
                 disabled={draftTeam.length !== teamSize}
                 onClick={() => confirmProposal(draftTeam)}
               >
-                원정대 제안 ({draftTeam.length}/{teamSize})
+                조사대 제안 ({draftTeam.length}/{teamSize})
               </button>
             </>
           ) : (
@@ -289,7 +289,7 @@ export function MissionScreen() {
 
       {mission.phase === 'execute' && (
         <div className="mission__panel">
-          <p className="mission__leader">원정 진행 중 — 팀원들이 카드를 제출하고 있다</p>
+          <p className="mission__leader">조사 진행 중 — 팀원들이 카드를 제출하고 있다</p>
           <div className="mission__roster mission__roster--readonly">
             {mission.proposedTeam.map((id) => {
               const c = charOf(id)
@@ -330,7 +330,7 @@ export function MissionScreen() {
           <button className="mission__cta" onClick={continueMission}>
             {mission.wardWins >= WINS_NEEDED || mission.sinWins >= WINS_NEEDED
               ? '결과 확인'
-              : '다음 원정으로'}
+              : '다음 조사으로'}
           </button>
         </div>
       )}

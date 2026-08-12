@@ -10,7 +10,7 @@ import { ChatAvatar } from '../components/ChatAvatar'
 const MAX_CLASSROOM_ATTEMPTS = 3
 
 const CLASSROOM_AMBIENT_TEXT =
-  '교실은 조용하다....... 다들 각자 자리에 앉아 서로 눈치만 보고 있다. 아직 아무것도 열리지 않았다.......'
+  '강당은 조용하다....... 다들 각자 자리에 앉아 서로 눈치만 보고 있다. 아직 아무것도 열리지 않았다.......'
 
 export function ClassroomScreen() {
   const {
@@ -74,7 +74,7 @@ export function ClassroomScreen() {
     <div className="classroom">
       <div className={`classroom__pin ${classroom.status === 'cleared' ? 'is-cleared' : ''}`}>
         <div className="classroom__pin-head">
-          <span className="classroom__pin-heading">교실</span>
+          <span className="classroom__pin-heading">강당</span>
           {gmReveal && (
             <div className="classroom__pin-gm">
               {classroom.status !== 'locked' && (
@@ -169,7 +169,7 @@ export function ClassroomScreen() {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
-            placeholder="교실에 메시지 보내기......"
+            placeholder="강당에 메시지 보내기......"
           />
           <button onClick={submit}>전송</button>
         </div>

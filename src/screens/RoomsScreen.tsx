@@ -77,7 +77,7 @@ export function RoomsScreen() {
       <div className="rooms">
         <div className={`rooms__pin ${roomEvent.cleared ? 'is-cleared' : ''}`}>
           <button className="rooms__back" onClick={() => setOpenRoom(null)}>
-            ← 조사실 목록
+            ← 구관 목록
           </button>
           <div className="rooms__pin-head">
             <span className="rooms__pin-title">{room.name}</span>
@@ -214,7 +214,7 @@ export function RoomsScreen() {
         {blockedModalOpen && (
           <AbilityUseModal
             title="입장 불가"
-            prompt="지금은 너무 힘들어서 조사실에 들어갈 수 없다....... HP나 스태미나가 바닥났다. 매점에서 음식이나 약을 구해 회복한 뒤 다시 시도하자."
+            prompt="지금은 너무 힘들어서 구관에 들어갈 수 없다....... HP나 스태미나가 바닥났다. 매점에서 음식이나 약을 구해 회복한 뒤 다시 시도하자."
             confirmLabel="확인"
             onConfirm={() => setBlockedModalOpen(false)}
             onClose={() => setBlockedModalOpen(false)}
@@ -227,8 +227,8 @@ export function RoomsScreen() {
   return (
     <div className="rooms">
       <div className="rooms__intro">
-        <span className="rooms__intro-label">조사실</span>
-        <p>선착순으로 입장한다. 각 조사실에는 인원 제한이 있다.</p>
+        <span className="rooms__intro-label">구관</span>
+        <p>선착순으로 입장한다. 각 구관에는 인원 제한이 있다.</p>
       </div>
       <div className="rooms__grid">
         {ROOMS.map((room) => {

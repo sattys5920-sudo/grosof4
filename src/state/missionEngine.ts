@@ -1,7 +1,7 @@
 import { CHARACTERS } from '../data/characters'
 
-// 표준 아발론 10인 규칙: 원정 인원 3-4-4-5-5, 4 차만 실패 카드 2 장 이상이어야 실패.
-// 먼저 3 승을 거두는 진영이 승리하므로, 4 차까지 2:2일 때만 5 차(최종) 원정까지 간다.
+// 표준 아발론 10인 규칙: 조사 인원 3-4-4-5-5, 4 차만 실패 카드 2 장 이상이어야 실패.
+// 먼저 3 승을 거두는 진영이 승리하므로, 4 차까지 2:2일 때만 5 차(최종) 조사까지 간다.
 export const MISSION_SIZES = [3, 4, 4, 5, 5]
 export const TWO_FAILS_REQUIRED = [false, false, false, true, false]
 export const WINS_NEEDED = 3
@@ -79,7 +79,7 @@ function autoFillIfNpc(state: MissionState): MissionState {
   return {
     ...state,
     proposedTeam: pickAutoTeam(leaderId, MISSION_SIZES[state.missionIndex], state.turnOrder),
-    lastNote: `${leader.name}이(가) 원정대를 제안했다.`,
+    lastNote: `${leader.name}이(가) 조사대를 제안했다.`,
   }
 }
 
@@ -146,7 +146,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
           voteTally: tally,
           phase: 'execute',
           rejectionCount: 0,
-          lastNote: `찬성 ${tally.approve} · 반대 ${tally.reject} — 원정대가 승인되었다.`,
+          lastNote: `찬성 ${tally.approve} · 반대 ${tally.reject} — 조사대가 승인되었다.`,
         }
       }
       const nextRejections = state.rejectionCount + 1
@@ -165,7 +165,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
           teamHistory,
           sinWins: state.sinWins + 1,
           phase: 'result',
-          lastNote: `찬성 ${tally.approve} · 반대 ${tally.reject} — 5 회 연속 부결로 원정이 자동 실패했다.`,
+          lastNote: `찬성 ${tally.approve} · 반대 ${tally.reject} — 5 회 연속 부결로 조사가 자동 실패했다.`,
         }
       }
       const nextLeaderIdx = (state.leaderIdx + 1) % state.turnOrder.length
@@ -210,8 +210,8 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         phase: 'result',
         lastNote:
           result === 'success'
-            ? `성공 ${success} · 실패 ${fail} — 원정 성공.${shieldedNow ? ' (누군가 이 원정을 지켜냈다.......)' : ''}`
-            : `성공 ${success} · 실패 ${fail} — 원정 실패.${shieldedNow ? ' (지켜내려 했지만 막지 못했다.......)' : ''}`,
+            ? `성공 ${success} · 실패 ${fail} — 조사 성공.${shieldedNow ? ' (누군가 이 조사를 지켜냈다.......)' : ''}`
+            : `성공 ${success} · 실패 ${fail} — 조사 실패.${shieldedNow ? ' (지켜내려 했지만 막지 못했다.......)' : ''}`,
       }
     }
 
@@ -224,7 +224,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         missionResults: results,
         wardWins: state.wardWins - 1,
         sinWins: state.sinWins + 1,
-        lastNote: `${state.lastNote} — 누군가 결과를 조작했다. 원정 실패로 뒤바뀌었다.`,
+        lastNote: `${state.lastNote} — 누군가 결과를 조작했다. 조사 실패로 뒤바뀌었다.`,
       }
     }
 

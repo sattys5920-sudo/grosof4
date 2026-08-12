@@ -52,6 +52,7 @@ export interface SessionDoc {
   discussionOpenedAt: number | null
   shopOpen: boolean
   storyDay: 0 | 1 | 2 | 3 | 4
+  truthRevealed: boolean
   endingKey: EndingKey | null
 }
 
@@ -124,6 +125,7 @@ export function defaultSessionState(): SessionDoc {
     discussionOpen: false,
     discussionOpenedAt: null,
     storyDay: 0,
+    truthRevealed: false,
     endingKey: null,
   }
 }
@@ -466,8 +468,8 @@ export async function resetAllDataSync(): Promise<void> {
 }
 
 /**
- * GM 전용: N 일차가 지났다고 선언하고, 가입한 모든 플레이어에게 그날의 이야기를 한 번에 전달한다.
- * 1~3 일차는 각자 캐릭터의 개인 서사, 4 일차는 모두에게 동일한 전말 공개다.
+ * GM 전용: N 일차가 지났다고 선언하고, 가입한 모든 플레이어에게 그날의 개인 서사를 한 번에 전달한다.
+ * 1~4 일차 모두 각자 캐릭터의 개인화된 기억이며, 전체 전말 공개는 revealTruthSync가 별도로 담당한다.
  */
 export async function revealStoryDaySync(day: 1 | 2 | 3 | 4): Promise<void> {
   const database = requireDb()
@@ -483,8 +485,8 @@ export async function revealStoryDaySync(day: 1 | 2 | 3 | 4): Promise<void> {
           ? character.storyDay2
           : day === 3
             ? character.storyDay3
-            : DAY4_REVEAL_TEXT
-    const text = day === 4 ? body : `《${day} 일차》 ${body}`
+            : character.storyDay4
+    const text = `《${day} 일차》 ${body}`
     const msg: ChatMessage = {
       id: `dm-${Date.now()}-${d.id}`,
       authorId: 'admin',
@@ -494,6 +496,24 @@ export async function revealStoryDaySync(day: 1 | 2 | 3 | 4): Promise<void> {
     batch.update(d.ref, { gmDmMessages: arrayUnion(msg) })
   }
   batch.update(sessionRef(), { storyDay: day })
+  await batch.commit()
+}
+
+/** GM 전용: 4 일차가 지난 뒤, 전말(《전말 — 열 번째 해》)을 모두에게 동일하게 공개한다. */
+export async function revealTruthSync(): Promise<void> {
+  const database = requireDb()
+  const playersSnap = await getDocs(playersCol())
+  const batch = writeBatch(database)
+  for (const d of playersSnap.docs) {
+    const msg: ChatMessage = {
+      id: `dm-${Date.now()}-${d.id}`,
+      authorId: 'admin',
+      text: DAY4_REVEAL_TEXT,
+      time: '지금',
+    }
+    batch.update(d.ref, { gmDmMessages: arrayUnion(msg) })
+  }
+  batch.update(sessionRef(), { truthRevealed: true })
   await batch.commit()
 }
 
