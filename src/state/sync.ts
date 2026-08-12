@@ -133,6 +133,8 @@ export function defaultSessionState(): SessionDoc {
       objectResults: {},
       startedAtMs: null,
       completedEventIds: [],
+      logVotes: {},
+      logResolutions: {},
     },
     collectedClues: [],
     missionMessages: [],
@@ -527,6 +529,41 @@ export async function runCombatTransaction(
     }
     if (patch.me) tx.update(meRef, patch.me)
     if (patch.target && targetRef) tx.update(targetRef, patch.target)
+  })
+}
+
+/**
+ * Runs a hall-minigame resolution transaction: reads the shared session doc plus every
+ * pending participant's player doc (a dynamic list read from the session itself), then lets
+ * the caller decide the shared outcome and per-player patches in one atomic write.
+ */
+export async function runHallMinigameTransaction(
+  objectId: string,
+  fn: (
+    session: SessionDoc,
+    participants: Record<string, PlayerDoc>,
+  ) => { session?: Partial<SessionDoc>; playerPatches?: Record<string, Partial<PlayerDoc>> },
+) {
+  const sref = sessionRef()
+  await runTransaction(requireDb(), async (tx) => {
+    const sSnap = await tx.get(sref)
+    const rawSession = sSnap.data() as SessionDoc
+    const session = { ...rawSession, mission: deserializeMission(rawSession.mission) }
+    const pendingIds = session.hallEvent.objectResults[objectId]?.minigamePending ?? []
+    const playerSnaps = await Promise.all(pendingIds.map((id) => tx.get(playerRef(id))))
+    const participants: Record<string, PlayerDoc> = {}
+    playerSnaps.forEach((snap, i) => {
+      if (snap.exists()) participants[pendingIds[i]] = snap.data() as PlayerDoc
+    })
+    const { session: sessionPatch, playerPatches } = fn(session, participants)
+    if (sessionPatch) {
+      tx.update(sref, sessionPatch.mission ? { ...sessionPatch, mission: serializeMission(sessionPatch.mission) } : sessionPatch)
+    }
+    if (playerPatches) {
+      for (const [id, patch] of Object.entries(playerPatches)) {
+        tx.update(playerRef(id), patch)
+      }
+    }
   })
 }
 

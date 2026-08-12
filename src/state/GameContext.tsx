@@ -17,6 +17,7 @@ import type {
   FeedComment,
   FeedPost,
   HallEventState,
+  HallMinigameKind,
   HallObjectResult,
   RoomEventState,
   RoomId,
@@ -46,6 +47,7 @@ import {
   sendEndingSync,
   runAbilityTransaction,
   runCombatTransaction,
+  runHallMinigameTransaction,
   sendBroadcastSync,
   sendClassroomMessageSync,
   sendGmDmMessageSync,
@@ -92,6 +94,34 @@ function describeDiceRoll(roll: { values: number[]; sum: number; hit: boolean })
 
 function makeCombatLog(text: string): CombatLogEntry {
   return { id: `cl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text }
+}
+
+// 강당 미니게임: 참여 인원 전체가 공동으로 AI(그것)와 승부를 겨룬다. 종류별로 그럴듯한
+// 승부 서사를 지어내되, 실제 승패는 미리 정해진 won 값과 항상 일치하도록 구성한다.
+function buildMinigameLog(kind: HallMinigameKind | undefined, label: string, won: boolean): string {
+  if (kind === 'oddeven') {
+    const guess: '홀' | '짝' = Math.random() < 0.5 ? '홀' : '짝'
+    const finalParity = won ? guess : guess === '홀' ? '짝' : '홀'
+    const evens = [2, 4, 6, 8]
+    const odds = [1, 3, 5, 7, 9]
+    const n = finalParity === '짝' ? evens[Math.floor(Math.random() * evens.length)] : odds[Math.floor(Math.random() * odds.length)]
+    return `${label} 앞에서 그것과 홀짝을 걸었다....... 조사단은 '${guess}'을 외쳤다. 펼쳐 보니 ${n}개, '${finalParity}' — ${won ? '조사단의 승리다' : '조사단의 패배다'}.`
+  }
+  if (kind === 'poker') {
+    const winnerScore = Math.floor(Math.random() * 5) + 6
+    const loserScore = Math.floor(Math.random() * 5) + 1
+    const mine = won ? winnerScore : loserScore
+    const theirs = won ? loserScore : winnerScore
+    return `${label} 앞에서 그것과 패를 나눴다....... 조사단 패는 ${mine}, 그것의 패는 ${theirs} — ${won ? '조사단의 승리다' : '조사단의 패배다'}.`
+  }
+  if (kind === 'robo77') {
+    const winnerScore = Math.floor(Math.random() * 20) + 77
+    const loserScore = Math.floor(Math.random() * 40) + 30
+    const mine = won ? winnerScore : loserScore
+    const theirs = won ? loserScore : winnerScore
+    return `${label} 앞에서 그것과 로보 77 승부를 걸었다....... 조사단 ${mine}점, 그것 ${theirs}점 — ${won ? '조사단의 승리다' : '조사단의 패배다'}.`
+  }
+  return won ? `${label}에서 그것과 승부를 벌여 이겼다.` : `${label}에서 그것과 승부를 벌여 졌다.`
 }
 
 function applyItemEffect(
@@ -168,11 +198,14 @@ interface GameState {
   hallEvent: HallEventState
   dispatchHallEvent: (eventId: string) => void
   advanceHallLog: () => void
+  voteHallLogChoice: (choiceId: string) => void
+  closeHallLogVote: () => void
   advanceHallObject: () => void
   finishHallEvent: () => void
   resolveHallObject: (objectId: string, choice: 'open' | 'leave') => void
   submitHallPuzzleAnswer: (objectId: string, text: string) => void
   joinHallMinigame: (objectId: string) => void
+  resolveHallMinigame: (objectId: string) => void
   feed: FeedPost[]
   toggleHeart: (postId: string) => void
   gmReveal: boolean
@@ -828,6 +861,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       objectResults: {},
       startedAtMs: Date.now(),
       completedEventIds: session.hallEvent.completedEventIds,
+      logVotes: {},
+      logResolutions: {},
     }
     void patchSession({ hallEvent: nextHallEvent, classroomMessages: [] })
     sendBroadcast('event', `${event.roomName}이(가) 열렸다`, `${event.creatureName} — 지금 강당으로 모이자.......`)
@@ -835,10 +870,52 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
   function advanceHallLog() {
     if (!isAdminFlag) return
-    const event = hallEventById(session.hallEvent.eventId ?? '')
+    const he = session.hallEvent
+    const event = hallEventById(he.eventId ?? '')
     if (!event) return
-    const nextLogIndex = Math.min(session.hallEvent.logIndex + 1, event.logs.length)
-    void patchSession({ hallEvent: { ...session.hallEvent, logIndex: nextLogIndex } })
+    if (he.logIndex > 0) {
+      const lastEntry = event.logs[he.logIndex - 1]
+      if (lastEntry?.choices && !he.logResolutions[String(he.logIndex - 1)]) return
+    }
+    const nextLogIndex = Math.min(he.logIndex + 1, event.logs.length)
+    void patchSession({ hallEvent: { ...he, logIndex: nextLogIndex, logVotes: {} } })
+  }
+
+  function voteHallLogChoice(choiceId: string) {
+    if (!viewerId) return
+    void runAbilityTransaction(viewerId, (sess) => {
+      const he = sess.hallEvent
+      const event = hallEventById(he.eventId ?? '')
+      if (!event) return {}
+      const idx = he.logIndex - 1
+      const entry = idx >= 0 ? event.logs[idx] : undefined
+      if (!entry?.choices) return {}
+      if (he.logResolutions[String(idx)]) return {}
+      if (!entry.choices.some((c) => c.id === choiceId)) return {}
+      return {
+        session: { hallEvent: { ...he, logVotes: { ...he.logVotes, [viewerId]: choiceId } } },
+      }
+    })
+  }
+
+  function closeHallLogVote() {
+    if (!isAdminFlag) return
+    const he = session.hallEvent
+    const event = hallEventById(he.eventId ?? '')
+    if (!event) return
+    const idx = he.logIndex - 1
+    const entry = idx >= 0 ? event.logs[idx] : undefined
+    if (!entry?.choices || he.logResolutions[String(idx)]) return
+    const tally: Record<string, number> = {}
+    Object.values(he.logVotes).forEach((cid) => {
+      tally[cid] = (tally[cid] ?? 0) + 1
+    })
+    const maxVotes = Math.max(0, ...entry.choices.map((c) => tally[c.id] ?? 0))
+    const topChoices = entry.choices.filter((c) => (tally[c.id] ?? 0) === maxVotes)
+    const winner = topChoices[Math.floor(Math.random() * topChoices.length)]
+    void patchSession({
+      hallEvent: { ...he, logResolutions: { ...he.logResolutions, [String(idx)]: winner.id }, logVotes: {} },
+    })
   }
 
   function advanceHallObject() {
@@ -865,6 +942,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         objectResults: {},
         startedAtMs: null,
         completedEventIds,
+        logVotes: {},
+        logResolutions: {},
       },
     })
   }
@@ -885,7 +964,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         actorId: viewerId,
         puzzleSolved: false,
         puzzleAttempts: 0,
+        minigamePending: [],
         minigameParticipants: {},
+        minigameLog: [],
       }
       const nextObjectResults = { ...he.objectResults, [objectId]: result }
       let playerPatch: Partial<PlayerDoc> | undefined
@@ -939,7 +1020,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
   function joinHallMinigame(objectId: string) {
     if (!viewerId) return
-    void runAbilityTransaction(viewerId, (sess, player) => {
+    void runAbilityTransaction(viewerId, (sess) => {
       const he = sess.hallEvent
       if (!he.eventId) return {}
       const event = hallEventById(he.eventId)
@@ -947,25 +1028,64 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       const obj = event.objects.find((o) => o.id === objectId)
       if (!obj || obj.kind !== 'minigame') return {}
       const existing = he.objectResults[objectId]
-      if (existing && existing.minigameParticipants[viewerId] !== undefined) return {}
-      const won = Math.random() < 0.5
+      const alreadyIn =
+        existing && (existing.minigamePending.includes(viewerId) || existing.minigameParticipants[viewerId] !== undefined)
+      if (alreadyIn) return {}
       const nextResult: HallObjectResult = {
         status: 'opened',
         actorId: existing?.actorId ?? null,
         puzzleSolved: false,
         puzzleAttempts: 0,
-        minigameParticipants: { ...(existing?.minigameParticipants ?? {}), [viewerId]: won },
-      }
-      const playerPatch: Partial<PlayerDoc> = {}
-      if (won) {
-        playerPatch.coins = player.coins + (obj.minigameWinCoins ?? 2)
-      } else {
-        if (obj.hpDamage) playerPatch.hp = Math.max(0, player.hp - obj.hpDamage)
-        if (obj.staminaDamage) playerPatch.stamina = Math.max(0, player.stamina - obj.staminaDamage)
+        minigamePending: [...(existing?.minigamePending ?? []), viewerId],
+        minigameParticipants: existing?.minigameParticipants ?? {},
+        minigameLog: existing?.minigameLog ?? [],
       }
       return {
         session: { hallEvent: { ...he, objectResults: { ...he.objectResults, [objectId]: nextResult } } },
-        player: playerPatch,
+      }
+    })
+  }
+
+  function resolveHallMinigame(objectId: string) {
+    if (!isAdminFlag) return
+    const he = session.hallEvent
+    const event = hallEventById(he.eventId ?? '')
+    if (!event) return
+    const obj = event.objects.find((o) => o.id === objectId)
+    if (!obj || obj.kind !== 'minigame') return
+    void runHallMinigameTransaction(objectId, (sess, participants) => {
+      const heInner = sess.hallEvent
+      const existing = heInner.objectResults[objectId]
+      if (!existing || existing.minigamePending.length === 0) return {}
+      const pendingIds = existing.minigamePending
+      const won = Math.random() < 0.5
+      const gameLog = buildMinigameLog(obj.minigameKind, obj.label, won)
+      const nextParticipants = { ...existing.minigameParticipants }
+      pendingIds.forEach((id) => {
+        nextParticipants[id] = won
+      })
+      const playerPatches: Record<string, Partial<PlayerDoc>> = {}
+      pendingIds.forEach((id) => {
+        const p = participants[id]
+        if (!p) return
+        if (won) {
+          playerPatches[id] = { coins: p.coins + (obj.minigameWinCoins ?? 2) }
+        } else {
+          const patch: Partial<PlayerDoc> = {}
+          if (obj.hpDamage) patch.hp = Math.max(0, p.hp - obj.hpDamage)
+          if (obj.staminaDamage) patch.stamina = Math.max(0, p.stamina - obj.staminaDamage)
+          playerPatches[id] = patch
+        }
+      })
+      const nextResult: HallObjectResult = {
+        ...existing,
+        minigamePending: [],
+        minigameParticipants: nextParticipants,
+        minigameLog: [...existing.minigameLog, gameLog],
+      }
+      return {
+        session: { hallEvent: { ...heInner, objectResults: { ...heInner.objectResults, [objectId]: nextResult } } },
+        playerPatches,
       }
     })
   }
@@ -1481,11 +1601,14 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       hallEvent: session.hallEvent,
       dispatchHallEvent,
       advanceHallLog,
+      voteHallLogChoice,
+      closeHallLogVote,
       advanceHallObject,
       finishHallEvent,
       resolveHallObject,
       submitHallPuzzleAnswer,
       joinHallMinigame,
+      resolveHallMinigame,
       feed,
       toggleHeart,
       addComment,

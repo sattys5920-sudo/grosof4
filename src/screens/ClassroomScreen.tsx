@@ -4,7 +4,7 @@ import { useGame } from '../state/GameContext'
 import { CHARACTERS } from '../data/characters'
 import { HALL_EVENTS, hallEventById } from '../data/hallEvents'
 import { hallPuzzleById } from '../data/hallPuzzles'
-import type { HallObject } from '../data/types'
+import type { HallMinigameKind, HallObject } from '../data/types'
 import { EventDispatchSheet, type DispatchSection } from '../components/EventDispatchSheet'
 import { ChatAvatar } from '../components/ChatAvatar'
 import { AbilityUseModal } from '../components/AbilityUseModal'
@@ -15,6 +15,11 @@ const KIND_LABEL: Record<HallObject['kind'], string> = {
   puzzle: '문제',
   item: '아이템',
   minigame: '미니게임',
+}
+const MINIGAME_LABEL: Record<HallMinigameKind, string> = {
+  oddeven: '홀짝',
+  poker: '포커',
+  robo77: '로보 77',
 }
 
 function formatRemaining(ms: number) {
@@ -41,11 +46,14 @@ export function ClassroomScreen() {
     hallEvent,
     dispatchHallEvent,
     advanceHallLog,
+    voteHallLogChoice,
+    closeHallLogVote,
     advanceHallObject,
     finishHallEvent,
     resolveHallObject,
     submitHallPuzzleAnswer,
     joinHallMinigame,
+    resolveHallMinigame,
   } = useGame()
   const [draft, setDraft] = useState('')
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -63,6 +71,10 @@ export function ClassroomScreen() {
   const activeEvent = hallEvent.eventId ? hallEventById(hallEvent.eventId) : null
   const logsRevealed = activeEvent ? hallEvent.logIndex >= activeEvent.logs.length : false
   const remainingMs = hallEvent.startedAtMs ? Math.max(0, hallEvent.startedAtMs + HALL_TIME_LIMIT_MS - now) : null
+  const lastRevealedLog =
+    activeEvent && hallEvent.logIndex > 0 ? activeEvent.logs[hallEvent.logIndex - 1] : null
+  const pendingChoiceExists =
+    !!lastRevealedLog?.choices && !hallEvent.logResolutions[String(hallEvent.logIndex - 1)]
 
   function submit() {
     sendClassroomMessage(draft)
@@ -88,21 +100,41 @@ export function ClassroomScreen() {
     const actorName = result?.actorId ? displayName(result.actorId) : null
 
     if (obj.kind === 'minigame') {
+      const pending = result?.minigamePending ?? []
       const participants = result?.minigameParticipants ?? {}
       const entries = Object.entries(participants)
+      const myPending = viewerId ? pending.includes(viewerId) : false
       const myResult = viewerId ? participants[viewerId] : undefined
+      const canJoin = !isAdmin && myResult === undefined && !myPending
+      const latestLog = result?.minigameLog?.[result.minigameLog.length - 1]
       return (
         <div key={obj.id} className="hallobj hallobj--minigame">
           <div className="hallobj__head">
             <span className="hallobj__label">{obj.label}</span>
-            <span className={`hallobj__kind hallobj__kind--${obj.kind}`}>{KIND_LABEL[obj.kind]}</span>
+            <span className="hallobj__kind hallobj__kind--minigame">
+              {MINIGAME_LABEL[obj.minigameKind ?? 'oddeven']}
+            </span>
           </div>
           <p className="hallobj__note">{obj.minigameRule}</p>
-          {!isAdmin && myResult === undefined && (
+          {canJoin && (
             <button className="hallobj__minigame-join" onClick={() => joinHallMinigame(obj.id)}>
               참여하기
             </button>
           )}
+          {myPending && myResult === undefined && (
+            <p className="hallobj__minigame-waiting">참여 완료....... 승부가 시작되기를 기다리는 중이다.</p>
+          )}
+          {pending.length > 0 && (
+            <p className="hallobj__minigame-pending">
+              대기 인원: {pending.map((id) => displayName(id)).join(', ')}
+            </p>
+          )}
+          {isAdmin && pending.length > 0 && (
+            <button className="hallobj__minigame-resolve" onClick={() => resolveHallMinigame(obj.id)}>
+              게임 진행 ({pending.length}명, AI 승부)
+            </button>
+          )}
+          {latestLog && <p className="hallobj__minigame-log">{latestLog}</p>}
           {myResult !== undefined && (
             <p className={`hallobj__minigame-mine ${myResult ? 'is-win' : 'is-lose'}`}>
               {myResult
@@ -250,12 +282,43 @@ export function ClassroomScreen() {
             </div>
 
             <div className="hallevent__logs">
-              {activeEvent.logs.slice(0, hallEvent.logIndex).map((line, i) => (
-                <p key={i} className="hallevent__log-line">
-                  {line}
-                </p>
-              ))}
-              {!logsRevealed && gmReveal && (
+              {activeEvent.logs.slice(0, hallEvent.logIndex).map((entry, i) => {
+                const resolvedChoiceId = hallEvent.logResolutions[String(i)]
+                const resolvedChoice = entry.choices?.find((c) => c.id === resolvedChoiceId)
+                const isPending = !!entry.choices && !resolvedChoiceId
+                return (
+                  <div key={i} className="hallevent__log-entry">
+                    <p className="hallevent__log-line">{entry.text}</p>
+                    {resolvedChoice && <p className="hallevent__log-outcome">{resolvedChoice.resultText}</p>}
+                    {isPending && (
+                      <div className="hallevent__vote">
+                        <div className="hallevent__vote-options">
+                          {entry.choices!.map((c) => {
+                            const count = Object.values(hallEvent.logVotes).filter((v) => v === c.id).length
+                            const mine = viewerId ? hallEvent.logVotes[viewerId] === c.id : false
+                            return (
+                              <button
+                                key={c.id}
+                                className={`hallevent__vote-btn ${mine ? 'is-mine' : ''}`}
+                                onClick={() => voteHallLogChoice(c.id)}
+                                disabled={isAdmin}
+                              >
+                                {c.label} ({count}표)
+                              </button>
+                            )
+                          })}
+                        </div>
+                        {gmReveal && (
+                          <button className="hallevent__vote-close" onClick={closeHallLogVote}>
+                            표결 마감
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              {!logsRevealed && !pendingChoiceExists && gmReveal && (
                 <button className="hallevent__next-log" onClick={advanceHallLog}>
                   다음 로그
                 </button>

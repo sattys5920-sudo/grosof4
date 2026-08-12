@@ -365,11 +365,72 @@
   border: 1px dashed var(--line);
 }
 
+.hallevent__log-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .hallevent__log-line {
   margin: 0;
   font-size: 13.5px;
   line-height: 1.6;
   color: var(--bone);
+}
+
+.hallevent__log-outcome {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--bone-bright);
+  padding-left: 10px;
+  border-left: 2px solid var(--veil);
+}
+
+.hallevent__vote {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px dashed var(--veil);
+  background: var(--veil-dim);
+}
+
+.hallevent__vote-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hallevent__vote-btn {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--void-3);
+  color: var(--bone);
+}
+
+.hallevent__vote-btn.is-mine {
+  border-color: var(--veil);
+  color: var(--bone-bright);
+}
+
+.hallevent__vote-btn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.hallevent__vote-close {
+  align-self: flex-start;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  border: 1px solid var(--sin);
+  background: var(--void-3);
+  color: var(--bone-bright);
 }
 
 .hallevent__next-log {
@@ -592,6 +653,39 @@
   border: 1px solid var(--ward);
   background: var(--void-3);
   color: var(--bone-bright);
+}
+
+.hallobj__minigame-waiting {
+  margin: 0;
+  font-size: 12px;
+  color: var(--bone-dim);
+  font-style: italic;
+}
+
+.hallobj__minigame-pending {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--bone-dim);
+}
+
+.hallobj__minigame-resolve {
+  align-self: flex-start;
+  font-family: var(--font-pixel);
+  font-size: 10.5px;
+  padding: 7px 12px;
+  cursor: pointer;
+  border: 1px solid var(--sin);
+  background: var(--void-3);
+  color: var(--bone-bright);
+}
+
+.hallobj__minigame-log {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--bone);
+  padding-left: 10px;
+  border-left: 2px solid var(--ward);
 }
 
 .hallobj__minigame-mine {
