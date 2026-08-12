@@ -164,6 +164,8 @@ export function ProfileScreen() {
     collectedClues,
     assignRoleManually,
     resetAllData,
+    personalStoryRevealed,
+    revealPersonalStories,
   } = useGame()
   const viewer = viewerId ? CHARACTERS.find((c) => c.id === viewerId)! : null
   const [kind, setKind] = useState<BroadcastKind>('event')
@@ -324,6 +326,13 @@ export function ProfileScreen() {
               <p className="profile__ability-locked">따로 발동하는 능력은 없다. 다만 무언가 해야 한다는 느낌이 강하게 든다.</p>
             )}
           </div>
+
+          {personalStoryRevealed && (
+            <div className="profile__personal-clues">
+              <span className="profile__section-label">개인 서사</span>
+              <p>{viewer.personalStory}</p>
+            </div>
+          )}
 
           {personalClues.length > 0 && (
             <div className="profile__personal-clues">
@@ -649,6 +658,21 @@ export function ProfileScreen() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="profile__gm">
+            <span className="profile__section-label">불가 전용 — 개인 서사 전달</span>
+            <p className="profile__gm-note">
+              하루가 지났다고 선언하고, 가입한 모든 플레이어에게 각자의 개인 서사를 한 번에 전달한다.
+              프로필 화면과 각자의 개인 대화에 동시에 남는다. 한 번 전달하면 되돌릴 수 없다.
+            </p>
+            <button
+              className="profile__gm-preset"
+              onClick={revealPersonalStories}
+              disabled={personalStoryRevealed}
+            >
+              {personalStoryRevealed ? '전달 완료' : '하루가 지났다 — 개인 서사 전달'}
+            </button>
           </div>
 
           <div className="profile__gm">

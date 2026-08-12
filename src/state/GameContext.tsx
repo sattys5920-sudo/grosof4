@@ -33,6 +33,7 @@ import {
   patchPlayer,
   patchSession,
   resetAllDataSync,
+  revealPersonalStoriesSync,
   runAbilityTransaction,
   runCombatTransaction,
   sendBroadcastSync,
@@ -185,6 +186,8 @@ interface GameState {
   resetAllData: () => void
   shopOpen: boolean
   setShopOpen: (open: boolean) => void
+  personalStoryRevealed: boolean
+  revealPersonalStories: () => void
 }
 
 const GameContext = createContext<GameState | null>(null)
@@ -657,6 +660,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void resetAllDataSync()
   }
 
+  function revealPersonalStories() {
+    if (!isAdminFlag) return
+    void revealPersonalStoriesSync()
+  }
+
   function abilityMax(role: string): number {
     return ABILITY_MAX_USES[role as keyof typeof ABILITY_MAX_USES] ?? 1
   }
@@ -998,6 +1006,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       resetAllData,
       shopOpen: session.shopOpen,
       setShopOpen,
+      personalStoryRevealed: session.personalStoryRevealed,
+      revealPersonalStories,
       gmReveal: isAdmin,
       broadcast,
       sendBroadcast,

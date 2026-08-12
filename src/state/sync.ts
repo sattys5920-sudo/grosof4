@@ -50,6 +50,7 @@ export interface SessionDoc {
   discussionOpen: boolean
   discussionOpenedAt: number | null
   shopOpen: boolean
+  personalStoryRevealed: boolean
 }
 
 export interface PlayerDoc {
@@ -119,6 +120,7 @@ export function defaultSessionState(): SessionDoc {
     missionMessages: [],
     discussionOpen: false,
     discussionOpenedAt: null,
+    personalStoryRevealed: false,
   }
 }
 
@@ -454,6 +456,27 @@ export async function resetAllDataSync(): Promise<void> {
   for (const d of playersSnap.docs) batch.delete(d.ref)
   for (const d of feedSnap.docs) batch.delete(d.ref)
   batch.set(sessionRef(), defaultSessionState())
+  await batch.commit()
+}
+
+/** GM 전용: 하루가 지났다고 선언하고, 가입한 모든 플레이어에게 각자의 개인 서사를 한 번에 전달한다. */
+export async function revealPersonalStoriesSync(): Promise<void> {
+  const database = requireDb()
+  const playersSnap = await getDocs(playersCol())
+  const batch = writeBatch(database)
+  for (const d of playersSnap.docs) {
+    const character = CHARACTERS.find((c) => c.id === d.id)
+    if (!character) continue
+    const text = `《개인 서사》 ${character.personalStory}`
+    const msg: ChatMessage = {
+      id: `dm-${Date.now()}-${d.id}`,
+      authorId: 'admin',
+      text,
+      time: '지금',
+    }
+    batch.update(d.ref, { gmDmMessages: arrayUnion(msg) })
+  }
+  batch.update(sessionRef(), { personalStoryRevealed: true })
   await batch.commit()
 }
 

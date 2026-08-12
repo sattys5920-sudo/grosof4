@@ -24,6 +24,7 @@ export interface Character {
   abilityName: string
   abilityDescription: string
   perceivedYear: number
+  personalStory: string
 }
 
 export interface Room {
