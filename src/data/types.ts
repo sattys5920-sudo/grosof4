@@ -28,6 +28,7 @@ export interface Character {
   revealText: string
   abilityName: string
   abilityDescription: string
+  perceivedYear: number
 }
 
 export interface Room {

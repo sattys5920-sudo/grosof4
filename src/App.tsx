@@ -11,7 +11,14 @@ import { ClassroomScreen } from './screens/ClassroomScreen'
 import { RoomsScreen } from './screens/RoomsScreen'
 import { MissionScreen } from './screens/MissionScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
-import { SCHOOL_NAME } from './data/characters'
+import { SCHOOL_NAME, CHARACTERS } from './data/characters'
+
+function shellDate(year: number) {
+  const now = new Date()
+  const mm = String(now.getMonth() + 1).padStart(2, '0')
+  const dd = String(now.getDate()).padStart(2, '0')
+  return `${year}. ${mm}. ${dd}.`
+}
 
 function Screen() {
   const { activeTab } = useGame()
@@ -30,12 +37,16 @@ function Screen() {
 }
 
 function Shell() {
+  const { viewerId } = useGame()
+  const perceivedYear = viewerId ? CHARACTERS.find((c) => c.id === viewerId)?.perceivedYear : undefined
+  const displayYear = perceivedYear ?? new Date().getFullYear()
   return (
     <div className="shell">
       <div className="shell__fog" />
       <header className="shell__header">
         <span className="shell__title">{SCHOOL_NAME}</span>
         <span className="shell__status">
+          <span className="shell__date">{shellDate(displayYear)}</span>
           <span className="shell__dot" />
           안개 결계 · 자정 이후
         </span>
