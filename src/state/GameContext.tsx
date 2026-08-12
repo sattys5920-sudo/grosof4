@@ -98,6 +98,8 @@ const LS = {
   roleRevealed: 'gwae_roleRevealed',
   dismissedBroadcastId: 'gwae_dismissedBroadcastId',
   cachedNickname: 'gwae_cachedNickname',
+  notifyRoomEvents: 'gwae_notifyRoomEvents',
+  notifyGeneralBroadcasts: 'gwae_notifyGeneralBroadcasts',
 } as const
 
 export type TabId = 'main' | 'classroom' | 'rooms' | 'mission' | 'shop' | 'profile'
@@ -139,6 +141,11 @@ interface GameState {
   sendBroadcast: (kind: BroadcastKind, title: string, body: string) => void
   dismissBroadcast: () => void
   clearBroadcastForAll: () => void
+  notifyRoomEvents: boolean
+  setNotifyRoomEvents: (on: boolean) => void
+  notifyGeneralBroadcasts: boolean
+  setNotifyGeneralBroadcasts: (on: boolean) => void
+  enableAllNotifications: () => void
   missionsOpen: boolean
   openMissions: (firstPlayerId?: string) => void
   mission: MissionState
@@ -278,6 +285,12 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   )
   const [cachedNickname, setCachedNicknameLocal] = useState<string>(
     () => localStorage.getItem(LS.cachedNickname) ?? '',
+  )
+  const [notifyRoomEvents, setNotifyRoomEventsLocal] = useState<boolean>(
+    () => localStorage.getItem(LS.notifyRoomEvents) !== 'false',
+  )
+  const [notifyGeneralBroadcasts, setNotifyGeneralBroadcastsLocal] = useState<boolean>(
+    () => localStorage.getItem(LS.notifyGeneralBroadcasts) !== 'false',
   )
   const [activeTab, setActiveTab] = useState<TabId>('main')
   const [session, setSession] = useState<SessionDoc>(defaultSessionState)
@@ -610,6 +623,21 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function clearBroadcastForAll() {
     if (!isAdminFlag) return
     void patchSession({ broadcast: null })
+  }
+
+  function setNotifyRoomEvents(on: boolean) {
+    localStorage.setItem(LS.notifyRoomEvents, String(on))
+    setNotifyRoomEventsLocal(on)
+  }
+
+  function setNotifyGeneralBroadcasts(on: boolean) {
+    localStorage.setItem(LS.notifyGeneralBroadcasts, String(on))
+    setNotifyGeneralBroadcastsLocal(on)
+  }
+
+  function enableAllNotifications() {
+    setNotifyRoomEvents(true)
+    setNotifyGeneralBroadcasts(true)
   }
 
   function sortedPlayerIds(): string[] {
@@ -1037,6 +1065,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       sendBroadcast,
       dismissBroadcast,
       clearBroadcastForAll,
+      notifyRoomEvents,
+      setNotifyRoomEvents,
+      notifyGeneralBroadcasts,
+      setNotifyGeneralBroadcasts,
+      enableAllNotifications,
       missionsOpen: session.missionsOpen,
       openMissions,
       mission: session.mission,
@@ -1097,6 +1130,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       incapacitated,
       players,
       myPlayer,
+      notifyRoomEvents,
+      notifyGeneralBroadcasts,
     ],
   )
 

@@ -139,6 +139,11 @@ export function ProfileScreen() {
     sendBroadcast,
     broadcast,
     clearBroadcastForAll,
+    notifyRoomEvents,
+    setNotifyRoomEvents,
+    notifyGeneralBroadcasts,
+    setNotifyGeneralBroadcasts,
+    enableAllNotifications,
     missionsOpen,
     openMissions,
     abilityUseCount,
@@ -529,6 +534,27 @@ export function ProfileScreen() {
               {c.id === viewerId && <span className="profile__me-tag">나</span>}
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="profile__section">
+        <span className="profile__section-label">알림 설정</span>
+        <div className="profile__gm-presets">
+          <button className="profile__gm-preset" onClick={enableAllNotifications}>
+            전체 켜기
+          </button>
+          <button
+            className={`profile__gm-preset ${notifyRoomEvents ? 'is-active' : ''}`}
+            onClick={() => setNotifyRoomEvents(!notifyRoomEvents)}
+          >
+            내 채팅방 알림 {notifyRoomEvents ? '켜짐' : '꺼짐'}
+          </button>
+          <button
+            className={`profile__gm-preset ${notifyGeneralBroadcasts ? 'is-active' : ''}`}
+            onClick={() => setNotifyGeneralBroadcasts(!notifyGeneralBroadcasts)}
+          >
+            전체 공지 알림 {notifyGeneralBroadcasts ? '켜짐' : '꺼짐'}
+          </button>
         </div>
       </div>
 

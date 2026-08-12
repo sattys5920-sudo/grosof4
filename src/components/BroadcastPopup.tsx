@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import './BroadcastPopup.css'
 import { useGame } from '../state/GameContext'
 
@@ -8,8 +9,15 @@ const KIND_LABEL: Record<string, string> = {
 }
 
 export function BroadcastPopup() {
-  const { broadcast, dismissBroadcast } = useGame()
-  if (!broadcast) return null
+  const { broadcast, dismissBroadcast, notifyRoomEvents, notifyGeneralBroadcasts } = useGame()
+  const suppressed =
+    !!broadcast && (broadcast.kind === 'sin' ? !notifyRoomEvents : !notifyGeneralBroadcasts)
+
+  useEffect(() => {
+    if (suppressed) dismissBroadcast()
+  }, [suppressed, dismissBroadcast])
+
+  if (!broadcast || suppressed) return null
 
   return (
     <div className="bcpopup__backdrop" role="alertdialog" aria-modal="true">
