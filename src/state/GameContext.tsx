@@ -64,8 +64,8 @@ import {
 
 const ATTACK_STAMINA_COST = 10
 const BASE_ATK = 5
-const DICE_COUNT = 10
-const DICE_SUCCESS_THRESHOLD = 30
+const DICE_COUNT = 3
+const DICE_SUCCESS_THRESHOLD = 11
 
 // 전투 중 실제로 공격할 차례인 사람을 계산한다. 저장된 차례가 이미 방을 나간 사람이면
 // (방에 남은 사람 중) 맨 앞 사람으로 자연스럽게 넘어간다.
@@ -75,11 +75,15 @@ function effectiveTurnPlayerId(occupants: string[], turnPlayerId: string | null)
   return occupants[0]
 }
 
-// TRPG 전투 판정: 누구나 똑같이 주사위(1d6) 10 개를 굴려 합이 30 을 넘으면 성공.
-function rollDice(): number {
-  let sum = 0
-  for (let i = 0; i < DICE_COUNT; i++) sum += 1 + Math.floor(Math.random() * 6)
-  return sum
+// TRPG 전투 판정: 주사위(1d6) 3 개를 굴려 합이 11 이상이면 성공.
+function rollDice(): { values: number[]; sum: number; hit: boolean } {
+  const values = Array.from({ length: DICE_COUNT }, () => 1 + Math.floor(Math.random() * 6))
+  const sum = values.reduce((a, b) => a + b, 0)
+  return { values, sum, hit: sum >= DICE_SUCCESS_THRESHOLD }
+}
+
+function describeDiceRoll(roll: { values: number[]; sum: number; hit: boolean }): string {
+  return `주사위 ${roll.values.join(', ')} → 합계 ${roll.sum} (기준 ${DICE_SUCCESS_THRESHOLD} 이상 성공)`
 }
 
 function makeCombatLog(text: string): CombatLogEntry {
@@ -1111,17 +1115,16 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
         const myAtk = BASE_ATK + me.weaponAtkBonus
         const roll = rollDice()
-        const hit = roll > DICE_SUCCESS_THRESHOLD
-        const damage = hit ? myAtk : 0
+        const damage = roll.hit ? myAtk : 0
         const newCreatureHp = Math.max(0, combat.creatureHp - damage)
         const defeated = newCreatureHp <= 0
 
         const log: CombatLogEntry[] = [...combat.log]
         log.push(
           makeCombatLog(
-            hit
-              ? `${displayName(myId)}이(가) ${creature.name}을(를) 공격했다....... 주사위 10 개 합계 ${roll} — 명중! ${damage}의 피해를 입혔다.`
-              : `${displayName(myId)}이(가) ${creature.name}을(를) 공격했다....... 주사위 10 개 합계 ${roll} — 빗나갔다.`,
+            roll.hit
+              ? `${displayName(myId)}이(가) ${creature.name}을(를) 공격했다....... ${describeDiceRoll(roll)} — 명중! 공격력 ${myAtk}만큼 피해를 입혔다.`
+              : `${displayName(myId)}이(가) ${creature.name}을(를) 공격했다....... ${describeDiceRoll(roll)} — 빗나갔다.`,
           ),
         )
 
@@ -1135,17 +1138,16 @@ function GameProviderInner({ children }: { children: ReactNode }) {
           const retaliateAgainstSelf = !target
           const defenderDef = retaliateAgainstSelf ? me.armorDefBonus : target!.armorDefBonus
           const rollC = rollDice()
-          const hitC = rollC > DICE_SUCCESS_THRESHOLD
-          const dmgC = hitC ? Math.max(1, creature.atk - Math.floor(defenderDef / 2)) : 0
+          const dmgC = rollC.hit ? Math.max(1, creature.atk - Math.floor(defenderDef / 2)) : 0
           const defenderName = retaliateAgainstSelf ? displayName(myId) : displayName(targetId!)
           log.push(
             makeCombatLog(
-              hitC
-                ? `${creature.name}이(가) ${defenderName}을(를) 향해 반격했다....... 주사위 10 개 합계 ${rollC} — 명중! ${dmgC}의 피해를 입었다.`
-                : `${creature.name}이(가) ${defenderName}을(를) 향해 반격했다....... 주사위 10 개 합계 ${rollC} — 빗나갔다.`,
+              rollC.hit
+                ? `${creature.name}이(가) ${defenderName}을(를) 향해 반격했다....... ${describeDiceRoll(rollC)} — 명중! 공격력 ${creature.atk}(방어 적용 후 ${dmgC})만큼 피해를 입었다.`
+                : `${creature.name}이(가) ${defenderName}을(를) 향해 반격했다....... ${describeDiceRoll(rollC)} — 빗나갔다.`,
             ),
           )
-          if (hitC) {
+          if (rollC.hit) {
             if (retaliateAgainstSelf) {
               mePatch = { ...mePatch, hp: Math.max(0, me.hp - dmgC) }
             } else {

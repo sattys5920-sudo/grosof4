@@ -143,7 +143,7 @@ export function RoomsScreen() {
                 </div>
               </div>
               <p className="rooms__combat-rule">
-                전투 규칙: 공격할 때마다 주사위(1~6) 10 개를 굴려 합이 30 을 넘으면 명중이다....... 명중하면
+                전투 규칙: 공격할 때마다 주사위(1~6) 3 개를 굴려 합이 11 이상이면 명중이다....... 명중하면
                 공격력만큼 피해를 입히고, 쓰러뜨리지 못하면 괴이가 같은 방식으로 반격한다.
               </p>
               <div className="rooms__combat-hp">
