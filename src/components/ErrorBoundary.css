@@ -1,0 +1,53 @@
+.errbound {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 430px;
+  min-height: 100svh;
+  padding: calc(32px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+  background: var(--void);
+}
+
+.errbound__eyebrow {
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  color: var(--sin);
+  letter-spacing: 1px;
+}
+
+.errbound__msg {
+  margin: 0;
+  font-size: 14px;
+  color: var(--bone-bright);
+  line-height: 1.6;
+}
+
+.errbound__stack {
+  margin: 0;
+  padding: 10px;
+  background: var(--void-2);
+  border: 1px solid var(--line);
+  color: var(--bone-dim);
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.errbound__retry {
+  margin-top: 8px;
+  font-family: var(--font-pixel);
+  font-size: 13px;
+  padding: 13px 0;
+  cursor: pointer;
+  border: 1px solid var(--sin);
+  background: var(--sin-dim);
+  color: var(--bone-bright);
+}
+
+.errbound__retry:hover {
+  background: var(--sin);
+}

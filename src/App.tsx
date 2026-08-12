@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import { GameProvider, useGame } from './state/GameContext'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { TabBar } from './components/TabBar'
 import { BroadcastPopup } from './components/BroadcastPopup'
 import { TopBarAlert } from './components/TopBarAlert'
@@ -78,9 +79,11 @@ function Gate() {
 
 function App() {
   return (
-    <GameProvider>
-      <Gate />
-    </GameProvider>
+    <ErrorBoundary>
+      <GameProvider>
+        <Gate />
+      </GameProvider>
+    </ErrorBoundary>
   )
 }
 
