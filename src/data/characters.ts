@@ -3,9 +3,9 @@ import type { Character, Room } from './types'
 export const SCHOOL_NAME = '고운고등학교'
 export const CLUB_NAME = '괴담연구회'
 export const MISSING_STUDENT = '유민서'
-export const INCIDENT_YEARS_AGO = 3
+export const INCIDENT_WEEKS_AGO = 3
 export const INCIDENT_SUMMARY =
-  '3 년 전, 괴담연구회 회장이었던 유민서는 학교에 얽힌 괴담을 직접 조사하겠다며 밤늦게 홀로 옥상에 남았다가 실종되었다. 학교는 "가출 후 자퇴 처리"로 조용히 사건을 덮었다. 그리고 언제부턴가, 동아리 안에서는 "11 번째 부원이 들어오면 죽는다"는 소문이 떠돌기 시작했다.'
+  '몇 주 전, 괴담연구회 회장이었던 유민서는 학교에 얽힌 괴담을 직접 조사하겠다며 밤늦게 홀로 옥상에 남았다가 실종되었다. 학교는 "가출 후 자퇴 처리"로 조용히 사건을 덮었다. 그리고 언제부턴가, 동아리 안에서는 "11 번째 부원이 들어오면 죽는다"는 소문이 떠돌기 시작했다.'
 
 export const CHARACTERS: Character[] = [
   {
