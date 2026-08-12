@@ -64,6 +64,7 @@ export interface ClassroomState {
   event: GroupEventSpec | null
   hint: string | null
   note: string | null
+  attemptsUsed: number
 }
 
 export interface RoomEventState {

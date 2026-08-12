@@ -138,6 +138,8 @@ interface GameState {
 
 const GameContext = createContext<GameState | null>(null)
 
+const MAX_CLASSROOM_ATTEMPTS = 3
+
 function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, '')
 }
@@ -397,6 +399,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       event: { title: item.title, description: item.description, reward: item.reward ?? '', kind: 'duel' },
       hint: null,
       note: null,
+      attemptsUsed: 0,
     }))
     sendBroadcast('event', '교실이 열렸다', `《${item.title}》 — 지금 교실로 모이자.......`)
   }
@@ -416,13 +419,14 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       },
       hint: null,
       note: null,
+      attemptsUsed: 0,
     }))
     void patchSession({ classroomMessages: [] })
     sendBroadcast('event', '교실이 열렸다', `《${puzzle.title}》 — 지금 교실로 모이자.......`)
   }
 
   function closeInvestigation() {
-    void updateClassroomSync(() => ({ status: 'locked', event: null, hint: null, note: null }))
+    void updateClassroomSync(() => ({ status: 'locked', event: null, hint: null, note: null, attemptsUsed: 0 }))
   }
 
   async function submitPuzzleAnswer(text: string) {
@@ -430,12 +434,19 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     let clueToAdd: { title: string; text: string; icon?: string } | null = null
     await updateClassroomSync((prev) => {
       if (prev.status !== 'active' || !prev.event?.answer) return prev
+      if (prev.attemptsUsed >= MAX_CLASSROOM_ATTEMPTS) return prev
       const correct = normalize(text) === normalize(prev.event.answer)
+      const attemptsUsed = prev.attemptsUsed + 1
       if (correct) {
         clueToAdd = { title: prev.event.title, text: prev.event.reward, icon: prev.event.icon }
-        return { ...prev, status: 'cleared', hint: prev.event.reward, note: null }
+        return { ...prev, status: 'cleared', hint: prev.event.reward, note: null, attemptsUsed }
       }
-      return { ...prev, note: '오답이다. 다시 논의해보자.' }
+      const remaining = MAX_CLASSROOM_ATTEMPTS - attemptsUsed
+      return {
+        ...prev,
+        attemptsUsed,
+        note: remaining > 0 ? '오답이다. 다시 논의해보자.' : '기회를 모두 소진했다....... 불가가 다시 열어줄 때까지 기다려야 한다.',
+      }
     })
     if (clueToAdd) void addClueSync(makeClue(clueToAdd, '교실'))
   }

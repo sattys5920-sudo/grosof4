@@ -7,6 +7,8 @@ import { EVENT_LIBRARY } from '../data/eventLibrary'
 import { EventDispatchSheet, type DispatchSection } from '../components/EventDispatchSheet'
 import { ChatAvatar } from '../components/ChatAvatar'
 
+const MAX_CLASSROOM_ATTEMPTS = 3
+
 const CLASSROOM_AMBIENT_TEXT =
   '교실은 조용하다....... 다들 각자 자리에 앉아 서로 눈치만 보고 있다. 아직 무엇을 조사해야 할지는 불가가 정하지 않았다.......'
 
@@ -99,13 +101,21 @@ export function ClassroomScreen() {
             )}
             {classroom.status === 'active' && !isDuel && event.answer && (
               <div className="classroom__pin-answer">
-                <input
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && submitAnswer()}
-                  placeholder="다 같이 상의한 정답을 입력......"
-                />
-                <button onClick={submitAnswer}>제출</button>
+                <div className="classroom__pin-answer-row">
+                  <input
+                    value={answer}
+                    onChange={(e) => setAnswer(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && submitAnswer()}
+                    placeholder="다 같이 상의한 정답을 입력......"
+                    disabled={classroom.attemptsUsed >= MAX_CLASSROOM_ATTEMPTS}
+                  />
+                  <button onClick={submitAnswer} disabled={classroom.attemptsUsed >= MAX_CLASSROOM_ATTEMPTS}>
+                    제출
+                  </button>
+                </div>
+                <span className="classroom__pin-attempts">
+                  남은 기회 {MAX_CLASSROOM_ATTEMPTS - classroom.attemptsUsed}/{MAX_CLASSROOM_ATTEMPTS}
+                </span>
               </div>
             )}
             {classroom.status === 'active' && isDuel && (

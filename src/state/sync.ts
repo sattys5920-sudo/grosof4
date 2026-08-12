@@ -102,7 +102,7 @@ export function defaultSessionState(): SessionDoc {
     roomMessages: INITIAL_ROOM_MESSAGES,
     roomEvents: initialRoomEvents(),
     classroomMessages: [],
-    classroom: { status: 'locked', event: null, hint: null, note: null },
+    classroom: { status: 'locked', event: null, hint: null, note: null, attemptsUsed: 0 },
     broadcast: null,
     missionsOpen: false,
     mission: initialMissionState(),

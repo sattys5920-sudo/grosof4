@@ -117,7 +117,19 @@
 
 .classroom__pin-answer {
   display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.classroom__pin-answer-row {
+  display: flex;
   gap: 8px;
+}
+
+.classroom__pin-attempts {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--bone-dim);
 }
 
 .classroom__pin-answer input {
@@ -127,6 +139,12 @@
   padding: 9px 10px;
   color: var(--bone-bright);
   font-size: 14px;
+}
+
+.classroom__pin-answer input:disabled,
+.classroom__pin-answer button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .classroom__pin-answer input:focus {
