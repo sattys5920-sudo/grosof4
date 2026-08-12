@@ -96,6 +96,9 @@ export function ClassroomScreen() {
             {event.category && <span className="classroom__pin-tag">{event.category}</span>}
             <span className="classroom__pin-title">{event.title}</span>
             <p className="classroom__pin-desc">{event.description}</p>
+            {event.diagram && classroom.status === 'active' && (
+              <div className="classroom__pin-diagram" dangerouslySetInnerHTML={{ __html: event.diagram }} />
+            )}
             {event.puzzleText && classroom.status === 'active' && (
               <pre className="classroom__pin-puzzle">{event.puzzleText}</pre>
             )}

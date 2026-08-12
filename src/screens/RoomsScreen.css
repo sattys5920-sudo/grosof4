@@ -416,6 +416,28 @@
   gap: 8px;
 }
 
+.rooms__combat-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rooms__combat-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rooms__combat-rule {
+  margin: 0;
+  padding: 6px 8px;
+  font-size: 11.5px;
+  color: var(--bone-dim);
+  background: var(--void);
+  border: 1px dashed var(--line);
+  line-height: 1.5;
+}
+
 .rooms__combat-hp {
   position: relative;
   height: 16px;

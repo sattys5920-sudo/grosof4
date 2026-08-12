@@ -2,7 +2,6 @@ import { useState } from 'react'
 import './RoomsScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS, ROOMS } from '../data/characters'
-import { ROOM_PUZZLE_BANK } from '../data/events'
 import { CREATURES } from '../data/creatures'
 import type { RoomId } from '../data/types'
 import { isRevealedTo } from '../data/reveal'
@@ -10,6 +9,7 @@ import { Badge } from '../components/Badge'
 import { EventDispatchSheet, type DispatchSection } from '../components/EventDispatchSheet'
 import { AbilityUseModal } from '../components/AbilityUseModal'
 import { ChatAvatar } from '../components/ChatAvatar'
+import { PixelArt } from '../components/PixelArt'
 
 function charOf(id: string) {
   return CHARACTERS.find((c) => c.id === id)!
@@ -26,8 +26,6 @@ export function RoomsScreen() {
     roomMessages,
     sendRoomMessage,
     roomEvents,
-    submitRoomAnswer,
-    dispatchRoomPuzzle,
     dispatchCreature,
     closeRoomInvestigation,
     attackCreature,
@@ -39,7 +37,6 @@ export function RoomsScreen() {
   } = useGame()
   const [openRoom, setOpenRoom] = useState<RoomId | null>(null)
   const [draft, setDraft] = useState('')
-  const [answer, setAnswer] = useState('')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [blockedModalOpen, setBlockedModalOpen] = useState(false)
   const viewer = viewerId ? charOf(viewerId) : null
@@ -58,23 +55,8 @@ export function RoomsScreen() {
       sendRoomMessage(openRoom!, draft)
       setDraft('')
     }
-    function submitPuzzleAnswer() {
-      submitRoomAnswer(openRoom!, answer)
-      setAnswer('')
-    }
 
     const sections: DispatchSection[] = [
-      {
-        label: '방탈출 문제',
-        items: ROOM_PUZZLE_BANK.map((puzzle) => ({
-          id: puzzle.id,
-          category: puzzle.category,
-          title: puzzle.title,
-          brief: puzzle.brief,
-          answer: puzzle.answer,
-          onSend: () => dispatchRoomPuzzle(openRoom!, puzzle),
-        })),
-      },
       {
         label: '괴이 발동',
         items: CREATURES.map((creature) => ({
@@ -106,7 +88,7 @@ export function RoomsScreen() {
                     초기화
                   </button>
                 )}
-                <button className="rooms__pin-plus" onClick={() => setSheetOpen(true)} aria-label="문제 발송">
+                <button className="rooms__pin-plus" onClick={() => setSheetOpen(true)} aria-label="괴이 발동">
                   +
                 </button>
               </div>
@@ -141,45 +123,20 @@ export function RoomsScreen() {
 
           {!roomEvent.event && <p className="rooms__pin-ambient">{room.ambientText}</p>}
 
-          {roomEvent.event && roomEvent.event.kind !== 'combat' && (
-            <>
-              {roomEvent.event.category && (
-                <span className="rooms__pin-tag">{roomEvent.event.category}</span>
-              )}
-              <span className="rooms__pin-puzzle-title">{roomEvent.event.title}</span>
-              <p className="rooms__pin-desc">{roomEvent.event.description}</p>
-              {!roomEvent.cleared && roomEvent.event.puzzleText && (
-                <pre className="rooms__pin-puzzletext">{roomEvent.event.puzzleText}</pre>
-              )}
-              {!roomEvent.cleared && iAmHere && (
-                <div className="rooms__pin-answer">
-                  <input
-                    value={answer}
-                    onChange={(e) => setAnswer(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && submitPuzzleAnswer()}
-                    placeholder="정답 입력......"
-                  />
-                  <button onClick={submitPuzzleAnswer}>제출</button>
-                </div>
-              )}
-              {!roomEvent.cleared && !iAmHere && !isAdmin && (
-                <p className="rooms__pin-note">입장한 사람만 함께 풀 수 있다.</p>
-              )}
-              {roomEvent.note && <p className="rooms__pin-note">{roomEvent.note}</p>}
-              {roomEvent.cleared && (
-                <div className="rooms__pin-hint">
-                  <span>단서 확보</span>
-                  <p>{roomEvent.clue}</p>
-                </div>
-              )}
-            </>
-          )}
-
-          {roomEvent.event && roomEvent.event.kind === 'combat' && combat && creature && (
+          {roomEvent.event && combat && creature && (
             <div className="rooms__combat">
               {roomEvent.event.category && <span className="rooms__pin-tag">{roomEvent.event.category}</span>}
-              <span className="rooms__pin-puzzle-title">{creature.name}</span>
-              <p className="rooms__pin-desc">{roomEvent.event.description}</p>
+              <div className="rooms__combat-head">
+                <PixelArt pixels={creature.art.pixels} palette={creature.art.palette} size={56} />
+                <div className="rooms__combat-head-text">
+                  <span className="rooms__pin-puzzle-title">{creature.name}</span>
+                  <p className="rooms__pin-desc">{roomEvent.event.description}</p>
+                </div>
+              </div>
+              <p className="rooms__combat-rule">
+                전투 규칙: 공격할 때마다 주사위(1~6) 10 개를 굴려 합이 30 을 넘으면 명중이다....... 명중하면
+                공격력만큼 피해를 입히고, 쓰러뜨리지 못하면 괴이가 같은 방식으로 반격한다.
+              </p>
               <div className="rooms__combat-hp">
                 <div
                   className="rooms__combat-hp-fill"
@@ -200,7 +157,7 @@ export function RoomsScreen() {
                 ))}
               </div>
               {combat.defeated ? (
-                <p className="rooms__pin-note">쓰러뜨렸다....... 능력이 잠금 해제되고, 코인을 얻었다.</p>
+                <p className="rooms__pin-note">쓰러뜨렸다....... 마지막 일격을 가한 사람이 코인을 얻었다.</p>
               ) : iAmHere ? (
                 <button
                   className="rooms__combat-attack"

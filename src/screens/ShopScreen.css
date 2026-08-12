@@ -1,0 +1,144 @@
+.shop {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  gap: 10px;
+  padding: 10px 14px 18px;
+}
+
+.shop__pin {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--void-2);
+  border: 1px solid var(--line);
+}
+
+.shop__pin-title {
+  font-family: var(--font-title);
+  font-size: 16px;
+  color: var(--bone-bright);
+}
+
+.shop__coins {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  color: var(--ward);
+}
+
+.shop__gm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--sin-dim);
+  border: 1px solid var(--sin);
+  font-size: 12.5px;
+  color: var(--bone);
+}
+
+.shop__gm-toggle {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  padding: 6px 12px;
+  cursor: pointer;
+  border: 1px solid var(--sin);
+  background: var(--void-2);
+  color: var(--bone-bright);
+}
+
+.shop__closed {
+  margin: 0;
+  padding: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--bone-dim);
+  font-style: italic;
+  background: var(--void-2);
+  border: 1px solid var(--line);
+}
+
+.shop__tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.shop__tab {
+  flex: 1;
+  font-family: var(--font-pixel);
+  font-size: 10.5px;
+  padding: 8px 6px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--void-2);
+  color: var(--bone-dim);
+}
+
+.shop__tab.is-active {
+  border-color: var(--veil);
+  color: var(--bone-bright);
+  background: var(--veil-dim);
+}
+
+.shop__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shop__item {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  background: var(--void-2);
+  border: 1px solid var(--line);
+}
+
+.shop__item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+
+.shop__item-name {
+  font-size: 14px;
+  color: var(--bone-bright);
+}
+
+.shop__item-effect {
+  font-size: 11.5px;
+  color: var(--bone-dim);
+}
+
+.shop__item-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.shop__item-actions button {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--void-3);
+  color: var(--bone-bright);
+}
+
+.shop__item-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.shop__item-body select {
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  color: var(--bone-bright);
+  font-size: 12.5px;
+}

@@ -1,5 +1,30 @@
 import type { Creature } from './types'
 
+// 픽셀아트 실루엣 템플릿 — X는 몸통색, Y는 강조색(눈/무늬 등)으로 채운다.
+const TEMPLATES = {
+  ghost: ['.XXXXXX.', 'XXXXXXXX', 'XXYXXYXX', 'XXXXXXXX', 'XXXXXXXX', 'XXXXXXXX', 'XXXXXXXX', 'X.X.X.X.'],
+  mannequin: ['..XXXX..', '..XYYX..', '..XXXX..', 'X.XXXX.X', 'XX.XX.XX', '..XXXX..', '..X..X..', '..X..X..'],
+  shadow: ['..XXXX..', '..XXXX..', '.XXXXXX.', '.XXXXXX.', '.XXXXXX.', '..XXXX..', '..X..X..', '..X..X..'],
+  mask: ['.XXXXXX.', 'XXXXXXXX', 'XX.YY.XX', 'XXYYYYXX', 'XXYYYYXX', 'XX.YY.XX', 'XXXXXXXX', '.XXXXXX.'],
+  object: ['XXXXXXXX', 'X......X', 'X.YY...X', 'X......X', 'X..YY..X', 'X......X', 'X......X', 'XXXXXXXX'],
+  small: ['........', '..XXXX..', '.XXXXXX.', 'XXXYXYXX', 'XXXXXXXX', '.XXXXXX.', '..X..X..', '........'],
+  tall: ['..XXXX..', '..XYYX..', 'X.XXXX.X', 'XX.XX.XX', '..XXXX..', '..XXXX..', '..X..X..', '.X....X.'],
+  mist: ['..XX.XX.', '.XXXXXXX', 'XXXXXXXX', 'XXXYXXX.', '.XXXXXXX', 'XXXXXXX.', '.XXXYXX.', '..X...X.'],
+  clock: ['.XXXXXX.', 'X......X', 'X..YY..X', 'X..YY..X', 'X......X', 'X......X', 'X......X', '.XXXXXX.'],
+  book: ['XXXXXXXX', 'X.YYYY.X', 'X.YYYY.X', 'X.YYYY.X', 'X.YYYY.X', 'X.YYYY.X', 'X.YYYY.X', 'XXXXXXXX'],
+} as const
+
+type TemplateKey = keyof typeof TEMPLATES
+
+function mkArt(template: TemplateKey, body: string, accent: string) {
+  return { pixels: [...TEMPLATES[template]], palette: { X: body, Y: accent } }
+}
+
+const EASY = { body: '#8a8073', accent: '#5b7a9e' }
+const MEDIUM = { body: '#6a5a8a', accent: '#2c1f3d' }
+const HARD = { body: '#7a2a24', accent: '#f0e8d8' }
+const BOSS = { body: '#2a1f1c', accent: '#a8382f' }
+
 // 기준치: 일반 학생 기본 ATK 5 · 기본 스태미나 100 · 기본 HP 100.
 export const CREATURES: Creature[] = [
   // 하 (쉬움) — 10 종
@@ -14,6 +39,7 @@ export const CREATURES: Creature[] = [
     def: 0,
     coinReward: 10,
     icon: 'ghost',
+    art: mkArt('shadow', EASY.body, EASY.accent),
   },
   {
     id: 'cr02',
@@ -26,6 +52,7 @@ export const CREATURES: Creature[] = [
     def: 0,
     coinReward: 10,
     icon: 'ghost',
+    art: mkArt('object', EASY.body, EASY.accent),
   },
   {
     id: 'cr03',
@@ -38,6 +65,7 @@ export const CREATURES: Creature[] = [
     def: 0,
     coinReward: 12,
     icon: 'ghost',
+    art: mkArt('shadow', EASY.body, EASY.accent),
   },
   {
     id: 'cr04',
@@ -50,6 +78,7 @@ export const CREATURES: Creature[] = [
     def: 1,
     coinReward: 13,
     icon: 'ghost',
+    art: mkArt('ghost', EASY.body, EASY.accent),
   },
   {
     id: 'cr05',
@@ -62,6 +91,7 @@ export const CREATURES: Creature[] = [
     def: 1,
     coinReward: 14,
     icon: 'ghost',
+    art: mkArt('mannequin', '#a8382f', EASY.accent),
   },
   {
     id: 'cr06',
@@ -74,6 +104,7 @@ export const CREATURES: Creature[] = [
     def: 0,
     coinReward: 12,
     icon: 'ghost',
+    art: mkArt('book', EASY.body, EASY.accent),
   },
   {
     id: 'cr07',
@@ -86,6 +117,7 @@ export const CREATURES: Creature[] = [
     def: 1,
     coinReward: 15,
     icon: 'ghost',
+    art: mkArt('ghost', EASY.body, EASY.accent),
   },
   {
     id: 'cr08',
@@ -98,6 +130,7 @@ export const CREATURES: Creature[] = [
     def: 0,
     coinReward: 11,
     icon: 'ghost',
+    art: mkArt('small', EASY.body, EASY.accent),
   },
   {
     id: 'cr09',
@@ -110,6 +143,7 @@ export const CREATURES: Creature[] = [
     def: 1,
     coinReward: 15,
     icon: 'ghost',
+    art: mkArt('mask', EASY.body, EASY.accent),
   },
   {
     id: 'cr10',
@@ -122,6 +156,7 @@ export const CREATURES: Creature[] = [
     def: 1,
     coinReward: 16,
     icon: 'ghost',
+    art: mkArt('mist', EASY.body, EASY.accent),
   },
 
   // 중 (중간) — 10 종
@@ -136,6 +171,7 @@ export const CREATURES: Creature[] = [
     def: 1,
     coinReward: 20,
     icon: 'mask',
+    art: mkArt('mask', MEDIUM.body, MEDIUM.accent),
   },
   {
     id: 'cr12',
@@ -148,6 +184,7 @@ export const CREATURES: Creature[] = [
     def: 2,
     coinReward: 22,
     icon: 'mask',
+    art: mkArt('mist', MEDIUM.body, MEDIUM.accent),
   },
   {
     id: 'cr13',
@@ -160,6 +197,7 @@ export const CREATURES: Creature[] = [
     def: 2,
     coinReward: 21,
     icon: 'mask',
+    art: mkArt('shadow', '#d9cfbf', MEDIUM.accent),
   },
   {
     id: 'cr14',
@@ -172,6 +210,7 @@ export const CREATURES: Creature[] = [
     def: 2,
     coinReward: 24,
     icon: 'mask',
+    art: mkArt('book', MEDIUM.body, MEDIUM.accent),
   },
   {
     id: 'cr15',
@@ -184,6 +223,7 @@ export const CREATURES: Creature[] = [
     def: 2,
     coinReward: 25,
     icon: 'mask',
+    art: mkArt('shadow', MEDIUM.body, MEDIUM.accent),
   },
   {
     id: 'cr16',
@@ -196,6 +236,7 @@ export const CREATURES: Creature[] = [
     def: 2,
     coinReward: 26,
     icon: 'mask',
+    art: mkArt('object', MEDIUM.body, MEDIUM.accent),
   },
   {
     id: 'cr17',
@@ -208,6 +249,7 @@ export const CREATURES: Creature[] = [
     def: 3,
     coinReward: 27,
     icon: 'mask',
+    art: mkArt('mannequin', MEDIUM.body, MEDIUM.accent),
   },
   {
     id: 'cr18',
@@ -220,6 +262,7 @@ export const CREATURES: Creature[] = [
     def: 2,
     coinReward: 24,
     icon: 'mask',
+    art: mkArt('ghost', MEDIUM.body, MEDIUM.accent),
   },
   {
     id: 'cr19',
@@ -232,6 +275,7 @@ export const CREATURES: Creature[] = [
     def: 3,
     coinReward: 28,
     icon: 'mask',
+    art: mkArt('clock', MEDIUM.body, MEDIUM.accent),
   },
   {
     id: 'cr20',
@@ -244,6 +288,7 @@ export const CREATURES: Creature[] = [
     def: 3,
     coinReward: 30,
     icon: 'mask',
+    art: mkArt('tall', '#3a5a7a', MEDIUM.accent),
   },
 
   // 상 (어려움) — 10 종
@@ -258,6 +303,7 @@ export const CREATURES: Creature[] = [
     def: 3,
     coinReward: 36,
     icon: 'warning',
+    art: mkArt('tall', '#d9cfbf', HARD.accent),
   },
   {
     id: 'cr22',
@@ -270,6 +316,7 @@ export const CREATURES: Creature[] = [
     def: 3,
     coinReward: 38,
     icon: 'warning',
+    art: mkArt('ghost', HARD.body, HARD.accent),
   },
   {
     id: 'cr23',
@@ -282,6 +329,7 @@ export const CREATURES: Creature[] = [
     def: 4,
     coinReward: 40,
     icon: 'warning',
+    art: mkArt('mist', HARD.body, HARD.accent),
   },
   {
     id: 'cr24',
@@ -294,6 +342,7 @@ export const CREATURES: Creature[] = [
     def: 4,
     coinReward: 42,
     icon: 'warning',
+    art: mkArt('mask', HARD.body, HARD.accent),
   },
   {
     id: 'cr25',
@@ -306,6 +355,7 @@ export const CREATURES: Creature[] = [
     def: 4,
     coinReward: 43,
     icon: 'warning',
+    art: mkArt('book', HARD.body, HARD.accent),
   },
   {
     id: 'cr26',
@@ -318,6 +368,7 @@ export const CREATURES: Creature[] = [
     def: 4,
     coinReward: 45,
     icon: 'warning',
+    art: mkArt('clock', HARD.body, HARD.accent),
   },
   {
     id: 'cr27',
@@ -330,6 +381,7 @@ export const CREATURES: Creature[] = [
     def: 4,
     coinReward: 47,
     icon: 'warning',
+    art: mkArt('book', '#2a1f1c', HARD.accent),
   },
   {
     id: 'cr28',
@@ -342,6 +394,7 @@ export const CREATURES: Creature[] = [
     def: 5,
     coinReward: 50,
     icon: 'warning',
+    art: mkArt('object', HARD.body, HARD.accent),
   },
   {
     id: 'cr29',
@@ -354,6 +407,7 @@ export const CREATURES: Creature[] = [
     def: 5,
     coinReward: 55,
     icon: 'warning',
+    art: mkArt('tall', HARD.body, HARD.accent),
   },
   {
     id: 'cr30',
@@ -366,6 +420,7 @@ export const CREATURES: Creature[] = [
     def: 6,
     coinReward: 65,
     icon: 'warning',
+    art: mkArt('tall', BOSS.body, BOSS.accent),
   },
 ]
 

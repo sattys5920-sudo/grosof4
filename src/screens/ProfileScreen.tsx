@@ -3,7 +3,6 @@ import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS, roleLabel } from '../data/characters'
 import { CLASSROOM_PUZZLES } from '../data/classroomPuzzles'
-import { SHOP_ITEMS, SHOP_KIND_LABEL } from '../data/shop'
 import { Badge } from '../components/Badge'
 import { AbilityUseModal } from '../components/AbilityUseModal'
 import { PixelIcon } from '../components/PixelIcon'
@@ -140,14 +139,13 @@ export function ProfileScreen() {
     sendBroadcast,
     missionsOpen,
     openMissions,
-    abilityUnlocked,
     abilityUseCount,
     abilityMaxUses,
     personalClues,
     forgottenIdentity,
     useRecordBook,
     investigate,
-    protect,
+    armShield,
     checkCctv,
     erode,
     forgeResult,
@@ -160,8 +158,6 @@ export function ProfileScreen() {
     atk,
     def,
     incapacitated,
-    buyItem,
-    giftItem,
     mission,
     players,
     collectedClues,
@@ -181,7 +177,6 @@ export function ProfileScreen() {
   const [openClueId, setOpenClueId] = useState<string | null>(null)
   const [abilityModalOpen, setAbilityModalOpen] = useState(false)
   const [masterListOpen, setMasterListOpen] = useState(false)
-  const [giftTargetFor, setGiftTargetFor] = useState<string | null>(null)
   const usesLeft = abilityMaxUses - abilityUseCount
 
   const otherCharacters = CHARACTERS.filter((c) => c.id !== viewerId)
@@ -272,12 +267,7 @@ export function ProfileScreen() {
             <span className="profile__section-label">특수 능력 — {viewer.abilityName}</span>
             <p>{viewer.abilityDescription}</p>
 
-            {!abilityUnlocked && viewer.role !== '잠입자' && viewer.role !== '망각자' && viewer.role !== '일반학생' && (
-              <p className="profile__ability-locked">조사실에서 단서를 확보하면 사용할 수 있게 된다.</p>
-            )}
-
-            {abilityUnlocked &&
-              ['기록자', '감찰자', '복수자', '보호자', '목격자', '괴이의 사도', '공범'].includes(viewer.role) && (
+            {['기록자', '감찰자', '복수자', '보호자', '목격자', '괴이의 사도', '공범'].includes(viewer.role) && (
                 <>
                   {usesLeft <= 0 ? (
                     <p className="profile__ability-locked">
@@ -310,9 +300,7 @@ export function ProfileScreen() {
 
             {viewer.role === '잠입자' && (
               <>
-                {!abilityUnlocked ? (
-                  <p className="profile__ability-locked">조사실에서 단서를 확보하면 사용할 수 있게 된다.</p>
-                ) : disguiseArmed ? (
+                {disguiseArmed ? (
                   <p className="profile__ability-locked">
                     지금 위장이 걸려 있다....... 다음 정체 확인 한 번은 무효화된다.
                   </p>
@@ -415,27 +403,15 @@ export function ProfileScreen() {
 
       {viewer && abilityModalOpen && viewer.role === '보호자' && (
         <AbilityUseModal
-          title="능력 사용 — 보호하기"
-          prompt="오늘은 누구를 곁에서 보호할까....... 선 소속 부원만 보호할 수 있다."
-          confirmLabel="보호하기"
-          confirmDisabled={!targetId}
+          title="능력 사용 — 수호 발동"
+          prompt="지금 《수호》를 발동할까....... 발동 직후 진행되는 원정에서 실패 카드 1 장이 무효화된다. 언제 발동할지는 신중하게 고르자."
+          confirmLabel="발동하기"
           onConfirm={() => {
-            protect(targetId)
+            armShield()
             setAbilityModalOpen(false)
           }}
           onClose={() => setAbilityModalOpen(false)}
-        >
-          <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
-            <option value="">대상 선택</option>
-            {otherCharacters
-              .filter((c) => c.team === 'ward')
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {displayName(c.id)}
-                </option>
-              ))}
-          </select>
-        </AbilityUseModal>
+        />
       )}
 
       {viewer && abilityModalOpen && viewer.role === '목격자' && (
@@ -524,62 +500,6 @@ export function ProfileScreen() {
           ))}
         </div>
       </div>
-
-      {viewer && (
-        <div className="profile__section profile__shop">
-          <span className="profile__section-label">매점 — 코인 {coins}</span>
-          <p className="profile__gm-note">
-            무기 · 방어구는 구매하는 순간 지금 장비를 대체한다. 음식은 스태미나, 약은 HP를 즉시 회복한다.
-          </p>
-          <div className="profile__shop-list">
-            {SHOP_ITEMS.map((item) => (
-              <div key={item.id} className="profile__shop-item">
-                <div className="profile__shop-item-head">
-                  <PixelIcon name={item.icon ?? 'key'} size={18} />
-                  <span className="profile__shop-item-name">{item.name}</span>
-                  <span className="profile__shop-item-kind">{SHOP_KIND_LABEL[item.kind]}</span>
-                </div>
-                <span className="profile__shop-item-effect">
-                  {item.kind === 'weapon' && `공격력 +${item.amount}`}
-                  {item.kind === 'armor' && `방어력 +${item.amount}`}
-                  {item.kind === 'food' && `스태미나 +${item.amount}`}
-                  {item.kind === 'medicine' && `HP +${item.amount}`}
-                  {' · '}
-                  {item.price} 코인
-                </span>
-                <div className="profile__shop-item-actions">
-                  <button disabled={coins < item.price} onClick={() => buyItem(item.id)}>
-                    구매
-                  </button>
-                  <button
-                    disabled={coins < item.price}
-                    onClick={() => setGiftTargetFor(giftTargetFor === item.id ? null : item.id)}
-                  >
-                    선물
-                  </button>
-                </div>
-                {giftTargetFor === item.id && (
-                  <select
-                    defaultValue=""
-                    onChange={(e) => {
-                      if (!e.target.value) return
-                      giftItem(item.id, e.target.value)
-                      setGiftTargetFor(null)
-                    }}
-                  >
-                    <option value="">받을 사람 선택</option>
-                    {otherCharacters.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {displayName(c.id)}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {!gmReveal && collectedClues.length > 0 && (
         <div className="profile__section profile__clues">

@@ -54,8 +54,9 @@ export interface GroupEventSpec {
   category?: string
   puzzleText?: string
   answer?: string
-  icon?: string
+  icon?: string | null
   creatureId?: string
+  diagram?: string | null
 }
 
 export type CreatureDifficulty = 'easy' | 'medium' | 'hard'
@@ -71,6 +72,7 @@ export interface Creature {
   def: number
   coinReward: number
   icon?: string
+  art: { pixels: string[]; palette: Record<string, string> }
 }
 
 export type ShopItemKind = 'weapon' | 'armor' | 'food' | 'medicine'
@@ -82,6 +84,7 @@ export interface ShopItem {
   amount: number
   price: number
   icon?: string
+  art: { pixels: string[]; palette: Record<string, string> }
 }
 
 export interface CombatLogEntry {
@@ -166,14 +169,5 @@ export interface ClassroomPuzzle {
   answer: string
   hint: string
   icon?: string
-}
-
-export interface RoomPuzzle {
-  id: string
-  category: string
-  title: string
-  brief: string
-  puzzleText: string
-  answer: string
-  hint: string
+  diagram?: string
 }

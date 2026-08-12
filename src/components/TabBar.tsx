@@ -6,6 +6,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'classroom', label: '교실', icon: '⌂' },
   { id: 'rooms', label: '조사실', icon: '⌕' },
   { id: 'mission', label: '원정', icon: '⚑' },
+  { id: 'shop', label: '매점', icon: '$' },
   { id: 'profile', label: '프로필', icon: '☺' },
 ]
 

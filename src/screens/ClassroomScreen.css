@@ -103,6 +103,20 @@
   line-height: 1.55;
 }
 
+.classroom__pin-diagram {
+  display: flex;
+  justify-content: center;
+  padding: 10px;
+  background: var(--void);
+  border: 1px solid var(--line);
+}
+
+.classroom__pin-diagram svg {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+}
+
 .classroom__pin-puzzle {
   margin: 0;
   padding: 10px 12px;

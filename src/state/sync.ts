@@ -29,7 +29,7 @@ export interface ClueItem {
   title: string
   text: string
   source: string
-  icon?: string
+  icon?: string | null
 }
 
 export interface SessionDoc {
@@ -42,13 +42,13 @@ export interface SessionDoc {
   broadcast: Broadcast | null
   missionsOpen: boolean
   mission: MissionState
-  protectedId: string | null
   erosionTargetId: string | null
   disguiseArmed: boolean
   collectedClues: ClueItem[]
   missionMessages: ChatMessage[]
   discussionOpen: boolean
   discussionOpenedAt: number | null
+  shopOpen: boolean
 }
 
 export interface PlayerDoc {
@@ -111,9 +111,9 @@ export function defaultSessionState(): SessionDoc {
     broadcast: null,
     missionsOpen: false,
     mission: initialMissionState(),
-    protectedId: null,
     erosionTargetId: null,
     disguiseArmed: false,
+    shopOpen: false,
     collectedClues: [],
     missionMessages: [],
     discussionOpen: false,
@@ -198,7 +198,7 @@ export async function claimRandomSlot(
       nickname: nickname.trim() || assigned.name,
       grade,
       photo,
-      abilityUnlocked: false,
+      abilityUnlocked: true,
       abilityUseCount: 0,
       personalClues: [],
       gmDmMessages: [],
@@ -230,7 +230,7 @@ export async function assignRoleManuallySync(characterId: string, nickname: stri
       nickname: nickname.trim() || character.name,
       grade: '1 학년',
       photo: null,
-      abilityUnlocked: false,
+      abilityUnlocked: true,
       abilityUseCount: 0,
       personalClues: [],
       gmDmMessages: [],

@@ -10,6 +10,7 @@ import { MainFeedScreen } from './screens/MainFeedScreen'
 import { ClassroomScreen } from './screens/ClassroomScreen'
 import { RoomsScreen } from './screens/RoomsScreen'
 import { MissionScreen } from './screens/MissionScreen'
+import { ShopScreen } from './screens/ShopScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { SCHOOL_NAME, CHARACTERS } from './data/characters'
 
@@ -31,6 +32,8 @@ function Screen() {
       return <RoomsScreen />
     case 'mission':
       return <MissionScreen />
+    case 'shop':
+      return <ShopScreen />
     case 'profile':
       return <ProfileScreen />
   }

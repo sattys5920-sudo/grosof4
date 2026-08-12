@@ -26,6 +26,7 @@ export interface MissionState {
   sinWins: number
   winner: 'ward' | 'sin' | null
   lastNote: string
+  shielded: boolean
 }
 
 export type MissionAction =
@@ -66,6 +67,7 @@ export function initialMissionState(turnOrder: string[] = DEFAULT_ORDER): Missio
     sinWins: 0,
     winner: null,
     lastNote: '',
+    shielded: false,
   }
   return autoFillIfNpc(state)
 }
@@ -179,12 +181,15 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
 
     case 'SUBMIT_CARD': {
       const required = TWO_FAILS_REQUIRED[state.missionIndex] ? 2 : 1
-      const { success, fail, result } = simulateCards(
+      const { success, fail: rawFail } = simulateCards(
         state.proposedTeam,
         action.viewerId,
         action.card,
         required,
       )
+      const shieldedNow = state.shielded && rawFail > 0
+      const fail = shieldedNow ? rawFail - 1 : rawFail
+      const result: MissionOutcome = fail >= required ? 'fail' : 'success'
       const results = [...state.missionResults]
       results[state.missionIndex] = result
       const failCounts = [...state.failCounts]
@@ -201,11 +206,12 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         teamHistory,
         wardWins,
         sinWins,
+        shielded: false,
         phase: 'result',
         lastNote:
           result === 'success'
-            ? `성공 ${success} · 실패 ${fail} — 원정 성공.`
-            : `성공 ${success} · 실패 ${fail} — 원정 실패.`,
+            ? `성공 ${success} · 실패 ${fail} — 원정 성공.${shieldedNow ? ' (누군가 이 원정을 지켜냈다.......)' : ''}`
+            : `성공 ${success} · 실패 ${fail} — 원정 실패.${shieldedNow ? ' (지켜내려 했지만 막지 못했다.......)' : ''}`,
       }
     }
 
