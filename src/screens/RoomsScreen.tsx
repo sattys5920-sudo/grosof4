@@ -63,7 +63,7 @@ export function RoomsScreen() {
           id: creature.id,
           category: `${creature.category} · ${
             creature.difficulty === 'easy' ? '하' : creature.difficulty === 'medium' ? '중' : '상'
-          } · HP ${creature.hp}`,
+          } · HP ${creature.hp} · 코인 ${creature.coinReward}`,
           title: creature.name,
           brief: creature.intro,
           onSend: () => dispatchCreature(openRoom!, creature),
@@ -131,6 +131,7 @@ export function RoomsScreen() {
                 <div className="rooms__combat-head-text">
                   <span className="rooms__pin-puzzle-title">{creature.name}</span>
                   <p className="rooms__pin-desc">{roomEvent.event.description}</p>
+                  <span className="rooms__combat-reward">쓰러뜨리면 코인 {creature.coinReward}</span>
                 </div>
               </div>
               <p className="rooms__combat-rule">
@@ -157,7 +158,9 @@ export function RoomsScreen() {
                 ))}
               </div>
               {combat.defeated ? (
-                <p className="rooms__pin-note">쓰러뜨렸다....... 마지막 일격을 가한 사람이 코인을 얻었다.</p>
+                <p className="rooms__pin-note">
+                  쓰러뜨렸다....... 마지막 일격을 가한 사람이 코인 {creature.coinReward}을(를) 얻었다.
+                </p>
               ) : iAmHere ? (
                 <button
                   className="rooms__combat-attack"

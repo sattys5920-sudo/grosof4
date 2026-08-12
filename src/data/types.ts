@@ -24,8 +24,12 @@ export interface Character {
   abilityName: string
   abilityDescription: string
   perceivedYear: number
-  personalStory: string
+  storyDay1: string
+  storyDay2: string
+  storyDay3: string
 }
+
+export type EndingKey = 'ward-broken' | 'ward-unbroken' | 'sin-broken' | 'sin-unbroken'
 
 export interface Room {
   id: RoomId

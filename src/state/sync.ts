@@ -12,11 +12,12 @@ import {
   type Firestore,
 } from 'firebase/firestore'
 import { db } from '../firebase'
-import { CHARACTERS, ROOMS } from '../data/characters'
+import { CHARACTERS, DAY4_REVEAL_TEXT, ENDING_SCRIPTS, ROOMS } from '../data/characters'
 import type {
   Broadcast,
   ChatMessage,
   ClassroomState,
+  EndingKey,
   FeedComment,
   FeedPost,
   RoomEventState,
@@ -50,7 +51,8 @@ export interface SessionDoc {
   discussionOpen: boolean
   discussionOpenedAt: number | null
   shopOpen: boolean
-  personalStoryRevealed: boolean
+  storyDay: 0 | 1 | 2 | 3 | 4
+  endingKey: EndingKey | null
 }
 
 export interface PlayerDoc {
@@ -120,7 +122,8 @@ export function defaultSessionState(): SessionDoc {
     missionMessages: [],
     discussionOpen: false,
     discussionOpenedAt: null,
-    personalStoryRevealed: false,
+    storyDay: 0,
+    endingKey: null,
   }
 }
 
@@ -459,15 +462,26 @@ export async function resetAllDataSync(): Promise<void> {
   await batch.commit()
 }
 
-/** GM 전용: 하루가 지났다고 선언하고, 가입한 모든 플레이어에게 각자의 개인 서사를 한 번에 전달한다. */
-export async function revealPersonalStoriesSync(): Promise<void> {
+/**
+ * GM 전용: N 일차가 지났다고 선언하고, 가입한 모든 플레이어에게 그날의 이야기를 한 번에 전달한다.
+ * 1~3 일차는 각자 캐릭터의 개인 서사, 4 일차는 모두에게 동일한 전말 공개다.
+ */
+export async function revealStoryDaySync(day: 1 | 2 | 3 | 4): Promise<void> {
   const database = requireDb()
   const playersSnap = await getDocs(playersCol())
   const batch = writeBatch(database)
   for (const d of playersSnap.docs) {
     const character = CHARACTERS.find((c) => c.id === d.id)
     if (!character) continue
-    const text = `《개인 서사》 ${character.personalStory}`
+    const body =
+      day === 1
+        ? character.storyDay1
+        : day === 2
+          ? character.storyDay2
+          : day === 3
+            ? character.storyDay3
+            : DAY4_REVEAL_TEXT
+    const text = day === 4 ? body : `《${day} 일차》 ${body}`
     const msg: ChatMessage = {
       id: `dm-${Date.now()}-${d.id}`,
       authorId: 'admin',
@@ -476,7 +490,26 @@ export async function revealPersonalStoriesSync(): Promise<void> {
     }
     batch.update(d.ref, { gmDmMessages: arrayUnion(msg) })
   }
-  batch.update(sessionRef(), { personalStoryRevealed: true })
+  batch.update(sessionRef(), { storyDay: day })
+  await batch.commit()
+}
+
+/** GM 전용: 최종 엔딩을 선택해 모든 플레이어에게 한 번에 전달한다. */
+export async function sendEndingSync(key: EndingKey): Promise<void> {
+  const database = requireDb()
+  const playersSnap = await getDocs(playersCol())
+  const batch = writeBatch(database)
+  const body = ENDING_SCRIPTS[key]
+  for (const d of playersSnap.docs) {
+    const msg: ChatMessage = {
+      id: `dm-${Date.now()}-${d.id}`,
+      authorId: 'admin',
+      text: body,
+      time: '지금',
+    }
+    batch.update(d.ref, { gmDmMessages: arrayUnion(msg) })
+  }
+  batch.update(sessionRef(), { endingKey: key })
   await batch.commit()
 }
 

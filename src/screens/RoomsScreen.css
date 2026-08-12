@@ -428,6 +428,12 @@
   gap: 2px;
 }
 
+.rooms__combat-reward {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--ward);
+}
+
 .rooms__combat-rule {
   margin: 0;
   padding: 6px 8px;

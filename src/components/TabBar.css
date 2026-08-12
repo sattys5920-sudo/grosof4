@@ -4,6 +4,7 @@
   border-top: 2px solid var(--line);
   background: var(--void-2);
   flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .tabbar__item {

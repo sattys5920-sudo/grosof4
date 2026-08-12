@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ABILITY_MAX_USES, CHARACTERS, ROOMS } from '../data/characters'
 import { creatureById } from '../data/creatures'
 import { shopItemById } from '../data/shop'
@@ -10,6 +10,7 @@ import type {
   ClassroomState,
   CombatLogEntry,
   Creature,
+  EndingKey,
   EventLibraryItem,
   FeedComment,
   FeedPost,
@@ -33,7 +34,8 @@ import {
   patchPlayer,
   patchSession,
   resetAllDataSync,
-  revealPersonalStoriesSync,
+  revealStoryDaySync,
+  sendEndingSync,
   runAbilityTransaction,
   runCombatTransaction,
   sendBroadcastSync,
@@ -136,6 +138,7 @@ interface GameState {
   broadcast: Broadcast | null
   sendBroadcast: (kind: BroadcastKind, title: string, body: string) => void
   dismissBroadcast: () => void
+  clearBroadcastForAll: () => void
   missionsOpen: boolean
   openMissions: (firstPlayerId?: string) => void
   mission: MissionState
@@ -186,8 +189,10 @@ interface GameState {
   resetAllData: () => void
   shopOpen: boolean
   setShopOpen: (open: boolean) => void
-  personalStoryRevealed: boolean
-  revealPersonalStories: () => void
+  storyDay: 0 | 1 | 2 | 3 | 4
+  revealStoryDay: (day: 1 | 2 | 3 | 4) => void
+  endingKey: EndingKey | null
+  sendEnding: (key: EndingKey) => void
 }
 
 const GameContext = createContext<GameState | null>(null)
@@ -297,10 +302,17 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
   // GM이 전체 초기화를 하면, 자신의 플레이어 문서가 사라진 기기는 자동으로 가입 화면으로 되돌아간다.
   // (막 가입한 직후에는 실시간 구독이 아직 새 문서를 받기 전이라 잠깐 비어 보일 수 있으므로,
-  //  일정 시간 계속 비어 있을 때만 진짜 초기화로 간주한다.)
+  //  한 번이라도 내 문서를 실제로 확인한 적이 있을 때만 "진짜 삭제"로 간주해 짧게 반응하고,
+  //  아직 한 번도 확인하지 못했다면 — 방금 가입해 동기화를 기다리는 중일 수 있으므로 —
+  //  느린 네트워크에서도 안전하도록 충분히 길게 기다린 뒤에만 초기화로 간주한다.)
+  const hasSeenSelfRef = useRef(false)
   useEffect(() => {
     if (!playersLoaded || isAdminFlag || !viewerId) return
-    if (players[viewerId]) return
+    if (players[viewerId]) {
+      hasSeenSelfRef.current = true
+      return
+    }
+    const delay = hasSeenSelfRef.current ? 1500 : 15000
     const timer = setTimeout(() => {
       localStorage.removeItem(LS.viewerId)
       localStorage.removeItem(LS.roleRevealed)
@@ -308,7 +320,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       setViewerIdLocal(null)
       setRoleRevealedLocal(false)
       setCachedNicknameLocal('')
-    }, 4000)
+    }, delay)
     return () => clearTimeout(timer)
   }, [playersLoaded, players, viewerId, isAdminFlag])
 
@@ -595,6 +607,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     setDismissedBroadcastIdLocal(session.broadcast.id)
   }
 
+  function clearBroadcastForAll() {
+    if (!isAdminFlag) return
+    void patchSession({ broadcast: null })
+  }
+
   function sortedPlayerIds(): string[] {
     const claimed = Object.keys(players)
     return claimed.sort((a, b) => players[a].nickname.localeCompare(players[b].nickname, 'ko'))
@@ -660,9 +677,14 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void resetAllDataSync()
   }
 
-  function revealPersonalStories() {
+  function revealStoryDay(day: 1 | 2 | 3 | 4) {
     if (!isAdminFlag) return
-    void revealPersonalStoriesSync()
+    void revealStoryDaySync(day)
+  }
+
+  function sendEnding(key: EndingKey) {
+    if (!isAdminFlag) return
+    void sendEndingSync(key)
   }
 
   function abilityMax(role: string): number {
@@ -1006,12 +1028,15 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       resetAllData,
       shopOpen: session.shopOpen,
       setShopOpen,
-      personalStoryRevealed: session.personalStoryRevealed,
-      revealPersonalStories,
+      storyDay: session.storyDay,
+      revealStoryDay,
+      endingKey: session.endingKey,
+      sendEnding,
       gmReveal: isAdmin,
       broadcast,
       sendBroadcast,
       dismissBroadcast,
+      clearBroadcastForAll,
       missionsOpen: session.missionsOpen,
       openMissions,
       mission: session.mission,

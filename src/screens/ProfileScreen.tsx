@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
-import { CHARACTERS, roleLabel } from '../data/characters'
+import { CHARACTERS, DAY4_REVEAL_TEXT, ENDING_SCRIPTS, roleLabel } from '../data/characters'
 import { CLASSROOM_PUZZLES } from '../data/classroomPuzzles'
 import { Badge } from '../components/Badge'
 import { AbilityUseModal } from '../components/AbilityUseModal'
 import { PixelIcon } from '../components/PixelIcon'
-import type { BroadcastKind } from '../data/types'
+import type { BroadcastKind, EndingKey } from '../data/types'
 
 const PRESETS: { kind: BroadcastKind; label: string; title: string; body: string }[] = [
   {
@@ -137,6 +137,8 @@ export function ProfileScreen() {
     displayName,
     gmReveal,
     sendBroadcast,
+    broadcast,
+    clearBroadcastForAll,
     missionsOpen,
     openMissions,
     abilityUseCount,
@@ -164,8 +166,10 @@ export function ProfileScreen() {
     collectedClues,
     assignRoleManually,
     resetAllData,
-    personalStoryRevealed,
-    revealPersonalStories,
+    storyDay,
+    revealStoryDay,
+    endingKey,
+    sendEnding,
   } = useGame()
   const viewer = viewerId ? CHARACTERS.find((c) => c.id === viewerId)! : null
   const [kind, setKind] = useState<BroadcastKind>('event')
@@ -182,6 +186,8 @@ export function ProfileScreen() {
   const [abilityModalOpen, setAbilityModalOpen] = useState(false)
   const [masterListOpen, setMasterListOpen] = useState(false)
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
+  const [endingWinner, setEndingWinner] = useState<'ward' | 'sin'>('ward')
+  const [endingBroken, setEndingBroken] = useState(true)
   const usesLeft = abilityMaxUses - abilityUseCount
 
   const otherCharacters = CHARACTERS.filter((c) => c.id !== viewerId)
@@ -327,10 +333,34 @@ export function ProfileScreen() {
             )}
           </div>
 
-          {personalStoryRevealed && (
+          {storyDay >= 1 && (
             <div className="profile__personal-clues">
-              <span className="profile__section-label">개인 서사</span>
-              <p>{viewer.personalStory}</p>
+              <span className="profile__section-label">1 일차</span>
+              <p>{viewer.storyDay1}</p>
+            </div>
+          )}
+          {storyDay >= 2 && (
+            <div className="profile__personal-clues">
+              <span className="profile__section-label">2 일차</span>
+              <p>{viewer.storyDay2}</p>
+            </div>
+          )}
+          {storyDay >= 3 && (
+            <div className="profile__personal-clues">
+              <span className="profile__section-label">3 일차</span>
+              <p>{viewer.storyDay3}</p>
+            </div>
+          )}
+          {storyDay >= 4 && (
+            <div className="profile__personal-clues">
+              <span className="profile__section-label">4 일차 — 전말</span>
+              <p>{DAY4_REVEAL_TEXT}</p>
+            </div>
+          )}
+          {endingKey && (
+            <div className="profile__personal-clues">
+              <span className="profile__section-label">엔딩</span>
+              <p>{ENDING_SCRIPTS[endingKey]}</p>
             </div>
           )}
 
@@ -564,6 +594,11 @@ export function ProfileScreen() {
             <button className="profile__gm-send" onClick={send}>
               전원에게 쪽지 보내기
             </button>
+            {broadcast && (
+              <button className="profile__gm-preset" onClick={clearBroadcastForAll}>
+                지금 뜬 공지 전원에게서 끄기
+              </button>
+            )}
           </div>
 
           {unclaimedCharacters.length > 0 && (
@@ -661,17 +696,67 @@ export function ProfileScreen() {
           </div>
 
           <div className="profile__gm">
-            <span className="profile__section-label">불가 전용 — 개인 서사 전달</span>
+            <span className="profile__section-label">불가 전용 — 일차별 서사 전달</span>
             <p className="profile__gm-note">
-              하루가 지났다고 선언하고, 가입한 모든 플레이어에게 각자의 개인 서사를 한 번에 전달한다.
-              프로필 화면과 각자의 개인 대화에 동시에 남는다. 한 번 전달하면 되돌릴 수 없다.
+              하루가 지날 때마다 눌러서 그날의 이야기를 전원에게 한 번에 전달한다. 1~3 일차는 각자
+              캐릭터의 개인 서사, 4 일차는 모두에게 동일한 전말 공개다. 프로필 화면과 각자의 개인
+              대화에 동시에 남고, 순서대로만 진행할 수 있다.
             </p>
+            <div className="profile__gm-presets">
+              {([1, 2, 3, 4] as const).map((day) => (
+                <button
+                  key={day}
+                  className="profile__gm-preset"
+                  onClick={() => revealStoryDay(day)}
+                  disabled={storyDay !== day - 1}
+                >
+                  {storyDay >= day ? `${day} 일차 전달 완료` : `${day} 일차 전달하기`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="profile__gm">
+            <span className="profile__section-label">불가 전용 — 엔딩 발송</span>
+            <p className="profile__gm-note">
+              학생 진영의 승패와 괴이를 끊었는지 여부를 골라 확정하면, 그에 맞는 엔딩 기사를 전원에게
+              한 번에 전달한다. 한 번 보내면 되돌릴 수 없다.
+            </p>
+            <div className="profile__gm-presets">
+              <button
+                className={`profile__gm-preset ${endingWinner === 'ward' ? 'is-active' : ''}`}
+                onClick={() => setEndingWinner('ward')}
+              >
+                학생 진영 승리
+              </button>
+              <button
+                className={`profile__gm-preset ${endingWinner === 'sin' ? 'is-active' : ''}`}
+                onClick={() => setEndingWinner('sin')}
+              >
+                학생 진영 패배
+              </button>
+              <button
+                className={`profile__gm-preset ${endingBroken ? 'is-active' : ''}`}
+                onClick={() => setEndingBroken(true)}
+              >
+                괴이를 끊음
+              </button>
+              <button
+                className={`profile__gm-preset ${!endingBroken ? 'is-active' : ''}`}
+                onClick={() => setEndingBroken(false)}
+              >
+                괴이를 못 끊음
+              </button>
+            </div>
             <button
-              className="profile__gm-preset"
-              onClick={revealPersonalStories}
-              disabled={personalStoryRevealed}
+              className="profile__gm-send"
+              disabled={!!endingKey}
+              onClick={() => {
+                const key: EndingKey = `${endingWinner}-${endingBroken ? 'broken' : 'unbroken'}`
+                sendEnding(key)
+              }}
             >
-              {personalStoryRevealed ? '전달 완료' : '하루가 지났다 — 개인 서사 전달'}
+              {endingKey ? '엔딩 발송 완료' : '이 엔딩으로 확정해 발송하기'}
             </button>
           </div>
 

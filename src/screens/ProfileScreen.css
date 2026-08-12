@@ -312,6 +312,12 @@
   background: var(--void-2);
 }
 
+.profile__gm-preset:disabled,
+.profile__gm-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .profile__gm-input,
 .profile__gm-textarea {
   width: 100%;
