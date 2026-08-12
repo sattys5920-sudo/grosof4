@@ -85,16 +85,18 @@
 }
 
 .reveal__button {
+  width: 100%;
+  max-width: 320px;
   margin-top: 16px;
   font-family: var(--font-pixel);
   font-size: 13px;
-  padding: 13px 28px;
+  padding: 13px 0;
   cursor: pointer;
-  border: 1px solid var(--bone-dim);
-  background: var(--void-2);
+  border: 1px solid var(--sin);
+  background: var(--sin-dim);
   color: var(--bone-bright);
 }
 
 .reveal__button:hover {
-  border-color: var(--sin);
+  background: var(--sin);
 }

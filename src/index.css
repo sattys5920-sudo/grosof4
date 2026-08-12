@@ -81,6 +81,11 @@ textarea {
   color: inherit;
 }
 
+/* 손가락으로 누르기 쉬운 최소 탭 영역을 보장한다 (고정 크기 아이콘 버튼은 제외). */
+button:not(.classroom__pin-plus):not(.rooms__pin-plus):not(.feed__new-post-btn):not(.auth__admin-toggle) {
+  min-height: 36px;
+}
+
 ::selection {
   background: var(--sin-dim);
   color: var(--bone-bright);
