@@ -176,7 +176,7 @@ export function MainFeedScreen() {
 
       <div className="feed__list">
         {feed.length === 0 && (
-          <p className="feed__empty">아직 게시된 공지가 없다....... 방송실에서 새 글이 올라오기를 기다려보자.</p>
+          <p className="feed__empty">아직 게시된 공지가 없다....... 방송실의 새 방송을 기다려 보자.</p>
         )}
         {feed.map((post) => (
           <button key={post.id} className="feed__post" onClick={() => setOpenPostId(post.id)}>

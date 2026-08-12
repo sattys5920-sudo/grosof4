@@ -297,15 +297,26 @@
   text-align: center;
 }
 
+.mdisc__msg-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.mdisc__msg-row.is-me {
+  justify-content: flex-end;
+}
+
 .mdisc__msg {
   display: flex;
   flex-direction: column;
   gap: 2px;
   max-width: 85%;
+  min-width: 0;
 }
 
 .mdisc__msg.is-me {
-  align-self: flex-end;
   text-align: right;
 }
 

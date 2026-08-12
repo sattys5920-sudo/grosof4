@@ -4,6 +4,7 @@ import { useGame } from '../state/GameContext'
 import { CHARACTERS } from '../data/characters'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
+import { ChatAvatar } from '../components/ChatAvatar'
 import { MISSION_SIZES, TWO_FAILS_REQUIRED, WINS_NEEDED } from '../state/missionEngine'
 
 function MissionPopup({ text, onClose }: { text: string; onClose: () => void }) {
@@ -20,7 +21,7 @@ function MissionPopup({ text, onClose }: { text: string; onClose: () => void }) 
   )
 }
 
-const DISCUSSION_MS = 3 * 60 * 1000
+const DISCUSSION_MS = 2 * 60 * 1000
 
 function charOf(id: string) {
   return CHARACTERS.find((c) => c.id === id)!
@@ -43,6 +44,7 @@ function MissionDiscussionPanel() {
     discussionOpenedAt,
     setDiscussionOpen,
     displayName,
+    players,
   } = useGame()
   const [draft, setDraft] = useState('')
   const [now, setNow] = useState(Date.now())
@@ -81,15 +83,20 @@ function MissionDiscussionPanel() {
         <>
           <div className="mdisc__log">
             {missionMessages.length === 0 && (
-              <p className="mdisc__empty">아직 아무도 말하지 않았다....... 3 분 동안 자유롭게 의논해보자.</p>
+              <p className="mdisc__empty">아직 아무도 말하지 않았다....... 2 분 동안 자유롭게 의논해보자.</p>
             )}
             {missionMessages.map((m) => {
               const isMe = m.authorId === viewerId
               const isGm = m.authorId === 'admin'
+              const name = displayName(m.authorId)
               return (
-                <div key={m.id} className={`mdisc__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
-                  <span className="mdisc__msg-name">{displayName(m.authorId)}</span>
-                  <p className="mdisc__msg-text">{m.text}</p>
+                <div key={m.id} className={`mdisc__msg-row ${isMe ? 'is-me' : ''}`}>
+                  {!isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />}
+                  <div className={`mdisc__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
+                    <span className="mdisc__msg-name">{name}</span>
+                    <p className="mdisc__msg-text">{m.text}</p>
+                  </div>
+                  {isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />}
                 </div>
               )
             })}

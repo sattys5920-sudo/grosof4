@@ -175,7 +175,7 @@ interface GameState {
   toggleHeart: (postId: string) => void
   gmReveal: boolean
   broadcast: Broadcast | null
-  sendBroadcast: (kind: BroadcastKind, title: string, body: string, postToFeed?: boolean) => void
+  sendBroadcast: (kind: BroadcastKind, title: string, body: string) => void
   dismissBroadcast: () => void
   clearBroadcastForAll: () => void
   notifyRoomEvents: boolean
@@ -288,13 +288,6 @@ function resolveTeamCheckPure(
     return { team: 'ward', disguiseArmed: false }
   }
   return { team: target.team === 'ward' ? 'ward' : 'sin', disguiseArmed: disguiseArmedIn }
-}
-
-const BROADCAST_TAG: Record<BroadcastKind, string> = { event: '이벤트', sin: '괴이', notice: '공지' }
-const BROADCAST_LABEL: Record<BroadcastKind, string> = {
-  event: '[긴급 이벤트]',
-  sin: '[괴이 출현]',
-  notice: '[교내 방송]',
 }
 
 function FirebaseSetupNotice() {
@@ -756,7 +749,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       note: null,
       attemptsUsed: 0,
     }))
-    sendBroadcast('event', '강당이 열렸다', `《${item.title}》 — 지금 강당으로 모이자.......`, false)
+    sendBroadcast('event', '강당이 열렸다', `《${item.title}》 — 지금 강당으로 모이자.......`)
   }
 
   function dispatchPuzzle(puzzle: ClassroomPuzzle) {
@@ -778,7 +771,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       attemptsUsed: 0,
     }))
     void patchSession({ classroomMessages: [] })
-    sendBroadcast('event', '강당이 열렸다', `《${puzzle.title}》 — 지금 강당으로 모이자.......`, false)
+    sendBroadcast('event', '강당이 열렸다', `《${puzzle.title}》 — 지금 강당으로 모이자.......`)
   }
 
   function closeInvestigation() {
@@ -834,7 +827,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       completedEventIds: session.hallEvent.completedEventIds,
     }
     void patchSession({ hallEvent: nextHallEvent, classroomMessages: [] })
-    sendBroadcast('event', `${event.roomName}이(가) 열렸다`, `${event.creatureName} — 지금 강당으로 모이자.......`, false)
+    sendBroadcast('event', `${event.roomName}이(가) 열렸다`, `${event.creatureName} — 지금 강당으로 모이자.......`)
   }
 
   function advanceHallLog() {
@@ -959,20 +952,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     })
   }
 
-  function sendBroadcast(kind: BroadcastKind, title: string, body: string, postToFeed = true) {
+  // 브로드캐스트(공지/괴이 출현/이벤트)는 팝업·상단바로만 전달되고, 메인 피드에는 절대 자동으로
+  // 올라가지 않는다. 피드에는 GM이 메인 화면의 + 버튼으로 직접 작성한 글만 올라간다.
+  function sendBroadcast(kind: BroadcastKind, title: string, body: string) {
     if (!title.trim() || !body.trim()) return
     const id = `bc-${Date.now()}`
     const bc: Broadcast = { id, kind, title: title.trim(), body: body.trim() }
     void sendBroadcastSync(bc)
-    if (!postToFeed) return
-    void createFeedPostSync({
-      authorLabel: BROADCAST_LABEL[kind],
-      tag: BROADCAST_TAG[kind],
-      title: title.trim(),
-      body: body.trim(),
-      time: '방금',
-      commentsEnabled: false,
-    })
   }
 
   function dismissBroadcast() {

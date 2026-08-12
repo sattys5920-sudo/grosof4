@@ -231,7 +231,7 @@ export function ProfileScreen() {
   }
 
   function send() {
-    sendBroadcast(kind, title, body, kind !== 'event')
+    sendBroadcast(kind, title, body)
   }
 
   function onPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
