@@ -7,6 +7,11 @@ export const TWO_FAILS_REQUIRED = [false, false, false, true, false]
 export const WINS_NEEDED = 3
 export const MAX_REJECTIONS = 5
 
+// 조사대 구성 / 찬반 투표 / 성공-실패 제출, 세 단계 모두 참여자 10 인이 각자 직접
+// 응답해야 한다. 각 단계는 10 분 동안 진행되며, 불가가 표결·제출을 마감하면 실제로
+// 걷힌 응답만으로 결과가 확정된다.
+export const MISSION_PHASE_MS = 10 * 60 * 1000
+
 export type MissionPhase = 'propose' | 'vote' | 'execute' | 'result' | 'gameover'
 export type MissionOutcome = 'success' | 'fail' | null
 
@@ -27,13 +32,17 @@ export interface MissionState {
   winner: 'ward' | 'sin' | null
   lastNote: string
   shielded: boolean
+  phaseStartedAtMs: number | null
+  votes: Record<string, boolean>
+  cards: Record<string, 'success' | 'fail'>
 }
 
 export type MissionAction =
-  | { type: 'AUTO_FILL_IF_NPC' }
   | { type: 'CONFIRM_PROPOSAL'; team: string[] }
   | { type: 'CAST_VOTE'; viewerId: string; approve: boolean }
-  | { type: 'SUBMIT_CARD'; viewerId: string; card: 'success' | 'fail' | null }
+  | { type: 'CLOSE_VOTE' }
+  | { type: 'SUBMIT_CARD'; viewerId: string; card: 'success' | 'fail' }
+  | { type: 'CLOSE_EXECUTE' }
   | { type: 'CONTINUE' }
   | { type: 'RESET' }
   | { type: 'FORGE_RESULT' }
@@ -44,18 +53,8 @@ function charTeam(id: string) {
   return CHARACTERS.find((c) => c.id === id)!.team
 }
 
-// 리더부터 가나다순(turnOrder) 오른쪽으로 순서대로 팀을 꾸린다.
-function pickAutoTeam(leaderId: string, size: number, turnOrder: string[]): string[] {
-  const leaderIdx = turnOrder.indexOf(leaderId)
-  const team = [leaderId]
-  for (let i = 1; i < size; i++) {
-    team.push(turnOrder[(leaderIdx + i) % turnOrder.length])
-  }
-  return team
-}
-
 export function initialMissionState(turnOrder: string[] = DEFAULT_ORDER): MissionState {
-  const state: MissionState = {
+  return {
     turnOrder,
     missionIndex: 0,
     leaderIdx: 0,
@@ -72,77 +71,43 @@ export function initialMissionState(turnOrder: string[] = DEFAULT_ORDER): Missio
     winner: null,
     lastNote: '',
     shielded: false,
+    phaseStartedAtMs: Date.now(),
+    votes: {},
+    cards: {},
   }
-  return autoFillIfNpc(state)
-}
-
-function autoFillIfNpc(state: MissionState): MissionState {
-  const leaderId = state.turnOrder[state.leaderIdx]
-  const leader = CHARACTERS.find((c) => c.id === leaderId)!
-  if (state.phase !== 'propose') return state
-  return {
-    ...state,
-    proposedTeam: pickAutoTeam(leaderId, MISSION_SIZES[state.missionIndex], state.turnOrder),
-    lastNote: `${leader.name}이(가) 조사대를 제안했다.`,
-  }
-}
-
-function simulateVotes(
-  viewerId: string,
-  viewerApprove: boolean,
-): { approve: number; reject: number } {
-  let approve = 0
-  let reject = 0
-  for (const c of CHARACTERS) {
-    let vote: boolean
-    if (c.id === viewerId) {
-      vote = viewerApprove
-    } else if (c.team === 'sin') {
-      vote = Math.random() < 0.5
-    } else if (c.team === 'veil') {
-      vote = Math.random() < 0.7
-    } else {
-      vote = Math.random() < 0.78
-    }
-    if (vote) approve++
-    else reject++
-  }
-  return { approve, reject }
-}
-
-function simulateCards(
-  team: string[],
-  viewerId: string,
-  viewerCard: 'success' | 'fail' | null,
-  required: number,
-): { success: number; fail: number; result: MissionOutcome } {
-  let success = 0
-  let fail = 0
-  for (const id of team) {
-    let card: 'success' | 'fail'
-    if (id === viewerId && viewerCard) {
-      card = viewerCard
-    } else if (charTeam(id) === 'sin') {
-      card = Math.random() < 0.65 ? 'fail' : 'success'
-    } else {
-      card = 'success'
-    }
-    if (card === 'fail') fail++
-    else success++
-  }
-  return { success, fail, result: fail >= required ? 'fail' : 'success' }
 }
 
 export function missionReducer(state: MissionState, action: MissionAction): MissionState {
   switch (action.type) {
-    case 'AUTO_FILL_IF_NPC':
-      return autoFillIfNpc(state)
-
-    case 'CONFIRM_PROPOSAL':
-      return { ...state, proposedTeam: action.team, phase: 'vote', voteTally: null }
+    case 'CONFIRM_PROPOSAL': {
+      if (state.phase !== 'propose') return state
+      const leader = CHARACTERS.find((c) => c.id === state.turnOrder[state.leaderIdx])!
+      return {
+        ...state,
+        proposedTeam: action.team,
+        phase: 'vote',
+        voteTally: null,
+        votes: {},
+        phaseStartedAtMs: Date.now(),
+        lastNote: `${leader.name}이(가) 조사대를 제안했다.`,
+      }
+    }
 
     case 'CAST_VOTE': {
-      const tally = simulateVotes(action.viewerId, action.approve)
+      if (state.phase !== 'vote') return state
+      if (state.votes[action.viewerId] !== undefined) return state
+      return { ...state, votes: { ...state.votes, [action.viewerId]: action.approve } }
+    }
+
+    case 'CLOSE_VOTE': {
+      if (state.phase !== 'vote') return state
+      let approve = 0
+      let reject = 0
+      for (const v of Object.values(state.votes)) {
+        if (v) approve++
+        else reject++
+      }
+      const tally = { approve, reject }
       const approved = tally.approve > tally.reject
       if (approved) {
         return {
@@ -150,6 +115,8 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
           voteTally: tally,
           phase: 'execute',
           rejectionCount: 0,
+          cards: {},
+          phaseStartedAtMs: Date.now(),
           lastNote: `찬성 ${tally.approve} · 반대 ${tally.reject} — 조사대가 승인되었다.`,
         }
       }
@@ -173,24 +140,37 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         }
       }
       const nextLeaderIdx = (state.leaderIdx + 1) % state.turnOrder.length
-      return autoFillIfNpc({
+      return {
         ...state,
         voteTally: tally,
         rejectionCount: nextRejections,
         leaderIdx: nextLeaderIdx,
         phase: 'propose',
+        proposedTeam: [],
+        votes: {},
+        phaseStartedAtMs: Date.now(),
         lastNote: `찬성 ${tally.approve} · 반대 ${tally.reject} — 부결되었다. (${nextRejections}/${MAX_REJECTIONS})`,
-      })
+      }
     }
 
     case 'SUBMIT_CARD': {
+      if (state.phase !== 'execute') return state
+      if (!state.proposedTeam.includes(action.viewerId)) return state
+      if (state.cards[action.viewerId] !== undefined) return state
+      if (action.card === 'fail' && charTeam(action.viewerId) !== 'sin') return state
+      return { ...state, cards: { ...state.cards, [action.viewerId]: action.card } }
+    }
+
+    case 'CLOSE_EXECUTE': {
+      if (state.phase !== 'execute') return state
       const required = TWO_FAILS_REQUIRED[state.missionIndex] ? 2 : 1
-      const { success, fail: rawFail } = simulateCards(
-        state.proposedTeam,
-        action.viewerId,
-        action.card,
-        required,
-      )
+      let success = 0
+      let rawFail = 0
+      for (const id of state.proposedTeam) {
+        const card = state.cards[id] ?? 'success'
+        if (card === 'fail') rawFail++
+        else success++
+      }
       const shieldedNow = state.shielded && rawFail > 0
       const fail = shieldedNow ? rawFail - 1 : rawFail
       const result: MissionOutcome = fail >= required ? 'fail' : 'success'
@@ -240,7 +220,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         return { ...state, phase: 'gameover', winner: 'sin' }
       }
       const nextLeaderIdx = (state.leaderIdx + 1) % state.turnOrder.length
-      return autoFillIfNpc({
+      return {
         ...state,
         missionIndex: state.missionIndex + 1,
         leaderIdx: nextLeaderIdx,
@@ -249,7 +229,10 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         rejectionCount: 0,
         voteTally: null,
         cardTally: null,
-      })
+        votes: {},
+        cards: {},
+        phaseStartedAtMs: Date.now(),
+      }
     }
 
     case 'RESET':

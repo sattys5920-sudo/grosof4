@@ -5,7 +5,7 @@ import { CHARACTERS } from '../data/characters'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
 import { ChatAvatar } from '../components/ChatAvatar'
-import { MISSION_SIZES, TWO_FAILS_REQUIRED, WINS_NEEDED } from '../state/missionEngine'
+import { MISSION_PHASE_MS, MISSION_SIZES, TWO_FAILS_REQUIRED, WINS_NEEDED } from '../state/missionEngine'
 
 function MissionPopup({ text, onClose }: { text: string; onClose: () => void }) {
   return (
@@ -150,7 +150,9 @@ export function MissionScreen() {
     mission,
     confirmProposal,
     castVote,
+    closeVote,
     submitCard,
+    closeExecute,
     continueMission,
     resetMission,
     displayName,
@@ -162,6 +164,16 @@ export function MissionScreen() {
   const onTeam = viewerId ? mission.proposedTeam.includes(viewerId) : false
   const trueResult = mission.missionResults[mission.missionIndex]
   const hideFailFromMe = mission.phase === 'result' && !!mission.cardTally && trueResult === 'fail' && !onTeam
+
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    if (mission.phase !== 'propose' && mission.phase !== 'vote' && mission.phase !== 'execute') return
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [mission.phase, mission.phaseStartedAtMs])
+  const phaseRemainingMs = mission.phaseStartedAtMs
+    ? Math.max(0, mission.phaseStartedAtMs + MISSION_PHASE_MS - now)
+    : null
 
   const [popupText, setPopupText] = useState<string | null>(null)
   const prevRef = useRef({ phase: mission.phase, missionIndex: mission.missionIndex })
@@ -190,6 +202,10 @@ export function MissionScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mission.phase, mission.missionIndex])
 
+  useEffect(() => {
+    if (mission.phase === 'propose') setDraftTeam([])
+  }, [mission.phase, mission.leaderIdx, mission.missionIndex])
+
   function toggleDraft(id: string) {
     setDraftTeam((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id)
@@ -208,6 +224,10 @@ export function MissionScreen() {
   }
 
   if (isAdmin || !viewerId) {
+    const approveCount = Object.values(mission.votes).filter(Boolean).length
+    const voteCount = Object.keys(mission.votes).length
+    const rejectCount = voteCount - approveCount
+    const submittedCount = mission.proposedTeam.filter((id) => mission.cards[id] !== undefined).length
     return (
       <div className="mission">
         <div className="mission__head">
@@ -221,6 +241,55 @@ export function MissionScreen() {
         <MissionTrack />
         {mission.lastNote && <p className="mission__note">{mission.lastNote}</p>}
         <p className="mission__lock-text">불가는 조사에 참여하지 않고 진행 상황만 지켜본다.</p>
+
+        {mission.phase === 'propose' && (
+          <div className="mission__panel">
+            <p className="mission__leader">
+              조사대장 <strong>{displayName(leader.id)}</strong>이(가) 조사대를 고르는 중이다.
+              {phaseRemainingMs !== null && (
+                <span className="mission__timer">
+                  {' '}
+                  ({phaseRemainingMs > 0 ? formatCountdown(phaseRemainingMs) : '시간 종료'})
+                </span>
+              )}
+            </p>
+          </div>
+        )}
+
+        {mission.phase === 'vote' && (
+          <div className="mission__panel">
+            <p className="mission__leader">
+              투표 현황: 찬성 {approveCount} · 반대 {rejectCount} (총 {voteCount}/{mission.turnOrder.length} 명)
+              {phaseRemainingMs !== null && (
+                <span className="mission__timer">
+                  {' '}
+                  ({phaseRemainingMs > 0 ? formatCountdown(phaseRemainingMs) : '시간 종료'})
+                </span>
+              )}
+            </p>
+            <button className="mission__cta" onClick={closeVote}>
+              표결 마감
+            </button>
+          </div>
+        )}
+
+        {mission.phase === 'execute' && (
+          <div className="mission__panel">
+            <p className="mission__leader">
+              카드 제출 현황: {submittedCount}/{teamSize} 명
+              {phaseRemainingMs !== null && (
+                <span className="mission__timer">
+                  {' '}
+                  ({phaseRemainingMs > 0 ? formatCountdown(phaseRemainingMs) : '시간 종료'})
+                </span>
+              )}
+            </p>
+            <button className="mission__cta" onClick={closeExecute}>
+              조사 마감
+            </button>
+          </div>
+        )}
+
         <MissionDiscussionPanel />
       </div>
     )
@@ -266,6 +335,12 @@ export function MissionScreen() {
           <p className="mission__leader">
             이번 조사대장: <strong>{displayName(leader.id)}</strong>
             {isLeader && ' (나)'}
+            {phaseRemainingMs !== null && (
+              <span className="mission__timer">
+                {' '}
+                ({phaseRemainingMs > 0 ? formatCountdown(phaseRemainingMs) : '시간 종료'})
+              </span>
+            )}
           </p>
           {isLeader ? (
             <>
@@ -294,22 +369,9 @@ export function MissionScreen() {
               </button>
             </>
           ) : (
-            <>
-              <div className="mission__roster mission__roster--readonly">
-                {mission.proposedTeam.map((id) => {
-                  const c = charOf(id)
-                  return (
-                    <div key={id} className="mission__pick is-picked">
-                      <Badge team={c.team} size={20} revealed={isRevealedTo(viewer, c, gmReveal)} />
-                      <span>{displayName(c.id)}</span>
-                    </div>
-                  )
-                })}
-              </div>
-              <button className="mission__cta" onClick={() => confirmProposal(mission.proposedTeam)}>
-                투표 시작
-              </button>
-            </>
+            <p className="mission__waiting">
+              {displayName(leader.id)}이(가) 조사대 {teamSize} 명을 고르는 중이다....... 직접 상의해서 정해보자.
+            </p>
           )}
         </div>
       )}
@@ -318,6 +380,12 @@ export function MissionScreen() {
         <div className="mission__panel">
           <p className="mission__leader">
             <strong>{displayName(leader.id)}</strong>의 제안 — 부결 {mission.rejectionCount}/5
+            {phaseRemainingMs !== null && (
+              <span className="mission__timer">
+                {' '}
+                ({phaseRemainingMs > 0 ? formatCountdown(phaseRemainingMs) : '시간 종료'})
+              </span>
+            )}
           </p>
           <div className="mission__roster mission__roster--readonly">
             {mission.proposedTeam.map((id) => {
@@ -330,20 +398,39 @@ export function MissionScreen() {
               )
             })}
           </div>
-          <div className="mission__vote-row">
-            <button className="mission__vote mission__vote--yes" onClick={() => castVote(true)}>
-              찬성
-            </button>
-            <button className="mission__vote mission__vote--no" onClick={() => castVote(false)}>
-              반대
-            </button>
-          </div>
+          <p className="mission__tally">
+            찬성 {Object.values(mission.votes).filter(Boolean).length} · 반대{' '}
+            {Object.values(mission.votes).filter((v) => !v).length} (총 {Object.keys(mission.votes).length}/
+            {mission.turnOrder.length} 명 투표)
+          </p>
+          {viewerId && mission.votes[viewerId] === undefined ? (
+            <div className="mission__vote-row">
+              <button className="mission__vote mission__vote--yes" onClick={() => castVote(true)}>
+                찬성
+              </button>
+              <button className="mission__vote mission__vote--no" onClick={() => castVote(false)}>
+                반대
+              </button>
+            </div>
+          ) : (
+            <p className="mission__waiting">
+              투표를 마쳤다....... 다른 사람들의 투표를 기다리는 중이다.
+            </p>
+          )}
         </div>
       )}
 
       {mission.phase === 'execute' && (
         <div className="mission__panel">
-          <p className="mission__leader">조사 진행 중 — 팀원들이 카드를 제출하고 있다</p>
+          <p className="mission__leader">
+            조사 진행 중 — 팀원들이 카드를 제출하고 있다
+            {phaseRemainingMs !== null && (
+              <span className="mission__timer">
+                {' '}
+                ({phaseRemainingMs > 0 ? formatCountdown(phaseRemainingMs) : '시간 종료'})
+              </span>
+            )}
+          </p>
           <div className="mission__roster mission__roster--readonly">
             {mission.proposedTeam.map((id) => {
               const c = charOf(id)
@@ -355,21 +442,26 @@ export function MissionScreen() {
               )
             })}
           </div>
+          <p className="mission__tally">
+            카드 제출 {mission.proposedTeam.filter((id) => mission.cards[id] !== undefined).length}/{teamSize} 명
+          </p>
           {onTeam ? (
-            <div className="mission__vote-row">
-              <button className="mission__vote mission__vote--yes" onClick={() => submitCard('success')}>
-                성공 카드 제출
-              </button>
-              {viewer.team === 'sin' && (
-                <button className="mission__vote mission__vote--no" onClick={() => submitCard('fail')}>
-                  실패 카드 제출
+            viewerId && mission.cards[viewerId] === undefined ? (
+              <div className="mission__vote-row">
+                <button className="mission__vote mission__vote--yes" onClick={() => submitCard('success')}>
+                  성공 카드 제출
                 </button>
-              )}
-            </div>
+                {viewer.team === 'sin' && (
+                  <button className="mission__vote mission__vote--no" onClick={() => submitCard('fail')}>
+                    실패 카드 제출
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className="mission__waiting">카드를 제출했다....... 결과를 기다리는 중이다.</p>
+            )
           ) : (
-            <button className="mission__cta" onClick={() => submitCard(null)}>
-              결과 확인하기
-            </button>
+            <p className="mission__waiting">조사대가 돌아올 때까지 기다려 보자.......</p>
           )}
         </div>
       )}

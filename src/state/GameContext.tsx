@@ -230,7 +230,9 @@ interface GameState {
   mission: MissionState
   confirmProposal: (team: string[]) => void
   castVote: (approve: boolean) => void
-  submitCard: (card: 'success' | 'fail' | null) => void
+  closeVote: () => void
+  submitCard: (card: 'success' | 'fail') => void
+  closeExecute: () => void
   continueMission: () => void
   resetMission: () => void
   abilityUnlocked: boolean
@@ -1181,9 +1183,17 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     if (!viewerId) return
     void updateMissionSync((m) => missionReducer(m, { type: 'CAST_VOTE', viewerId, approve }))
   }
-  function submitCard(card: 'success' | 'fail' | null) {
+  function closeVote() {
+    if (!isAdminFlag) return
+    void updateMissionSync((m) => missionReducer(m, { type: 'CLOSE_VOTE' }))
+  }
+  function submitCard(card: 'success' | 'fail') {
     if (!viewerId) return
     void updateMissionSync((m) => missionReducer(m, { type: 'SUBMIT_CARD', viewerId, card }))
+  }
+  function closeExecute() {
+    if (!isAdminFlag) return
+    void updateMissionSync((m) => missionReducer(m, { type: 'CLOSE_EXECUTE' }))
   }
   function continueMission() {
     void updateMissionSync((m) => missionReducer(m, { type: 'CONTINUE' }))
@@ -1658,7 +1668,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       mission: session.mission,
       confirmProposal,
       castVote,
+      closeVote,
       submitCard,
+      closeExecute,
       continueMission,
       resetMission,
       abilityUnlocked,
