@@ -153,6 +153,8 @@ export function ProfileScreen() {
     notifyGeneralBroadcasts,
     setNotifyGeneralBroadcasts,
     enableAllNotifications,
+    notifPermission,
+    requestBrowserNotifications,
     missionsOpen,
     openMissions,
     abilityUseCount,
@@ -599,7 +601,26 @@ export function ProfileScreen() {
           >
             전체 공지 알림 {notifyGeneralBroadcasts ? '켜짐' : '꺼짐'}
           </button>
+          {notifPermission !== 'unsupported' && (
+            <button
+              className={`profile__gm-preset ${notifPermission === 'granted' ? 'is-active' : ''}`}
+              onClick={requestBrowserNotifications}
+              disabled={notifPermission === 'denied'}
+            >
+              {notifPermission === 'granted'
+                ? '다른 화면에서도 알림 받는 중'
+                : notifPermission === 'denied'
+                  ? '브라우저 알림 차단됨 (설정에서 허용 필요)'
+                  : '다른 화면에서도 알림 받기'}
+            </button>
+          )}
         </div>
+        {notifPermission === 'granted' && (
+          <p className="profile__gm-note">
+            이 창을 열어 둔 채로 다른 화면을 보고 있어도 새 소식이 오면 알림이 뜬다. 다만 앱을 완전히
+            종료하면 알림도 오지 않는다.
+          </p>
+        )}
       </div>
 
       <div className="profile__section">

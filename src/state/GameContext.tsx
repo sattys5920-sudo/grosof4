@@ -173,6 +173,8 @@ interface GameState {
   notifyGeneralBroadcasts: boolean
   setNotifyGeneralBroadcasts: (on: boolean) => void
   enableAllNotifications: () => void
+  notifPermission: NotificationPermission | 'unsupported'
+  requestBrowserNotifications: () => void
   topAlert: { id: string; text: string } | null
   dismissTopAlert: () => void
   hasUnreadDm: boolean
@@ -414,6 +416,40 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const def = myPlayer?.armorDefBonus ?? 0
   const incapacitated = hp <= 0 || stamina <= 0
 
+  // 앱이 백그라운드(다른 탭/다른 앱)에 있을 때도 카카오톡처럼 브라우저 알림을 띄운다.
+  // 탭하면 이 앱으로 돌아와 관련 탭으로 이동한다. 서비스 워커가 등록되어 있고
+  // 알림 권한이 허용된 경우에만 동작하며, 브라우저가 완전히 꺼진 상태에서는
+  // (전용 푸시 서버가 없으므로) 동작하지 않는다.
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(
+    typeof Notification === 'undefined' ? 'unsupported' : Notification.permission,
+  )
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {})
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'gwae-notification-nav' && event.data.tab) {
+        setActiveTab(event.data.tab as TabId)
+      }
+    }
+    navigator.serviceWorker.addEventListener('message', handler)
+    return () => navigator.serviceWorker.removeEventListener('message', handler)
+  }, [])
+
+  function requestBrowserNotifications() {
+    if (typeof Notification === 'undefined') return
+    void Notification.requestPermission().then((perm) => setNotifPermission(perm))
+  }
+
+  function notifyBackground(title: string, body: string, tab: TabId) {
+    if (notifPermission !== 'granted') return
+    if (typeof document !== 'undefined' && !document.hidden) return
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
+    void navigator.serviceWorker.ready.then((reg) => {
+      void reg.showNotification(title, { body, tag: 'gwae-alert', data: { tab } })
+    })
+  }
+
   // 새 공지·괴이 출현이 뜨면 (알림 설정을 켜둔 경우) 상단바에도 짧게 알려 준다.
   const lastAlertedBroadcastIdRef = useRef<string | null>(null)
   useEffect(() => {
@@ -423,6 +459,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     const suppressed = bc.kind === 'sin' ? !notifyRoomEvents : !notifyGeneralBroadcasts
     if (suppressed) return
     setTopAlert({ id: bc.id, text: bc.title })
+    const tab: TabId = bc.kind === 'sin' ? 'rooms' : bc.kind === 'event' ? 'classroom' : 'main'
+    notifyBackground(bc.title, bc.body, tab)
   }, [session.broadcast, notifyRoomEvents, notifyGeneralBroadcasts])
 
   // 불가가 나에게 새 쪽지를 보내면 상단바에 알려 준다 (최초 로딩 시점의 기존 대화는 제외).
@@ -438,7 +476,10 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     }
     if (msgs.length > lastDmCountRef.current) {
       const last = msgs[msgs.length - 1]
-      if (last.authorId === 'admin') setTopAlert({ id: last.id, text: `교내 방송: ${last.text}` })
+      if (last.authorId === 'admin') {
+        setTopAlert({ id: last.id, text: `교내 방송: ${last.text}` })
+        notifyBackground('교내 방송', last.text, 'profile')
+      }
     }
     lastDmCountRef.current = msgs.length
   }, [myPlayer?.gmDmMessages, viewerId, isAdminFlag])
@@ -468,6 +509,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     if (total > lastGmInboxTotalRef.current && latestMsg && latestFrom) {
       const senderName = players[latestFrom]?.nickname ?? CHARACTERS.find((c) => c.id === latestFrom)?.name ?? '???'
       setTopAlert({ id: latestMsg.id, text: `${senderName}: ${latestMsg.text}` })
+      notifyBackground(senderName, latestMsg.text, 'profile')
     }
     lastGmInboxTotalRef.current = total
   }, [players, isAdminFlag])
@@ -1322,6 +1364,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       notifyGeneralBroadcasts,
       setNotifyGeneralBroadcasts,
       enableAllNotifications,
+      notifPermission,
+      requestBrowserNotifications,
       topAlert,
       dismissTopAlert,
       hasUnreadDm,
@@ -1392,6 +1436,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       myPlayer,
       notifyRoomEvents,
       notifyGeneralBroadcasts,
+      notifPermission,
       topAlert,
       hasUnreadDm,
       lastSeenDmCount,
