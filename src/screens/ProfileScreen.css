@@ -204,28 +204,6 @@
   font-style: italic;
 }
 
-.profile__facts {
-  margin: 0;
-  display: grid;
-  grid-template-columns: 64px 1fr;
-  gap: 6px 10px;
-}
-
-.profile__facts dt {
-  font-family: var(--font-pixel);
-  font-size: 10px;
-  color: var(--veil);
-  align-self: start;
-  padding-top: 2px;
-}
-
-.profile__facts dd {
-  margin: 0;
-  font-size: 13.5px;
-  color: var(--bone);
-  line-height: 1.6;
-}
-
 .profile__section {
   display: flex;
   flex-direction: column;

@@ -13,7 +13,6 @@ export function RoleRevealScreen() {
       <Badge team={viewer.team} size={64} />
       <span className={`reveal__team reveal__team--${viewer.team}`}>{roleLabel(viewer)}</span>
       <div className="reveal__card">
-        <span className="reveal__tagline">{viewer.tagline}</span>
         <p className="reveal__text">{personalize(viewer.revealText, nickname)}</p>
       </div>
       <div className="reveal__ability">

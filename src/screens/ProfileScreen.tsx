@@ -240,8 +240,6 @@ export function ProfileScreen() {
               </span>
             </div>
           </div>
-          <p className="profile__tagline">{viewer.tagline}</p>
-
           <div className="profile__stats">
             <span className={`profile__stat ${hp <= 30 ? 'is-danger' : ''}`}>HP {hp}/100</span>
             <span className={`profile__stat ${stamina <= 30 ? 'is-danger' : ''}`}>스태미나 {stamina}/100</span>
@@ -255,15 +253,6 @@ export function ProfileScreen() {
               구해 회복해야 한다.
             </p>
           )}
-
-          <dl className="profile__facts">
-            <dt>사건 당시</dt>
-            <dd>{viewer.incidentPosition}</dd>
-            <dt>서사</dt>
-            <dd>{viewer.bio}</dd>
-            <dt>단서 특기</dt>
-            <dd>{viewer.clueHint}</dd>
-          </dl>
 
           <div className="profile__ability">
             <span className="profile__section-label">특수 능력 — {viewer.abilityName}</span>

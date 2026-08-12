@@ -19,11 +19,6 @@ export interface Character {
   name: string
   team: Team
   role: Role
-  grade: string
-  tagline: string
-  incidentPosition: string
-  bio: string
-  clueHint: string
   avatarSeed: string
   revealText: string
   abilityName: string
