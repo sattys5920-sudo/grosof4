@@ -178,7 +178,9 @@ interface GameState {
   attackCreature: (roomId: RoomId) => void
   dispatchCreature: (roomId: RoomId, creature: Creature) => void
   buyItem: (itemId: string) => void
+  useItem: (itemId: string) => void
   giftItem: (itemId: string, targetId: string) => void
+  inventory: Record<string, number>
   createFeedPost: (title: string, body: string, commentsEnabled: boolean) => void
   toggleCommentsEnabled: (postId: string) => void
   addComment: (postId: string, text: string, secret: boolean) => void
@@ -352,6 +354,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const hp = myPlayer?.hp ?? 100
   const stamina = myPlayer?.stamina ?? 100
   const coins = myPlayer?.coins ?? 0
+  const inventory = myPlayer?.inventory ?? {}
   const atk = BASE_ATK + (myPlayer?.weaponAtkBonus ?? 0)
   const def = myPlayer?.armorDefBonus ?? 0
   const incapacitated = hp <= 0 || stamina <= 0
@@ -966,7 +969,26 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       () => null,
       (_sess, me) => {
         if (me.coins < item.price) return {}
-        return { me: { coins: me.coins - item.price, ...applyItemEffect(item, me) } }
+        const inventory = { ...(me.inventory ?? {}) }
+        inventory[itemId] = (inventory[itemId] ?? 0) + 1
+        return { me: { coins: me.coins - item.price, inventory } }
+      },
+    )
+  }
+
+  function useItem(itemId: string) {
+    if (!viewerId) return
+    const item = shopItemById(itemId)
+    if (!item) return
+    void runCombatTransaction(
+      viewerId,
+      () => null,
+      (_sess, me) => {
+        const owned = me.inventory?.[itemId] ?? 0
+        if (owned <= 0) return {}
+        const inventory = { ...(me.inventory ?? {}) }
+        inventory[itemId] = owned - 1
+        return { me: { inventory, ...applyItemEffect(item, me) } }
       },
     )
   }
@@ -981,9 +1003,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       (_sess, me, target) => {
         if (!target) return {}
         if (me.coins < item.price) return {}
+        const inventory = { ...(target.inventory ?? {}) }
+        inventory[itemId] = (inventory[itemId] ?? 0) + 1
         return {
           me: { coins: me.coins - item.price },
-          target: applyItemEffect(item, target),
+          target: { inventory },
         }
       },
     )
@@ -1102,7 +1126,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       attackCreature,
       dispatchCreature,
       buyItem,
+      useItem,
       giftItem,
+      inventory,
     }),
     [
       viewerId,
@@ -1128,6 +1154,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       atk,
       def,
       incapacitated,
+      inventory,
       players,
       myPlayer,
       notifyRoomEvents,

@@ -3,9 +3,11 @@ import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS, DAY4_REVEAL_TEXT, ENDING_SCRIPTS, roleLabel } from '../data/characters'
 import { CLASSROOM_PUZZLES } from '../data/classroomPuzzles'
+import { SHOP_ITEMS } from '../data/shop'
 import { Badge } from '../components/Badge'
 import { AbilityUseModal } from '../components/AbilityUseModal'
 import { PixelIcon } from '../components/PixelIcon'
+import { PixelArt } from '../components/PixelArt'
 import type { BroadcastKind, EndingKey } from '../data/types'
 
 const PRESETS: { kind: BroadcastKind; label: string; title: string; body: string }[] = [
@@ -166,6 +168,8 @@ export function ProfileScreen() {
     atk,
     def,
     incapacitated,
+    inventory,
+    useItem,
     mission,
     players,
     collectedClues,
@@ -266,6 +270,31 @@ export function ProfileScreen() {
               빈사 상태다....... HP나 스태미나가 모두 바닥나 지금은 조사실에 들어갈 수 없다. 매점에서 음식이나 약을
               구해 회복해야 한다.
             </p>
+          )}
+
+          {Object.entries(inventory).some(([, count]) => count > 0) && (
+            <div className="profile__section profile__inventory">
+              <span className="profile__section-label">아이템</span>
+              <div className="profile__clue-list">
+                {SHOP_ITEMS.filter((item) => (inventory[item.id] ?? 0) > 0).map((item) => (
+                  <div key={item.id} className="profile__inventory-item">
+                    <PixelArt pixels={item.art.pixels} palette={item.art.palette} size={36} />
+                    <div className="profile__inventory-body">
+                      <span className="profile__clue-title">
+                        {item.name} × {inventory[item.id]}
+                      </span>
+                      <span className="profile__clue-source">
+                        {item.kind === 'weapon' && `공격력 +${item.amount}`}
+                        {item.kind === 'armor' && `방어력 +${item.amount}`}
+                        {item.kind === 'food' && `스태미나 +${item.amount}`}
+                        {item.kind === 'medicine' && `HP +${item.amount}`}
+                      </span>
+                    </div>
+                    <button onClick={() => useItem(item.id)}>사용</button>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           <div className="profile__ability">

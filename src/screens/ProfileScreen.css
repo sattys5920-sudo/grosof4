@@ -561,3 +561,46 @@
   line-height: 1.6;
   color: var(--bone);
 }
+
+.profile__inventory-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+}
+
+.profile__inventory-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.profile__inventory-body .profile__clue-title {
+  font-size: 13.5px;
+  color: var(--bone-bright);
+}
+
+.profile__inventory-body .profile__clue-source {
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--bone-dim);
+}
+
+.profile__inventory-item button {
+  flex-shrink: 0;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  padding: 7px 10px;
+  cursor: pointer;
+  border: 1px solid var(--ward);
+  background: var(--void-2);
+  color: var(--bone-bright);
+}
+
+.profile__inventory-item button:hover {
+  background: var(--ward-dim);
+}

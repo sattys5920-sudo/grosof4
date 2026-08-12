@@ -69,6 +69,7 @@ export interface PlayerDoc {
   coins: number
   weaponAtkBonus: number
   armorDefBonus: number
+  inventory: Record<string, number>
 }
 
 export interface FeedPostDoc {
@@ -214,6 +215,7 @@ export async function claimRandomSlot(
       coins: 0,
       weaponAtkBonus: 0,
       armorDefBonus: 0,
+      inventory: {},
     })
     return assigned.id
   })
@@ -247,6 +249,7 @@ export async function assignRoleManuallySync(characterId: string, nickname: stri
       coins: 0,
       weaponAtkBonus: 0,
       armorDefBonus: 0,
+      inventory: {},
     })
   })
 }
