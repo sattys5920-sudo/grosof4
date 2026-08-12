@@ -1,10 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './MissionScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS } from '../data/characters'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
 import { MISSION_SIZES, TWO_FAILS_REQUIRED, WINS_NEEDED } from '../state/missionEngine'
+
+function MissionPopup({ text, onClose }: { text: string; onClose: () => void }) {
+  return (
+    <div className="mission-popup__backdrop" role="alertdialog" aria-modal="true">
+      <div className="mission-popup__box">
+        <span className="mission-popup__kind">원정 결과</span>
+        <p className="mission-popup__body">{text}</p>
+        <button className="mission-popup__dismiss" onClick={onClose}>
+          확인
+        </button>
+      </div>
+    </div>
+  )
+}
 
 const DISCUSSION_MS = 3 * 60 * 1000
 
@@ -139,6 +153,35 @@ export function MissionScreen() {
   const isLeader = leader.id === viewerId
   const teamSize = MISSION_SIZES[mission.missionIndex]
   const onTeam = viewerId ? mission.proposedTeam.includes(viewerId) : false
+  const trueResult = mission.missionResults[mission.missionIndex]
+  const hideFailFromMe = mission.phase === 'result' && !!mission.cardTally && trueResult === 'fail' && !onTeam
+
+  const [popupText, setPopupText] = useState<string | null>(null)
+  const prevRef = useRef({ phase: mission.phase, missionIndex: mission.missionIndex })
+  useEffect(() => {
+    if (isAdmin || !viewerId) {
+      prevRef.current = { phase: mission.phase, missionIndex: mission.missionIndex }
+      return
+    }
+    const prev = prevRef.current
+    if (prev.missionIndex === mission.missionIndex) {
+      if (prev.phase === 'vote' && mission.phase === 'execute') {
+        setPopupText('조사대가 승인되어 조사를 떠났다.')
+      } else if (prev.phase === 'vote' && mission.phase === 'propose') {
+        setPopupText('조사단 선정에 실패했다....... 다음 리더에게 넘어간다.')
+      } else if (prev.phase === 'vote' && mission.phase === 'result') {
+        setPopupText('다섯 번의 부결 끝에 조사대 구성에 실패했다....... 이번 조사는 불발되었다.')
+      } else if (prev.phase === 'execute' && mission.phase === 'result') {
+        if (onTeam) {
+          setPopupText(trueResult === 'fail' ? '조사가 실패로 끝났다.......' : '조사가 성공적으로 끝났다.')
+        } else {
+          setPopupText('조사가 성공적으로 끝났다.')
+        }
+      }
+    }
+    prevRef.current = { phase: mission.phase, missionIndex: mission.missionIndex }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mission.phase, mission.missionIndex])
 
   function toggleDraft(id: string) {
     setDraftTeam((prev) => {
@@ -203,7 +246,11 @@ export function MissionScreen() {
 
       <MissionTrack />
 
-      {mission.lastNote && <p className="mission__note">{mission.lastNote}</p>}
+      {hideFailFromMe ? (
+        <p className="mission__note">성공 {teamSize} · 실패 0 — 조사 성공.</p>
+      ) : (
+        mission.lastNote && <p className="mission__note">{mission.lastNote}</p>
+      )}
 
       <MissionDiscussionPanel />
 
@@ -322,11 +369,14 @@ export function MissionScreen() {
 
       {mission.phase === 'result' && (
         <div className="mission__panel">
-          {mission.cardTally && (
-            <p className="mission__leader">
-              성공 {mission.cardTally.success} · 실패 {mission.cardTally.fail}
-            </p>
-          )}
+          {mission.cardTally &&
+            (hideFailFromMe ? (
+              <p className="mission__leader">성공 {teamSize} · 실패 0</p>
+            ) : (
+              <p className="mission__leader">
+                성공 {mission.cardTally.success} · 실패 {mission.cardTally.fail}
+              </p>
+            ))}
           <button className="mission__cta" onClick={continueMission}>
             {mission.wardWins >= WINS_NEEDED || mission.sinWins >= WINS_NEEDED
               ? '결과 확인'
@@ -334,6 +384,8 @@ export function MissionScreen() {
           </button>
         </div>
       )}
+
+      {popupText && <MissionPopup text={popupText} onClose={() => setPopupText(null)} />}
     </div>
   )
 }
