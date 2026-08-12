@@ -2,8 +2,10 @@ import { useState } from 'react'
 import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS, roleLabel } from '../data/characters'
+import { CLASSROOM_PUZZLES } from '../data/classroomPuzzles'
 import { Badge } from '../components/Badge'
 import { AbilityUseModal } from '../components/AbilityUseModal'
+import { PixelIcon } from '../components/PixelIcon'
 import type { BroadcastKind } from '../data/types'
 
 const PRESETS: { kind: BroadcastKind; label: string; title: string; body: string }[] = [
@@ -164,6 +166,7 @@ export function ProfileScreen() {
   const [manualNickname, setManualNickname] = useState('')
   const [openClueId, setOpenClueId] = useState<string | null>(null)
   const [abilityModalOpen, setAbilityModalOpen] = useState(false)
+  const [masterListOpen, setMasterListOpen] = useState(false)
 
   const otherCharacters = CHARACTERS.filter((c) => c.id !== viewerId)
   const sortedPlayerEntries = Object.entries(players).sort((a, b) =>
@@ -462,7 +465,9 @@ export function ProfileScreen() {
                     className="profile__clue-toggle"
                     onClick={() => setOpenClueId(isOpen ? null : clue.id)}
                   >
-                    <span className="profile__clue-icon">🗝</span>
+                    <span className="profile__clue-icon">
+                      <PixelIcon name={clue.icon ?? 'key'} size={20} />
+                    </span>
                     <span className="profile__clue-title">{clue.title}</span>
                     <span className="profile__clue-source">{clue.source}</span>
                   </button>
@@ -575,6 +580,35 @@ export function ProfileScreen() {
             <p className="profile__gm-note">
               교실·조사실의 문제 발동은 각 채팅 화면 안의 + 버튼에서 진행한다.
             </p>
+          </div>
+
+          <div className="profile__gm">
+            <span className="profile__section-label">불가 전용 — 단서 마스터 목록 (스포일러)</span>
+            <p className="profile__gm-note">
+              교실 문제 10 개가 순서대로 공개하는 진짜 단서 전체다. 플레이어들이 실제로 모았는지와
+              무관하게 항상 전부 보인다 — 진행 페이스를 가늠할 때 참고한다.
+            </p>
+            <button className="profile__gm-preset" onClick={() => setMasterListOpen(!masterListOpen)}>
+              {masterListOpen ? '숨기기' : '펼쳐보기'}
+            </button>
+            {masterListOpen && (
+              <div className="profile__clue-list">
+                {CLASSROOM_PUZZLES.map((p, i) => (
+                  <div key={p.id} className="profile__clue-item">
+                    <div className="profile__clue-toggle profile__clue-toggle--static">
+                      <span className="profile__clue-icon">
+                        <PixelIcon name={p.icon ?? 'key'} size={20} />
+                      </span>
+                      <span className="profile__clue-title">
+                        {i + 1}. {p.title}
+                      </span>
+                      <span className="profile__clue-source">정답: {p.answer}</span>
+                    </div>
+                    <p className="profile__clue-text">{p.hint}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <AdminGmDmPanel />

@@ -53,6 +53,7 @@ export interface GroupEventSpec {
   category?: string
   puzzleText?: string
   answer?: string
+  icon?: string
 }
 
 export type ClassroomStatus = 'locked' | 'active' | 'cleared'
@@ -122,6 +123,7 @@ export interface ClassroomPuzzle {
   puzzleText: string
   answer: string
   hint: string
+  icon?: string
 }
 
 export interface RoomPuzzle {

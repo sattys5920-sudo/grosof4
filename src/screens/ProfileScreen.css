@@ -503,13 +503,19 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   padding: 9px 11px;
   background: var(--void-3);
   border: 1px solid var(--line);
   color: var(--bone-bright);
+  font-family: var(--font-body);
   font-size: 13.5px;
   cursor: pointer;
   text-align: left;
+}
+
+.profile__clue-toggle--static {
+  cursor: default;
 }
 
 .profile__clue-toggle:hover {
@@ -517,6 +523,8 @@
 }
 
 .profile__clue-icon {
+  display: flex;
+  align-items: center;
   color: var(--ward);
   flex-shrink: 0;
 }

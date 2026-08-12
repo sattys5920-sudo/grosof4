@@ -29,6 +29,7 @@ export interface ClueItem {
   title: string
   text: string
   source: string
+  icon?: string
 }
 
 export interface SessionDoc {

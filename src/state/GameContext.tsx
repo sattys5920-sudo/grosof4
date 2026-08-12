@@ -142,12 +142,13 @@ function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, '')
 }
 
-function makeClue(data: { title: string; text: string }, source: string): ClueItem {
+function makeClue(data: { title: string; text: string; icon?: string }, source: string): ClueItem {
   return {
     id: `clue-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     title: data.title,
     text: data.text,
     source,
+    icon: data.icon,
   }
 }
 
@@ -411,6 +412,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         category: puzzle.category,
         puzzleText: puzzle.puzzleText,
         answer: puzzle.answer,
+        icon: puzzle.icon,
       },
       hint: null,
       note: null,
@@ -425,12 +427,12 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
   async function submitPuzzleAnswer(text: string) {
     if (!text.trim()) return
-    let clueToAdd: { title: string; text: string } | null = null
+    let clueToAdd: { title: string; text: string; icon?: string } | null = null
     await updateClassroomSync((prev) => {
       if (prev.status !== 'active' || !prev.event?.answer) return prev
       const correct = normalize(text) === normalize(prev.event.answer)
       if (correct) {
-        clueToAdd = { title: prev.event.title, text: prev.event.reward }
+        clueToAdd = { title: prev.event.title, text: prev.event.reward, icon: prev.event.icon }
         return { ...prev, status: 'cleared', hint: prev.event.reward, note: null }
       }
       return { ...prev, note: '오답이다. 다시 논의해보자.' }
