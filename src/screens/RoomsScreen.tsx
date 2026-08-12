@@ -7,6 +7,7 @@ import type { RoomId } from '../data/types'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
 import { EventDispatchSheet, type DispatchSection } from '../components/EventDispatchSheet'
+import { ChatAvatar } from '../components/ChatAvatar'
 
 function charOf(id: string) {
   return CHARACTERS.find((c) => c.id === id)!
@@ -27,6 +28,7 @@ export function RoomsScreen() {
     dispatchRoomPuzzle,
     closeRoomInvestigation,
     displayName,
+    players,
   } = useGame()
   const [openRoom, setOpenRoom] = useState<RoomId | null>(null)
   const [draft, setDraft] = useState('')
@@ -153,15 +155,20 @@ export function RoomsScreen() {
           {roomMessages[openRoom].length === 0 && (
             <p className="rooms__empty">아직 대화가 없다....... 먼저 말을 걸어보자.</p>
           )}
-          {roomMessages[openRoom].map((m) => (
-            <div
-              key={m.id}
-              className={`rooms__msg ${m.authorId === viewerId ? 'is-me' : ''} ${m.authorId === 'admin' ? 'is-gm' : ''}`}
-            >
-              <span className="rooms__msg-name">{displayName(m.authorId)}</span>
-              <p className="rooms__msg-text">{m.text}</p>
-            </div>
-          ))}
+          {roomMessages[openRoom].map((m) => {
+            const isMe = m.authorId === viewerId
+            const isGm = m.authorId === 'admin'
+            const name = displayName(m.authorId)
+            return (
+              <div key={m.id} className={`rooms__msg-row ${isMe ? 'is-me' : ''}`}>
+                {!isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />}
+                <div className={`rooms__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
+                  <span className="rooms__msg-name">{name}</span>
+                  <p className="rooms__msg-text">{m.text}</p>
+                </div>
+              </div>
+            )
+          })}
         </div>
 
         {iAmHere || isAdmin ? (

@@ -5,6 +5,7 @@ import { CHARACTERS } from '../data/characters'
 import { CLASSROOM_PUZZLES } from '../data/classroomPuzzles'
 import { EVENT_LIBRARY } from '../data/eventLibrary'
 import { EventDispatchSheet, type DispatchSection } from '../components/EventDispatchSheet'
+import { ChatAvatar } from '../components/ChatAvatar'
 
 const CLASSROOM_AMBIENT_TEXT =
   '교실은 조용하다....... 다들 각자 자리에 앉아 서로 눈치만 보고 있다. 아직 무엇을 조사해야 할지는 불가가 정하지 않았다.......'
@@ -23,6 +24,7 @@ export function ClassroomScreen() {
     dispatchPuzzle,
     closeInvestigation,
     displayName,
+    players,
   } = useGame()
   const [draft, setDraft] = useState('')
   const [answer, setAnswer] = useState('')
@@ -131,14 +133,18 @@ export function ClassroomScreen() {
           const author = CHARACTERS.find((c) => c.id === m.authorId)
           const isMe = m.authorId === viewerId
           const isGm = m.authorId === 'admin'
+          const name = isGm || author ? displayName(m.authorId) : '???'
           return (
-            <div key={m.id} className={`classroom__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
-              <div className="classroom__msg-head">
-                <span className="classroom__msg-name">
-                  {isGm || author ? displayName(m.authorId) : '???'}
-                </span>
+            <div key={m.id} className={`classroom__msg-row ${isMe ? 'is-me' : ''}`}>
+              {!isMe && (
+                <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />
+              )}
+              <div className={`classroom__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
+                <div className="classroom__msg-head">
+                  <span className="classroom__msg-name">{name}</span>
+                </div>
+                <p className="classroom__msg-text">{m.text}</p>
               </div>
-              <p className="classroom__msg-text">{m.text}</p>
             </div>
           )
         })}

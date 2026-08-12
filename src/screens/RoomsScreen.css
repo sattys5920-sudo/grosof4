@@ -324,15 +324,26 @@
   text-align: center;
 }
 
+.rooms__msg-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.rooms__msg-row.is-me {
+  justify-content: flex-end;
+}
+
 .rooms__msg {
   display: flex;
   flex-direction: column;
   gap: 2px;
   max-width: 82%;
+  min-width: 0;
 }
 
 .rooms__msg.is-me {
-  align-self: flex-end;
   text-align: right;
 }
 

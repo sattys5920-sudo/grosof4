@@ -73,22 +73,16 @@ export interface FeedPostDoc {
 }
 
 const INITIAL_OCCUPANCY: Record<RoomId, string[]> = {
-  library: ['jimin', 'haneul'],
-  infirmary: ['ayoung'],
-  broadcast: ['seungwoo', 'gihoon'],
+  library: [],
+  infirmary: [],
+  broadcast: [],
   rooftop: [],
 }
 
 const INITIAL_ROOM_MESSAGES: Record<RoomId, ChatMessage[]> = {
-  library: [
-    { id: 'l1', authorId: 'jimin', text: '졸업앨범부터 뒤져보자, 페이지 순서가 좀 이상해', time: '00:11' },
-    { id: 'l2', authorId: 'haneul', text: '......나는 그냥 지켜볼게', time: '00:12' },
-  ],
-  infirmary: [{ id: 'i1', authorId: 'ayoung', text: '기록부에 그날 오후 진료 사유가 지워져 있어', time: '00:10' }],
-  broadcast: [
-    { id: 'b1', authorId: 'seungwoo', text: '이 채널, 3 년 전에 폐기된 장비인데 왜 지금 살아있지', time: '00:13' },
-    { id: 'b2', authorId: 'gihoon', text: '......나 먼저 나갈게', time: '00:14' },
-  ],
+  library: [],
+  infirmary: [],
+  broadcast: [],
   rooftop: [],
 }
 

@@ -1,0 +1,28 @@
+.chat-avatar {
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-pixel);
+  line-height: 1;
+  user-select: none;
+}
+
+.chat-avatar--photo {
+  object-fit: cover;
+  border: 1px solid var(--line);
+}
+
+.chat-avatar--fallback {
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  color: var(--bone-dim);
+}
+
+.chat-avatar--gm {
+  background: var(--veil-dim);
+  border: 1px solid var(--veil);
+  color: var(--veil);
+  letter-spacing: -0.5px;
+}
