@@ -454,6 +454,17 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     lastGmInboxTotalRef.current = total
   }, [players, isAdminFlag])
 
+  // 로그아웃 후 다른 계정으로 다시 가입·로그인하면, 이전 계정에서 쌓인 추적 상태(ref)가
+  // 새 계정으로 새어들어 오작동(예: 되돌리기 판정 오류)을 일으키지 않도록 초기화한다.
+  const prevViewerIdRef = useRef(viewerId)
+  useEffect(() => {
+    if (prevViewerIdRef.current === viewerId) return
+    prevViewerIdRef.current = viewerId
+    hasSeenSelfRef.current = false
+    dmInitRef.current = false
+    lastDmCountRef.current = 0
+  }, [viewerId])
+
   function dismissTopAlert() {
     setTopAlert(null)
   }
