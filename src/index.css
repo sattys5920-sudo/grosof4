@@ -51,7 +51,7 @@
   color: var(--bone);
   background: var(--void);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 13px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

@@ -32,6 +32,7 @@ import {
   openMissionsSync,
   patchPlayer,
   patchSession,
+  resetAllDataSync,
   runAbilityTransaction,
   runCombatTransaction,
   sendBroadcastSync,
@@ -93,6 +94,7 @@ const LS = {
   adminNickname: 'gwae_adminNickname',
   roleRevealed: 'gwae_roleRevealed',
   dismissedBroadcastId: 'gwae_dismissedBroadcastId',
+  cachedNickname: 'gwae_cachedNickname',
 } as const
 
 export type TabId = 'main' | 'classroom' | 'rooms' | 'mission' | 'shop' | 'profile'
@@ -180,6 +182,7 @@ interface GameState {
   discussionOpenedAt: number | null
   setDiscussionOpen: (open: boolean) => void
   assignRoleManually: (characterId: string, nickname: string) => void
+  resetAllData: () => void
   shopOpen: boolean
   setShopOpen: (open: boolean) => void
 }
@@ -265,15 +268,22 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const [dismissedBroadcastId, setDismissedBroadcastIdLocal] = useState<string | null>(
     () => localStorage.getItem(LS.dismissedBroadcastId),
   )
+  const [cachedNickname, setCachedNicknameLocal] = useState<string>(
+    () => localStorage.getItem(LS.cachedNickname) ?? '',
+  )
   const [activeTab, setActiveTab] = useState<TabId>('main')
   const [session, setSession] = useState<SessionDoc>(defaultSessionState)
   const [players, setPlayers] = useState<Record<string, PlayerDoc>>({})
+  const [playersLoaded, setPlayersLoaded] = useState(false)
   const [feedDocs, setFeedDocs] = useState<(FeedPostDoc & { id: string })[]>([])
 
   useEffect(() => {
     ensureSessionInitialized().catch(() => {})
     const unsubSession = subscribeSession(setSession)
-    const unsubPlayers = subscribeAllPlayers(setPlayers)
+    const unsubPlayers = subscribeAllPlayers((p) => {
+      setPlayers(p)
+      setPlayersLoaded(true)
+    })
     const unsubFeed = subscribeFeed(setFeedDocs)
     return () => {
       unsubSession()
@@ -282,10 +292,27 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // GM이 전체 초기화를 하면, 자신의 플레이어 문서가 사라진 기기는 자동으로 가입 화면으로 되돌아간다.
+  // (막 가입한 직후에는 실시간 구독이 아직 새 문서를 받기 전이라 잠깐 비어 보일 수 있으므로,
+  //  일정 시간 계속 비어 있을 때만 진짜 초기화로 간주한다.)
+  useEffect(() => {
+    if (!playersLoaded || isAdminFlag || !viewerId) return
+    if (players[viewerId]) return
+    const timer = setTimeout(() => {
+      localStorage.removeItem(LS.viewerId)
+      localStorage.removeItem(LS.roleRevealed)
+      localStorage.removeItem(LS.cachedNickname)
+      setViewerIdLocal(null)
+      setRoleRevealedLocal(false)
+      setCachedNicknameLocal('')
+    }, 4000)
+    return () => clearTimeout(timer)
+  }, [playersLoaded, players, viewerId, isAdminFlag])
+
   const signedUp = isAdminFlag || viewerId !== null
   const isAdmin = isAdminFlag
   const myPlayer = viewerId ? players[viewerId] ?? null : null
-  const nickname = isAdminFlag ? adminNickname : myPlayer?.nickname ?? ''
+  const nickname = isAdminFlag ? adminNickname : myPlayer?.nickname ?? cachedNickname
   const grade = isAdminFlag ? '—' : myPlayer?.grade ?? '1 학년'
   const photo = isAdminFlag ? null : myPlayer?.photo ?? null
   const abilityUnlocked = myPlayer?.abilityUnlocked ?? false
@@ -323,10 +350,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       return
     }
     const assignedId = await claimRandomSlot(newNickname, newGrade, newPhoto)
+    const finalNickname = newNickname.trim() || CHARACTERS.find((c) => c.id === assignedId)!.name
     localStorage.setItem(LS.viewerId, assignedId)
     localStorage.setItem(LS.roleRevealed, 'false')
+    localStorage.setItem(LS.cachedNickname, finalNickname)
     setViewerIdLocal(assignedId)
     setRoleRevealedLocal(false)
+    setCachedNicknameLocal(finalNickname)
   }
 
   function acknowledgeRole() {
@@ -341,6 +371,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       return
     }
     if (!viewerId) return
+    localStorage.setItem(LS.cachedNickname, name)
+    setCachedNicknameLocal(name)
     void patchPlayer(viewerId, { nickname: name })
   }
 
@@ -617,6 +649,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function assignRoleManually(characterId: string, nickname: string) {
     if (!isAdminFlag || !nickname.trim()) return
     void assignRoleManuallySync(characterId, nickname)
+  }
+
+  function resetAllData() {
+    if (!isAdminFlag) return
+    void resetAllDataSync()
   }
 
   function abilityMax(role: string): number {
@@ -949,6 +986,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       discussionOpenedAt: session.discussionOpenedAt,
       setDiscussionOpen,
       assignRoleManually,
+      resetAllData,
       shopOpen: session.shopOpen,
       setShopOpen,
       gmReveal: isAdmin,

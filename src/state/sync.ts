@@ -3,10 +3,12 @@ import {
   arrayUnion,
   collection,
   doc,
+  getDocs,
   onSnapshot,
   runTransaction,
   serverTimestamp,
   updateDoc,
+  writeBatch,
   type Firestore,
 } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -441,6 +443,17 @@ export async function toggleCommentsEnabledSync(postId: string) {
     const data = snap.data() as FeedPostDoc
     tx.update(pref, { commentsEnabled: !data.commentsEnabled })
   })
+}
+
+/** GM 전용: 가입 데이터(플레이어 문서), 모든 채팅 로그, 게시글을 전부 지우고 세션을 초기 상태로 되돌린다. */
+export async function resetAllDataSync(): Promise<void> {
+  const database = requireDb()
+  const [playersSnap, feedSnap] = await Promise.all([getDocs(playersCol()), getDocs(feedCol())])
+  const batch = writeBatch(database)
+  for (const d of playersSnap.docs) batch.delete(d.ref)
+  for (const d of feedSnap.docs) batch.delete(d.ref)
+  batch.set(sessionRef(), defaultSessionState())
+  await batch.commit()
 }
 
 export function feedPostToFeedPost(id: string, doc: FeedPostDoc, myId: string): FeedPost {

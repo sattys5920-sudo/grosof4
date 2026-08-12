@@ -2,11 +2,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   width: 100%;
   max-width: 430px;
   min-height: 100svh;
-  padding: 56px 28px;
+  padding: 32px 20px;
   background: var(--void);
   text-align: center;
 }

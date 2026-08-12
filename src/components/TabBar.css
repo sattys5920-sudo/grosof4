@@ -1,6 +1,6 @@
 .tabbar {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   border-top: 2px solid var(--line);
   background: var(--void-2);
   flex-shrink: 0;
@@ -10,19 +10,20 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 10px 0 12px;
+  gap: 2px;
+  padding: 7px 0 8px;
   background: none;
   border: none;
   cursor: pointer;
   color: var(--bone-dim);
   font-family: var(--font-pixel);
+  min-width: 0;
 }
 
 .tabbar__icon {
   position: relative;
   display: inline-flex;
-  font-size: 18px;
+  font-size: 15px;
   line-height: 1;
 }
 
@@ -30,15 +31,15 @@
   position: absolute;
   top: -2px;
   right: -6px;
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   background: var(--sin);
   box-shadow: 0 0 5px var(--sin);
 }
 
 .tabbar__label {
-  font-size: 12px;
-  letter-spacing: 0.5px;
+  font-size: 9.5px;
+  letter-spacing: 0.2px;
 }
 
 .tabbar__item.is-active {

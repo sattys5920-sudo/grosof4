@@ -26,7 +26,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: 9px 12px;
   border-bottom: 2px solid var(--line);
   background: var(--void-2);
   flex-shrink: 0;
@@ -34,7 +34,7 @@
 
 .shell__title {
   font-family: var(--font-title);
-  font-size: 16px;
+  font-size: 14px;
   color: var(--bone-bright);
   letter-spacing: 1px;
 }
@@ -42,9 +42,9 @@
 .shell__status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-family: var(--font-pixel);
-  font-size: 11px;
+  font-size: 9.5px;
   color: var(--bone-dim);
 }
 

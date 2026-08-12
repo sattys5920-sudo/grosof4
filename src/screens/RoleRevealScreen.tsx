@@ -19,7 +19,6 @@ export function RoleRevealScreen() {
       <div className="reveal__ability">
         <span className="reveal__ability-label">특수 능력 · {viewer.abilityName}</span>
         <p>{viewer.abilityDescription}</p>
-        <span className="reveal__ability-hint">조사실에서 단서를 확보하면 사용할 수 있게 된다.</span>
       </div>
       <button className="reveal__button" onClick={acknowledgeRole}>
         각오는 되었다

@@ -162,6 +162,7 @@ export function ProfileScreen() {
     players,
     collectedClues,
     assignRoleManually,
+    resetAllData,
   } = useGame()
   const viewer = viewerId ? CHARACTERS.find((c) => c.id === viewerId)! : null
   const [kind, setKind] = useState<BroadcastKind>('event')
@@ -177,6 +178,7 @@ export function ProfileScreen() {
   const [openClueId, setOpenClueId] = useState<string | null>(null)
   const [abilityModalOpen, setAbilityModalOpen] = useState(false)
   const [masterListOpen, setMasterListOpen] = useState(false)
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
   const usesLeft = abilityMaxUses - abilityUseCount
 
   const otherCharacters = CHARACTERS.filter((c) => c.id !== viewerId)
@@ -659,8 +661,31 @@ export function ProfileScreen() {
             )}
           </div>
 
+          <div className="profile__gm">
+            <span className="profile__section-label">불가 전용 — 위험 구역</span>
+            <p className="profile__gm-note">
+              가입 데이터(플레이어), 모든 채팅·게시글을 전부 지우고 세션을 처음 상태로 되돌린다. 되돌릴 수 없다.
+            </p>
+            <button className="profile__gm-send" onClick={() => setResetConfirmOpen(true)}>
+              전체 초기화
+            </button>
+          </div>
+
           <AdminGmDmPanel />
         </>
+      )}
+
+      {resetConfirmOpen && (
+        <AbilityUseModal
+          title="전체 초기화"
+          prompt="정말로 모든 가입 데이터와 채팅·게시글을 지울까....... 이 작업은 되돌릴 수 없고, 모든 플레이어는 다시 가입해야 한다."
+          confirmLabel="전부 지우기"
+          onConfirm={() => {
+            resetAllData()
+            setResetConfirmOpen(false)
+          }}
+          onClose={() => setResetConfirmOpen(false)}
+        />
       )}
     </div>
   )
