@@ -67,6 +67,14 @@ const BASE_ATK = 5
 const DICE_COUNT = 10
 const DICE_SUCCESS_THRESHOLD = 30
 
+// 전투 중 실제로 공격할 차례인 사람을 계산한다. 저장된 차례가 이미 방을 나간 사람이면
+// (방에 남은 사람 중) 맨 앞 사람으로 자연스럽게 넘어간다.
+function effectiveTurnPlayerId(occupants: string[], turnPlayerId: string | null): string | null {
+  if (occupants.length === 0) return null
+  if (turnPlayerId && occupants.includes(turnPlayerId)) return turnPlayerId
+  return occupants[0]
+}
+
 // TRPG 전투 판정: 누구나 똑같이 주사위(1d6) 10 개를 굴려 합이 30 을 넘으면 성공.
 function rollDice(): number {
   let sum = 0
@@ -153,7 +161,7 @@ interface GameState {
   toggleHeart: (postId: string) => void
   gmReveal: boolean
   broadcast: Broadcast | null
-  sendBroadcast: (kind: BroadcastKind, title: string, body: string) => void
+  sendBroadcast: (kind: BroadcastKind, title: string, body: string, postToFeed?: boolean) => void
   dismissBroadcast: () => void
   clearBroadcastForAll: () => void
   notifyRoomEvents: boolean
@@ -671,7 +679,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       cleared: false,
       clue: null,
       note: null,
-      combat: { creatureId: creature.id, creatureHp: creature.hp, log: [], defeated: false },
+      combat: { creatureId: creature.id, creatureHp: creature.hp, log: [], defeated: false, turnPlayerId: null },
     }))
     const room = ROOMS.find((r) => r.id === roomId)!
     sendBroadcast('sin', `${room.name}에서 무언가 나타났다`, `${creature.intro} — 지금 바로 ${room.name}으로 가 보자.......`)
@@ -1088,6 +1096,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         const roomEvent = sess.roomEvents[roomId]
         const combat = roomEvent?.combat
         if (!combat || combat.defeated) return {}
+        const occupants = sess.roomOccupancy[roomId] ?? []
+        if (effectiveTurnPlayerId(occupants, combat.turnPlayerId) !== myId) return {}
         if (me.hp <= 0 || me.stamina < ATTACK_STAMINA_COST) return {}
         const creature = creatureById(combat.creatureId)
         if (!creature) return {}
@@ -1137,11 +1147,14 @@ function GameProviderInner({ children }: { children: ReactNode }) {
           }
         }
 
+        const myIdx = occupants.indexOf(myId)
+        const nextTurnPlayerId = occupants.length > 0 ? occupants[(myIdx + 1) % occupants.length] : null
+
         const nextRoomEvents = {
           ...sess.roomEvents,
           [roomId]: {
             ...roomEvent,
-            combat: { ...combat, creatureHp: newCreatureHp, log, defeated },
+            combat: { ...combat, creatureHp: newCreatureHp, log, defeated, turnPlayerId: nextTurnPlayerId },
           },
         }
 

@@ -502,6 +502,16 @@
   cursor: not-allowed;
 }
 
+.rooms__combat-turn {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--bone-dim);
+}
+
+.rooms__combat-turn strong {
+  color: var(--bone-bright);
+}
+
 .rooms__locked-note {
   margin: 0;
   padding: 10px 16px;

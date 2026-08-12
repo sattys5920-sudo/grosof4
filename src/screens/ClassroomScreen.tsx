@@ -158,6 +158,9 @@ export function ClassroomScreen() {
                 </div>
                 <p className="classroom__msg-text">{m.text}</p>
               </div>
+              {isMe && (
+                <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />
+              )}
             </div>
           )
         })}

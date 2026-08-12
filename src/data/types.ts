@@ -98,6 +98,7 @@ export interface CombatState {
   creatureHp: number
   log: CombatLogEntry[]
   defeated: boolean
+  turnPlayerId: string | null
 }
 
 export type ClassroomStatus = 'locked' | 'active' | 'cleared'

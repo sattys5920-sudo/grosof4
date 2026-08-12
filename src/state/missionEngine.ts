@@ -44,10 +44,14 @@ function charTeam(id: string) {
   return CHARACTERS.find((c) => c.id === id)!.team
 }
 
+// 리더부터 가나다순(turnOrder) 오른쪽으로 순서대로 팀을 꾸린다.
 function pickAutoTeam(leaderId: string, size: number, turnOrder: string[]): string[] {
-  const rest = turnOrder.filter((id) => id !== leaderId)
-  const shuffled = [...rest].sort(() => Math.random() - 0.5)
-  return [leaderId, ...shuffled.slice(0, size - 1)]
+  const leaderIdx = turnOrder.indexOf(leaderId)
+  const team = [leaderId]
+  for (let i = 1; i < size; i++) {
+    team.push(turnOrder[(leaderIdx + i) % turnOrder.length])
+  }
+  return team
 }
 
 export function initialMissionState(turnOrder: string[] = DEFAULT_ORDER): MissionState {

@@ -15,6 +15,14 @@ function charOf(id: string) {
   return CHARACTERS.find((c) => c.id === id)!
 }
 
+// 전투 중 실제로 공격할 차례인 사람을 계산한다. 저장된 차례가 이미 방을 나간 사람이면
+// (방에 남은 사람 중) 맨 앞 사람으로 자연스럽게 넘어간다.
+function effectiveTurnPlayerId(occupants: string[], turnPlayerId: string | null): string | null {
+  if (occupants.length === 0) return null
+  if (turnPlayerId && occupants.includes(turnPlayerId)) return turnPlayerId
+  return occupants[0]
+}
+
 export function RoomsScreen() {
   const {
     viewerId,
@@ -162,13 +170,26 @@ export function RoomsScreen() {
                   쓰러뜨렸다....... 마지막 일격을 가한 사람이 코인 {creature.coinReward}을(를) 얻었다.
                 </p>
               ) : iAmHere ? (
-                <button
-                  className="rooms__combat-attack"
-                  disabled={incapacitated || stamina < 10}
-                  onClick={() => attackCreature(openRoom!)}
-                >
-                  공격하기 (스태미나 -10, 현재 HP {hp} · 스태미나 {stamina})
-                </button>
+                (() => {
+                  const turnId = effectiveTurnPlayerId(occupants, combat.turnPlayerId)
+                  const myTurn = turnId === viewerId
+                  return (
+                    <>
+                      <p className="rooms__combat-turn">
+                        지금 차례: <strong>{turnId ? displayName(turnId) : '—'}</strong>
+                      </p>
+                      <button
+                        className="rooms__combat-attack"
+                        disabled={!myTurn || incapacitated || stamina < 10}
+                        onClick={() => attackCreature(openRoom!)}
+                      >
+                        {myTurn
+                          ? `공격하기 (스태미나 -10, 현재 HP ${hp} · 스태미나 ${stamina})`
+                          : `${turnId ? displayName(turnId) : '다른 사람'}의 차례를 기다리는 중......`}
+                      </button>
+                    </>
+                  )
+                })()
               ) : (
                 !isAdmin && <p className="rooms__pin-note">입장한 사람만 싸울 수 있다.</p>
               )}
@@ -191,6 +212,7 @@ export function RoomsScreen() {
                   <span className="rooms__msg-name">{name}</span>
                   <p className="rooms__msg-text">{m.text}</p>
                 </div>
+                {isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />}
               </div>
             )
           })}
