@@ -5,6 +5,7 @@ import { TabBar } from './components/TabBar'
 import { BroadcastPopup } from './components/BroadcastPopup'
 import { TopBarAlert } from './components/TopBarAlert'
 import { StoryIntroScreen } from './screens/StoryIntroScreen'
+import { AuthScreen } from './screens/AuthScreen'
 import { SignupScreen } from './screens/SignupScreen'
 import { RoleRevealScreen } from './screens/RoleRevealScreen'
 import { MainFeedScreen } from './screens/MainFeedScreen'
@@ -66,10 +67,11 @@ function Shell() {
 }
 
 function Gate() {
-  const { signedUp, roleRevealed } = useGame()
+  const { viewerId, isAdmin, profileComplete, roleRevealed } = useGame()
   const [introSeen, setIntroSeen] = useState(false)
   if (!introSeen) return <StoryIntroScreen onEnter={() => setIntroSeen(true)} />
-  if (!signedUp) return <SignupScreen />
+  if (!isAdmin && !viewerId) return <AuthScreen />
+  if (!isAdmin && !profileComplete) return <SignupScreen />
   if (!roleRevealed) return <RoleRevealScreen />
   return <Shell />
 }

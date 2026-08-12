@@ -3,6 +3,7 @@ import {
   arrayUnion,
   collection,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   runTransaction,
@@ -60,6 +61,7 @@ export interface PlayerDoc {
   nickname: string
   grade: string
   photo: string | null
+  profileComplete: boolean
   abilityUnlocked: boolean
   abilityUseCount: number
   lastDiscernDate: string | null
@@ -151,13 +153,39 @@ function feedCol() {
   return collection(requireDb(), 'sessions', SESSION_ID, 'feedPosts')
 }
 
+interface AccountDoc {
+  passwordHash: string
+  characterId: string
+  createdAtMs: number
+}
+
+function accountsCol() {
+  return collection(requireDb(), 'sessions', SESSION_ID, 'accounts')
+}
+
+function accountRef(username: string) {
+  return doc(accountsCol(), username)
+}
+
+async function hashPassword(password: string): Promise<string> {
+  const bytes = new TextEncoder().encode(password)
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
 export async function ensureSessionInitialized(): Promise<void> {
   const sref = sessionRef()
-  await runTransaction(requireDb(), async (tx) => {
-    const snap = await tx.get(sref)
-    if (snap.exists()) return
-    tx.set(sref, defaultSessionState())
-  })
+  try {
+    await runTransaction(requireDb(), async (tx) => {
+      const snap = await tx.get(sref)
+      if (snap.exists()) return
+      tx.set(sref, defaultSessionState())
+    })
+  } catch {
+    // 다른 클라이언트가 그 사이 세션 문서를 이미 만들었다면 실패해도 목적은 달성된 것이므로 무시한다.
+  }
 }
 
 export function subscribeSession(cb: (data: SessionDoc) => void) {
@@ -183,20 +211,23 @@ export function subscribeFeed(cb: (posts: (FeedPostDoc & { id: string })[]) => v
   })
 }
 
-/** Assigns the caller a random unclaimed character slot (or admin). Returns the character id. */
-export async function claimRandomSlot(
-  nickname: string,
-  grade: string,
-  photo: string | null,
-): Promise<string> {
+/** 아이디/비밀번호로 새 계정을 만들고, 남은 자리 중 하나를 무작위로 배정한다. */
+export async function registerAccountSync(username: string, password: string): Promise<string> {
+  const uname = username.trim().toLowerCase()
+  if (!uname || !password) throw new Error('아이디와 비밀번호를 모두 입력해야 한다.')
+  const passwordHash = await hashPassword(password)
+  await ensureSessionInitialized()
+  const aref = accountRef(uname)
   const sref = sessionRef()
   return runTransaction(requireDb(), async (tx) => {
+    const aSnap = await tx.get(aref)
+    if (aSnap.exists()) throw new Error('이미 사용 중인 아이디다.')
     const snap = await tx.get(sref)
     const data = snap.exists() ? (snap.data() as SessionDoc) : defaultSessionState()
     const claimed = data.claimedSlots ?? []
     const pool = CHARACTERS.filter((c) => !claimed.includes(c.id))
-    const available = pool.length > 0 ? pool : CHARACTERS
-    const assigned = available[Math.floor(Math.random() * available.length)]
+    if (pool.length === 0) throw new Error('더 이상 남은 자리가 없다.')
+    const assigned = pool[Math.floor(Math.random() * pool.length)]
     if (!snap.exists()) {
       tx.set(sref, { ...defaultSessionState(), claimedSlots: [assigned.id] })
     } else {
@@ -204,9 +235,10 @@ export async function claimRandomSlot(
     }
     const pref = playerRef(assigned.id)
     tx.set(pref, {
-      nickname: nickname.trim() || assigned.name,
-      grade,
-      photo,
+      nickname: assigned.name,
+      grade: '1 학년',
+      photo: null,
+      profileComplete: false,
       abilityUnlocked: true,
       abilityUseCount: 0,
       lastDiscernDate: null,
@@ -219,8 +251,22 @@ export async function claimRandomSlot(
       armorDefBonus: 0,
       inventory: {},
     })
+    const account: AccountDoc = { passwordHash, characterId: assigned.id, createdAtMs: Date.now() }
+    tx.set(aref, account)
     return assigned.id
   })
+}
+
+/** 아이디/비밀번호로 로그인해 배정되어 있던 캐릭터 id를 돌려준다. */
+export async function loginAccountSync(username: string, password: string): Promise<string> {
+  const uname = username.trim().toLowerCase()
+  if (!uname || !password) throw new Error('아이디와 비밀번호를 모두 입력해야 한다.')
+  const aSnap = await getDoc(accountRef(uname))
+  if (!aSnap.exists()) throw new Error('존재하지 않는 아이디다.')
+  const account = aSnap.data() as AccountDoc
+  const passwordHash = await hashPassword(password)
+  if (passwordHash !== account.passwordHash) throw new Error('비밀번호가 일치하지 않는다.')
+  return account.characterId
 }
 
 /** GM fallback: manually assign a specific unclaimed character slot to a nickname. */
@@ -241,6 +287,7 @@ export async function assignRoleManuallySync(characterId: string, nickname: stri
       nickname: nickname.trim() || character.name,
       grade: '1 학년',
       photo: null,
+      profileComplete: true,
       abilityUnlocked: true,
       abilityUseCount: 0,
       lastDiscernDate: null,

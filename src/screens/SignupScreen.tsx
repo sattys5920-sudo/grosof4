@@ -6,11 +6,10 @@ import { SCHOOL_NAME } from '../data/characters'
 const GRADES = ['1 학년', '2 학년', '3 학년', '교사']
 
 export function SignupScreen() {
-  const { completeSignup } = useGame()
+  const { completeProfile } = useGame()
   const [nickname, setNickname] = useState('')
   const [grade, setGrade] = useState(GRADES[0])
   const [photo, setPhoto] = useState<string | null>(null)
-  const [adminCode, setAdminCode] = useState('')
 
   function onPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -22,7 +21,7 @@ export function SignupScreen() {
 
   function submit() {
     if (!nickname.trim()) return
-    completeSignup(nickname, grade, photo, adminCode)
+    void completeProfile(nickname, grade, photo)
   }
 
   return (
@@ -62,15 +61,6 @@ export function SignupScreen() {
             </option>
           ))}
         </select>
-      </label>
-
-      <label className="signup__field signup__field--optional">
-        <span>관리자 코드 (선택)</span>
-        <input
-          value={adminCode}
-          onChange={(e) => setAdminCode(e.target.value)}
-          placeholder="해당 사항이 없으면 비워두세요"
-        />
       </label>
 
       <button className="signup__submit" disabled={!nickname.trim()} onClick={submit}>

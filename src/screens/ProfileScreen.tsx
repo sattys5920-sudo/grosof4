@@ -142,6 +142,8 @@ export function ProfileScreen() {
     photo,
     updatePhoto,
     displayName,
+    accountUsername,
+    logout,
     gmReveal,
     sendBroadcast,
     broadcast,
@@ -596,6 +598,16 @@ export function ProfileScreen() {
             onClick={() => setNotifyGeneralBroadcasts(!notifyGeneralBroadcasts)}
           >
             전체 공지 알림 {notifyGeneralBroadcasts ? '켜짐' : '꺼짐'}
+          </button>
+        </div>
+      </div>
+
+      <div className="profile__section">
+        <span className="profile__section-label">계정</span>
+        <div className="profile__gm-presets">
+          {accountUsername && <span className="profile__me-tag">{accountUsername}</span>}
+          <button className="profile__gm-preset" onClick={logout}>
+            로그아웃
           </button>
         </div>
       </div>

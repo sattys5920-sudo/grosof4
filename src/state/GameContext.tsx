@@ -23,7 +23,8 @@ import {
   addClueSync,
   addCommentSync,
   assignRoleManuallySync,
-  claimRandomSlot,
+  loginAccountSync,
+  registerAccountSync,
   createFeedPostSync,
   defaultSessionState,
   ensureSessionInitialized,
@@ -103,6 +104,7 @@ const LS = {
   notifyGeneralBroadcasts: 'gwae_notifyGeneralBroadcasts',
   lastSeenDmCount: 'gwae_lastSeenDmCount',
   gmDmSeenCounts: 'gwae_gmDmSeenCounts',
+  accountUsername: 'gwae_accountUsername',
 } as const
 
 export type TabId = 'main' | 'classroom' | 'rooms' | 'mission' | 'shop' | 'profile'
@@ -117,7 +119,13 @@ interface GameState {
   updatePhoto: (photo: string | null) => void
   signedUp: boolean
   roleRevealed: boolean
-  completeSignup: (nickname: string, grade: string, photo: string | null, adminCode: string) => void
+  accountUsername: string | null
+  register: (username: string, password: string) => Promise<void>
+  login: (username: string, password: string) => Promise<void>
+  loginAsAdmin: (code: string) => void
+  logout: () => void
+  profileComplete: boolean
+  completeProfile: (nickname: string, grade: string, photo: string | null) => Promise<void>
   acknowledgeRole: () => void
   displayName: (id: string) => string
   activeTab: TabId
@@ -285,6 +293,9 @@ function FirebaseSetupNotice() {
 
 function GameProviderInner({ children }: { children: ReactNode }) {
   const [viewerId, setViewerIdLocal] = useState<string | null>(() => localStorage.getItem(LS.viewerId))
+  const [accountUsername, setAccountUsernameLocal] = useState<string | null>(
+    () => localStorage.getItem(LS.accountUsername),
+  )
   const [isAdminFlag, setIsAdminFlag] = useState<boolean>(() => localStorage.getItem(LS.isAdmin) === 'true')
   const [adminNickname, setAdminNicknameLocal] = useState<string>(
     () => localStorage.getItem(LS.adminNickname) ?? '',
@@ -368,6 +379,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const nickname = isAdminFlag ? adminNickname : myPlayer?.nickname ?? cachedNickname
   const grade = isAdminFlag ? '—' : myPlayer?.grade ?? '1 학년'
   const photo = isAdminFlag ? null : myPlayer?.photo ?? null
+  // 기존(아이디/비밀번호 도입 전) 플레이어 문서에는 profileComplete 필드가 없으므로,
+  // 문서가 이미 존재하면 완료로 간주해 기존 진행 상황이 프로필 설정 화면으로 되돌아가지 않게 한다.
+  const profileComplete = myPlayer ? myPlayer.profileComplete ?? true : false
   const abilityUnlocked = myPlayer?.abilityUnlocked ?? false
   const abilityUseCount = myPlayer?.abilityUseCount ?? 0
   const usedDiscernToday = myPlayer?.lastDiscernDate === new Date().toISOString().slice(0, 10)
@@ -470,29 +484,59 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     return players[id]?.nickname ?? CHARACTERS.find((c) => c.id === id)?.name ?? '???'
   }
 
-  async function completeSignup(
-    newNickname: string,
-    newGrade: string,
-    newPhoto: string | null,
-    adminCode: string,
-  ) {
-    if (adminCode.trim() === ADMIN_CODE) {
-      const finalNickname = '불가'
-      localStorage.setItem(LS.isAdmin, 'true')
-      localStorage.setItem(LS.adminNickname, finalNickname)
-      localStorage.setItem(LS.roleRevealed, 'true')
-      setIsAdminFlag(true)
-      setAdminNicknameLocal(finalNickname)
-      setRoleRevealedLocal(true)
-      return
-    }
-    const assignedId = await claimRandomSlot(newNickname, newGrade, newPhoto)
-    const finalNickname = newNickname.trim() || CHARACTERS.find((c) => c.id === assignedId)!.name
+  async function register(username: string, password: string) {
+    const assignedId = await registerAccountSync(username, password)
+    const uname = username.trim().toLowerCase()
     localStorage.setItem(LS.viewerId, assignedId)
     localStorage.setItem(LS.roleRevealed, 'false')
-    localStorage.setItem(LS.cachedNickname, finalNickname)
+    localStorage.setItem(LS.accountUsername, uname)
     setViewerIdLocal(assignedId)
     setRoleRevealedLocal(false)
+    setAccountUsernameLocal(uname)
+  }
+
+  async function login(username: string, password: string) {
+    const characterId = await loginAccountSync(username, password)
+    const uname = username.trim().toLowerCase()
+    localStorage.setItem(LS.viewerId, characterId)
+    localStorage.setItem(LS.roleRevealed, 'true')
+    localStorage.setItem(LS.accountUsername, uname)
+    setViewerIdLocal(characterId)
+    setRoleRevealedLocal(true)
+    setAccountUsernameLocal(uname)
+  }
+
+  function loginAsAdmin(code: string) {
+    if (code.trim() !== ADMIN_CODE) throw new Error('코드가 올바르지 않다.')
+    const finalNickname = '불가'
+    localStorage.setItem(LS.isAdmin, 'true')
+    localStorage.setItem(LS.adminNickname, finalNickname)
+    localStorage.setItem(LS.roleRevealed, 'true')
+    setIsAdminFlag(true)
+    setAdminNicknameLocal(finalNickname)
+    setRoleRevealedLocal(true)
+  }
+
+  function logout() {
+    localStorage.removeItem(LS.viewerId)
+    localStorage.removeItem(LS.roleRevealed)
+    localStorage.removeItem(LS.cachedNickname)
+    localStorage.removeItem(LS.accountUsername)
+    localStorage.removeItem(LS.isAdmin)
+    localStorage.removeItem(LS.adminNickname)
+    setViewerIdLocal(null)
+    setRoleRevealedLocal(false)
+    setCachedNicknameLocal('')
+    setAccountUsernameLocal(null)
+    setIsAdminFlag(false)
+    setAdminNicknameLocal('')
+  }
+
+  async function completeProfile(newNickname: string, newGrade: string, newPhoto: string | null) {
+    if (!viewerId) return
+    const finalNickname = newNickname.trim() || CHARACTERS.find((c) => c.id === viewerId)!.name
+    await patchPlayer(viewerId, { nickname: finalNickname, grade: newGrade, photo: newPhoto, profileComplete: true })
+    localStorage.setItem(LS.cachedNickname, finalNickname)
     setCachedNicknameLocal(finalNickname)
   }
 
@@ -1152,7 +1196,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       updatePhoto,
       signedUp,
       roleRevealed,
-      completeSignup,
+      accountUsername,
+      register,
+      login,
+      loginAsAdmin,
+      logout,
+      profileComplete,
+      completeProfile,
       acknowledgeRole,
       displayName,
       activeTab,
@@ -1281,6 +1331,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       hasUnreadDm,
       lastSeenDmCount,
       gmDmSeenCounts,
+      accountUsername,
+      profileComplete,
     ],
   )
 
