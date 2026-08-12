@@ -163,3 +163,26 @@
 .auth__admin-box button:hover {
   background: var(--veil-dim);
 }
+
+.auth__admin-box button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.auth__admin-modes {
+  display: flex;
+  gap: 6px;
+}
+
+.auth__admin-modes button {
+  flex: 1;
+  font-size: 10px;
+  padding: 7px 0;
+  color: var(--bone-dim);
+}
+
+.auth__admin-modes button.is-active {
+  color: var(--bone-bright);
+  background: var(--veil-dim);
+  border-color: var(--veil);
+}

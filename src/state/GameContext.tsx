@@ -24,7 +24,9 @@ import {
   addCommentSync,
   assignRoleManuallySync,
   loginAccountSync,
+  loginAdminAccountSync,
   registerAccountSync,
+  registerAdminAccountSync,
   createFeedPostSync,
   defaultSessionState,
   ensureSessionInitialized,
@@ -123,6 +125,8 @@ interface GameState {
   register: (username: string, password: string) => Promise<void>
   login: (username: string, password: string) => Promise<void>
   loginAsAdmin: (code: string) => void
+  registerAdmin: (username: string, password: string, code: string) => Promise<void>
+  loginAdmin: (username: string, password: string) => Promise<void>
   logout: () => void
   profileComplete: boolean
   completeProfile: (nickname: string, grade: string, photo: string | null) => Promise<void>
@@ -526,6 +530,30 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     setIsAdminFlag(true)
     setAdminNicknameLocal(finalNickname)
     setRoleRevealedLocal(true)
+  }
+
+  function enterAdminAccount(username: string) {
+    const uname = username.trim().toLowerCase()
+    const finalNickname = '불가'
+    localStorage.setItem(LS.isAdmin, 'true')
+    localStorage.setItem(LS.adminNickname, finalNickname)
+    localStorage.setItem(LS.roleRevealed, 'true')
+    localStorage.setItem(LS.accountUsername, uname)
+    setIsAdminFlag(true)
+    setAdminNicknameLocal(finalNickname)
+    setRoleRevealedLocal(true)
+    setAccountUsernameLocal(uname)
+  }
+
+  async function registerAdmin(username: string, password: string, code: string) {
+    if (code.trim() !== ADMIN_CODE) throw new Error('관리자 코드가 올바르지 않다.')
+    await registerAdminAccountSync(username, password)
+    enterAdminAccount(username)
+  }
+
+  async function loginAdmin(username: string, password: string) {
+    await loginAdminAccountSync(username, password)
+    enterAdminAccount(username)
   }
 
   function logout() {
@@ -1211,6 +1239,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       register,
       login,
       loginAsAdmin,
+      registerAdmin,
+      loginAdmin,
       logout,
       profileComplete,
       completeProfile,

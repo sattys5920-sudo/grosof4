@@ -155,7 +155,8 @@ function feedCol() {
 
 interface AccountDoc {
   passwordHash: string
-  characterId: string
+  characterId: string | null
+  isAdmin?: boolean
   createdAtMs: number
 }
 
@@ -264,9 +265,36 @@ export async function loginAccountSync(username: string, password: string): Prom
   const aSnap = await getDoc(accountRef(uname))
   if (!aSnap.exists()) throw new Error('존재하지 않는 아이디다.')
   const account = aSnap.data() as AccountDoc
+  if (account.isAdmin || !account.characterId) throw new Error('불가 계정이다. 관리자 로그인을 이용해라.')
   const passwordHash = await hashPassword(password)
   if (passwordHash !== account.passwordHash) throw new Error('비밀번호가 일치하지 않는다.')
   return account.characterId
+}
+
+/** 불가 전용: 캐릭터 자리와 무관하게 별도의 아이디/비밀번호 계정을 새로 만든다. */
+export async function registerAdminAccountSync(username: string, password: string): Promise<void> {
+  const uname = username.trim().toLowerCase()
+  if (!uname || !password) throw new Error('아이디와 비밀번호를 모두 입력해야 한다.')
+  const passwordHash = await hashPassword(password)
+  const aref = accountRef(uname)
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(aref)
+    if (snap.exists()) throw new Error('이미 사용 중인 아이디다.')
+    const account: AccountDoc = { passwordHash, characterId: null, isAdmin: true, createdAtMs: Date.now() }
+    tx.set(aref, account)
+  })
+}
+
+/** 불가 전용: 아이디/비밀번호로 관리자 계정에 로그인한다. */
+export async function loginAdminAccountSync(username: string, password: string): Promise<void> {
+  const uname = username.trim().toLowerCase()
+  if (!uname || !password) throw new Error('아이디와 비밀번호를 모두 입력해야 한다.')
+  const aSnap = await getDoc(accountRef(uname))
+  if (!aSnap.exists()) throw new Error('존재하지 않는 아이디다.')
+  const account = aSnap.data() as AccountDoc
+  if (!account.isAdmin) throw new Error('불가 계정이 아니다.')
+  const passwordHash = await hashPassword(password)
+  if (passwordHash !== account.passwordHash) throw new Error('비밀번호가 일치하지 않는다.')
 }
 
 /** GM fallback: manually assign a specific unclaimed character slot to a nickname. */
