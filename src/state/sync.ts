@@ -189,10 +189,32 @@ export async function ensureSessionInitialized(): Promise<void> {
   }
 }
 
+// Firestore는 배열 안에 배열이 바로 중첩된 값을 허용하지 않는다.
+// MissionState.teamHistory는 (string[] | null)[] 형태라 그대로 저장하면 거부당하므로,
+// 저장할 때는 각 팀을 { team: string[] }로 감싸고 읽을 때 다시 풀어준다.
+function serializeMission(mission: MissionState) {
+  return {
+    ...mission,
+    teamHistory: mission.teamHistory.map((team) => (team ? { team } : null)),
+  }
+}
+
+function deserializeMission(raw: MissionState): MissionState {
+  const rawHistory = raw.teamHistory as unknown as ({ team: string[] } | string[] | null)[]
+  return {
+    ...raw,
+    teamHistory: rawHistory.map((entry) => {
+      if (!entry) return null
+      return Array.isArray(entry) ? entry : entry.team
+    }),
+  }
+}
+
 export function subscribeSession(cb: (data: SessionDoc) => void) {
   return onSnapshot(sessionRef(), (snap) => {
     if (!snap.exists()) return
-    cb(snap.data() as SessionDoc)
+    const data = snap.data() as SessionDoc
+    cb({ ...data, mission: deserializeMission(data.mission) })
   })
 }
 
@@ -406,7 +428,7 @@ export async function sendBroadcastSync(broadcast: Broadcast) {
 }
 
 export async function openMissionsSync(mission: MissionState) {
-  await updateDoc(sessionRef(), { missionsOpen: true, mission })
+  await updateDoc(sessionRef(), { missionsOpen: true, mission: serializeMission(mission) })
 }
 
 export async function addClueSync(clue: ClueItem) {
@@ -429,7 +451,8 @@ export async function updateMissionSync(updater: (state: MissionState) => Missio
   await runTransaction(requireDb(), async (tx) => {
     const snap = await tx.get(sref)
     const data = snap.data() as SessionDoc
-    tx.update(sref, { mission: updater(data.mission) })
+    const next = updater(deserializeMission(data.mission))
+    tx.update(sref, { mission: serializeMission(next) })
   })
 }
 
@@ -444,10 +467,13 @@ export async function runAbilityTransaction(
     const sSnap = await tx.get(sref)
     const pSnap = await tx.get(pref)
     if (!pSnap.exists()) return
-    const session = sSnap.data() as SessionDoc
+    const rawSession = sSnap.data() as SessionDoc
+    const session = { ...rawSession, mission: deserializeMission(rawSession.mission) }
     const player = pSnap.data() as PlayerDoc
     const { session: sessionPatch, player: playerPatch } = fn(session, player)
-    if (sessionPatch) tx.update(sref, sessionPatch)
+    if (sessionPatch) {
+      tx.update(sref, sessionPatch.mission ? { ...sessionPatch, mission: serializeMission(sessionPatch.mission) } : sessionPatch)
+    }
     if (playerPatch) tx.update(pref, playerPatch)
   })
 }
@@ -473,7 +499,8 @@ export async function runCombatTransaction(
     const sSnap = await tx.get(sref)
     const meSnap = await tx.get(meRef)
     if (!meSnap.exists()) return
-    const session = sSnap.data() as SessionDoc
+    const rawSession = sSnap.data() as SessionDoc
+    const session = { ...rawSession, mission: deserializeMission(rawSession.mission) }
     const me = meSnap.data() as PlayerDoc
     const targetId = pickTargetId(session)
     let target: PlayerDoc | null = null
@@ -483,7 +510,9 @@ export async function runCombatTransaction(
       target = tSnap.exists() ? (tSnap.data() as PlayerDoc) : null
     }
     const patch = fn(session, me, target, targetId)
-    if (patch.session) tx.update(sref, patch.session)
+    if (patch.session) {
+      tx.update(sref, patch.session.mission ? { ...patch.session, mission: serializeMission(patch.session.mission) } : patch.session)
+    }
     if (patch.me) tx.update(meRef, patch.me)
     if (patch.target && targetRef) tx.update(targetRef, patch.target)
   })
