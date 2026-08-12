@@ -21,6 +21,7 @@ import type {
   EndingKey,
   FeedComment,
   FeedPost,
+  HallEventState,
   RoomEventState,
   RoomId,
 } from '../data/types'
@@ -53,6 +54,7 @@ export interface SessionDoc {
   discussionOpenedAt: number | null
   shopOpen: boolean
   classroomOpen: boolean
+  hallEvent: HallEventState
   storyDay: 0 | 1 | 2 | 3 | 4
   truthRevealed: boolean
   endingKey: EndingKey | null
@@ -124,6 +126,13 @@ export function defaultSessionState(): SessionDoc {
     disguiseArmed: false,
     shopOpen: false,
     classroomOpen: true,
+    hallEvent: {
+      eventId: null,
+      logIndex: 0,
+      objectResults: {},
+      startedAtMs: null,
+      completedEventIds: [],
+    },
     collectedClues: [],
     missionMessages: [],
     discussionOpen: false,

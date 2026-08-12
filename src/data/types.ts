@@ -173,3 +173,53 @@ export interface ClassroomPuzzle {
   icon?: string
   diagram?: string
 }
+
+export interface HallPuzzle {
+  id: string
+  title: string
+  category: string
+  questionText: string
+  answer: string
+  solution: string
+}
+
+export type HallObjectKind = 'hazard' | 'puzzle' | 'item'
+
+export interface HallObject {
+  id: string
+  label: string
+  kind: HallObjectKind
+  hazardText?: string
+  hpDamage?: number
+  staminaDamage?: number
+  puzzleId?: string
+  itemShopId?: string
+  itemCoins?: number
+}
+
+export interface HallEvent {
+  id: string
+  roomName: string
+  creatureName: string
+  creatureIntro: string
+  logs: string[]
+  objects: HallObject[]
+  finalClue: string
+}
+
+export type HallObjectStatus = 'idle' | 'opened' | 'left'
+
+export interface HallObjectResult {
+  status: HallObjectStatus
+  actorId: string | null
+  puzzleSolved: boolean
+  puzzleAttempts: number
+}
+
+export interface HallEventState {
+  eventId: string | null
+  logIndex: number
+  objectResults: Record<string, HallObjectResult>
+  startedAtMs: number | null
+  completedEventIds: string[]
+}

@@ -319,3 +319,262 @@
   border-top: 2px solid var(--line);
   background: var(--void-2);
 }
+
+.hallevent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.hallevent__head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hallevent__room {
+  font-family: var(--font-title);
+  font-size: 16px;
+  color: var(--bone-bright);
+}
+
+.hallevent__creature {
+  font-size: 13px;
+  color: var(--sin);
+}
+
+.hallevent__timer {
+  margin-left: auto;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--ward);
+}
+
+.hallevent__timer.is-over {
+  color: var(--sin);
+}
+
+.hallevent__logs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--void);
+  border: 1px dashed var(--line);
+}
+
+.hallevent__log-line {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--bone);
+}
+
+.hallevent__next-log {
+  align-self: flex-start;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  padding: 7px 12px;
+  cursor: pointer;
+  border: 1px solid var(--veil);
+  background: var(--veil-dim);
+  color: var(--bone-bright);
+}
+
+.hallevent__waiting {
+  margin: 0;
+  font-size: 13px;
+  color: var(--bone-dim);
+  font-style: italic;
+}
+
+.hallevent__objects {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hallevent__finish {
+  align-self: flex-start;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  border: 1px solid var(--sin);
+  background: var(--sin-dim);
+  color: var(--bone-bright);
+}
+
+.hallobj {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--void-2);
+  border: 1px solid var(--line);
+}
+
+.hallobj--opened {
+  border-color: var(--veil);
+}
+
+.hallobj--left {
+  opacity: 0.7;
+}
+
+.hallobj__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hallobj__label {
+  font-size: 13.5px;
+  color: var(--bone-bright);
+}
+
+.hallobj__kind {
+  font-family: var(--font-pixel);
+  font-size: 8.5px;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  color: var(--bone-dim);
+  white-space: nowrap;
+}
+
+.hallobj__kind--hazard {
+  border-color: var(--sin);
+  color: var(--sin);
+}
+
+.hallobj__kind--puzzle {
+  border-color: var(--veil);
+  color: var(--veil);
+}
+
+.hallobj__kind--item {
+  border-color: var(--ward);
+  color: var(--ward);
+}
+
+.hallobj__warn {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--bone-dim);
+  font-style: italic;
+}
+
+.hallobj__action-row {
+  display: flex;
+  gap: 8px;
+}
+
+.hallobj__action-row button {
+  font-family: var(--font-pixel);
+  font-size: 10.5px;
+  padding: 7px 12px;
+  cursor: pointer;
+  border: 1px solid var(--veil);
+  background: var(--void-3);
+  color: var(--bone-bright);
+}
+
+.hallobj__note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--bone-dim);
+  line-height: 1.5;
+}
+
+.hallobj__damage {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--sin);
+}
+
+.hallobj__puzzle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--void);
+  border: 1px dashed var(--line);
+}
+
+.hallobj__puzzle-title {
+  margin: 0;
+  font-size: 13px;
+  color: var(--bone-bright);
+}
+
+.hallobj__puzzle-text {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--bone);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.hallobj__puzzle-answer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.hallobj__puzzle-answer input {
+  flex: 1;
+  min-width: 120px;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  padding: 7px 9px;
+  color: var(--bone-bright);
+  font-size: 13px;
+}
+
+.hallobj__puzzle-answer button {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  padding: 7px 12px;
+  cursor: pointer;
+  border: 1px solid var(--veil);
+  background: var(--void-3);
+  color: var(--bone-bright);
+}
+
+.hallobj__puzzle-attempts {
+  font-size: 11px;
+  color: var(--bone-dim);
+}
+
+.hallobj__puzzle-solved {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--ward-dim);
+  border: 1px solid var(--ward);
+}
+
+.hallobj__puzzle-solved span {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--ward);
+}
+
+.hallobj__puzzle-solved p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--bone-bright);
+  line-height: 1.5;
+}
+
+.hallobj__puzzle-fail {
+  margin: 0;
+  font-size: 12px;
+  color: var(--sin);
+  font-style: italic;
+}

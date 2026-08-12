@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS, DAY4_REVEAL_TEXT, ENDING_SCRIPTS, roleLabel } from '../data/characters'
-import { CLASSROOM_PUZZLES } from '../data/classroomPuzzles'
+import { HALL_EVENTS } from '../data/hallEvents'
 import { SHOP_ITEMS } from '../data/shop'
 import { Badge } from '../components/Badge'
 import { AbilityUseModal } from '../components/AbilityUseModal'
@@ -768,28 +768,29 @@ export function ProfileScreen() {
           </div>
 
           <div className="profile__gm">
-            <span className="profile__section-label">불가 전용 — 단서 마스터 목록 (스포일러)</span>
+            <span className="profile__section-label">불가 전용 — 강당 조사 10종 (스포일러)</span>
             <p className="profile__gm-note">
-              강당 문제 10 개가 순서대로 공개하는 진짜 단서 전체다. 플레이어들이 실제로 모았는지와
-              무관하게 항상 전부 보인다 — 진행 페이스를 가늠할 때 참고한다.
+              강당 조사 이벤트 10 개가 각각 공개하는 최종 단서와 오브젝트 구성 전체다. 플레이어들이
+              실제로 어디까지 진행했는지와 무관하게 항상 전부 보인다 — 진행 페이스를 가늠할 때 참고한다.
             </p>
             <button className="profile__gm-preset" onClick={() => setMasterListOpen(!masterListOpen)}>
               {masterListOpen ? '숨기기' : '펼쳐보기'}
             </button>
             {masterListOpen && (
               <div className="profile__clue-list">
-                {CLASSROOM_PUZZLES.map((p, i) => (
-                  <div key={p.id} className="profile__clue-item">
+                {HALL_EVENTS.map((event, i) => (
+                  <div key={event.id} className="profile__clue-item">
                     <div className="profile__clue-toggle profile__clue-toggle--static">
-                      <span className="profile__clue-icon">
-                        <PixelIcon name={p.icon ?? 'key'} size={20} />
-                      </span>
                       <span className="profile__clue-title">
-                        {i + 1}. {p.title}
+                        {i + 1}. {event.roomName} — {event.creatureName}
                       </span>
-                      <span className="profile__clue-source">정답: {p.answer}</span>
+                      <span className="profile__clue-source">
+                        {event.objects.filter((o) => o.kind === 'hazard').length}위험 ·{' '}
+                        {event.objects.filter((o) => o.kind === 'puzzle').length}문제 ·{' '}
+                        {event.objects.filter((o) => o.kind === 'item').length}아이템
+                      </span>
                     </div>
-                    <p className="profile__clue-text">{p.hint}</p>
+                    <p className="profile__clue-text">{event.finalClue}</p>
                   </div>
                 ))}
               </div>

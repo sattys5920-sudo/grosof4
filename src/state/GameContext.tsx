@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import { ABILITY_MAX_USES, CHARACTERS, ROOMS } from '../data/characters'
 import { creatureById } from '../data/creatures'
 import { shopItemById } from '../data/shop'
+import { hallEventById } from '../data/hallEvents'
+import { hallPuzzleById } from '../data/hallPuzzles'
 import type {
   Broadcast,
   BroadcastKind,
@@ -14,6 +16,8 @@ import type {
   EventLibraryItem,
   FeedComment,
   FeedPost,
+  HallEventState,
+  HallObjectResult,
   RoomEventState,
   RoomId,
 } from '../data/types'
@@ -161,6 +165,12 @@ interface GameState {
   submitPuzzleAnswer: (text: string) => void
   closeInvestigation: () => void
   attemptDuel: (choice: 'odd' | 'even') => void
+  hallEvent: HallEventState
+  dispatchHallEvent: (eventId: string) => void
+  advanceHallLog: () => void
+  finishHallEvent: () => void
+  resolveHallObject: (objectId: string, choice: 'open' | 'leave') => void
+  submitHallPuzzleAnswer: (objectId: string, text: string) => void
   feed: FeedPost[]
   toggleHeart: (postId: string) => void
   gmReveal: boolean
@@ -256,7 +266,7 @@ function makeClue(data: { title: string; text: string; icon?: string | null }, s
     title: data.title,
     text: data.text,
     source,
-    icon: data.icon,
+    icon: data.icon ?? null,
   }
 }
 
@@ -354,7 +364,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     ensureSessionInitialized().catch(() => {})
-    const unsubSession = subscribeSession(setSession)
+    const unsubSession = subscribeSession((data) => setSession({ ...defaultSessionState(), ...data }))
     const unsubPlayers = subscribeAllPlayers((p) => {
       setPlayers(p)
       setPlayersLoaded(true)
@@ -810,6 +820,109 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       return { ...prev, note: '괴이가 낮게 웃는다. "아니야." 다시 시도해볼 수 있다.' }
     })
     if (clueToAdd) void addClueSync(makeClue(clueToAdd, '강당'))
+  }
+
+  function dispatchHallEvent(eventId: string) {
+    if (!isAdminFlag) return
+    const event = hallEventById(eventId)
+    if (!event) return
+    const nextHallEvent: HallEventState = {
+      eventId,
+      logIndex: 0,
+      objectResults: {},
+      startedAtMs: Date.now(),
+      completedEventIds: session.hallEvent.completedEventIds,
+    }
+    void patchSession({ hallEvent: nextHallEvent, classroomMessages: [] })
+    sendBroadcast('event', `${event.roomName}이(가) 열렸다`, `${event.creatureName} — 지금 강당으로 모이자.......`, false)
+  }
+
+  function advanceHallLog() {
+    if (!isAdminFlag) return
+    const event = hallEventById(session.hallEvent.eventId ?? '')
+    if (!event) return
+    const nextLogIndex = Math.min(session.hallEvent.logIndex + 1, event.logs.length)
+    void patchSession({ hallEvent: { ...session.hallEvent, logIndex: nextLogIndex } })
+  }
+
+  function finishHallEvent() {
+    if (!isAdminFlag) return
+    const event = hallEventById(session.hallEvent.eventId ?? '')
+    if (!event) return
+    void addClueSync(makeClue({ title: `${event.roomName} 조사 결과`, text: event.finalClue }, '강당'))
+    const completedEventIds = session.hallEvent.completedEventIds.includes(event.id)
+      ? session.hallEvent.completedEventIds
+      : [...session.hallEvent.completedEventIds, event.id]
+    void patchSession({
+      hallEvent: { eventId: null, logIndex: 0, objectResults: {}, startedAtMs: null, completedEventIds },
+    })
+  }
+
+  function resolveHallObject(objectId: string, choice: 'open' | 'leave') {
+    if (!viewerId) return
+    void runAbilityTransaction(viewerId, (sess, player) => {
+      const he = sess.hallEvent
+      if (!he.eventId) return {}
+      const event = hallEventById(he.eventId)
+      if (!event) return {}
+      const obj = event.objects.find((o) => o.id === objectId)
+      if (!obj) return {}
+      const existing = he.objectResults[objectId]
+      if (existing && existing.status !== 'idle') return {}
+      const result: HallObjectResult = {
+        status: choice === 'open' ? 'opened' : 'left',
+        actorId: viewerId,
+        puzzleSolved: false,
+        puzzleAttempts: 0,
+      }
+      const nextObjectResults = { ...he.objectResults, [objectId]: result }
+      let playerPatch: Partial<PlayerDoc> | undefined
+      if (choice === 'open') {
+        if (obj.kind === 'hazard') {
+          playerPatch = {}
+          if (obj.hpDamage) playerPatch.hp = Math.max(0, player.hp - obj.hpDamage)
+          if (obj.staminaDamage) playerPatch.stamina = Math.max(0, player.stamina - obj.staminaDamage)
+        } else if (obj.kind === 'item') {
+          if (obj.itemCoins) {
+            playerPatch = { coins: player.coins + obj.itemCoins }
+          } else if (obj.itemShopId) {
+            const inventory = { ...(player.inventory ?? {}) }
+            inventory[obj.itemShopId] = (inventory[obj.itemShopId] ?? 0) + 1
+            playerPatch = { inventory }
+          }
+        }
+      }
+      return {
+        session: { hallEvent: { ...he, objectResults: nextObjectResults } },
+        player: playerPatch,
+      }
+    })
+  }
+
+  function submitHallPuzzleAnswer(objectId: string, text: string) {
+    if (!viewerId || !text.trim()) return
+    void runAbilityTransaction(viewerId, (sess) => {
+      const he = sess.hallEvent
+      if (!he.eventId) return {}
+      const event = hallEventById(he.eventId)
+      if (!event) return {}
+      const obj = event.objects.find((o) => o.id === objectId)
+      if (!obj || obj.kind !== 'puzzle' || !obj.puzzleId) return {}
+      const existing = he.objectResults[objectId]
+      if (!existing || existing.status !== 'opened') return {}
+      if (existing.puzzleSolved || existing.puzzleAttempts >= 3) return {}
+      const puzzle = hallPuzzleById(obj.puzzleId)
+      if (!puzzle) return {}
+      const correct = normalize(text) === normalize(puzzle.answer)
+      const nextResult: HallObjectResult = {
+        ...existing,
+        puzzleAttempts: existing.puzzleAttempts + 1,
+        puzzleSolved: correct,
+      }
+      return {
+        session: { hallEvent: { ...he, objectResults: { ...he.objectResults, [objectId]: nextResult } } },
+      }
+    })
   }
 
   function toggleHeart(postId: string) {
@@ -1327,6 +1440,12 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       submitPuzzleAnswer,
       closeInvestigation,
       attemptDuel,
+      hallEvent: session.hallEvent,
+      dispatchHallEvent,
+      advanceHallLog,
+      finishHallEvent,
+      resolveHallObject,
+      submitHallPuzzleAnswer,
       feed,
       toggleHeart,
       addComment,
