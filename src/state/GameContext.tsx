@@ -1,11 +1,15 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { CHARACTERS, ROOMS } from '../data/characters'
+import { ABILITY_MAX_USES, CHARACTERS, ROOMS } from '../data/characters'
+import { creatureById } from '../data/creatures'
+import { shopItemById } from '../data/shop'
 import type {
   Broadcast,
   BroadcastKind,
   ChatMessage,
   ClassroomPuzzle,
   ClassroomState,
+  CombatLogEntry,
+  Creature,
   EventLibraryItem,
   FeedComment,
   FeedPost,
@@ -30,6 +34,7 @@ import {
   patchPlayer,
   patchSession,
   runAbilityTransaction,
+  runCombatTransaction,
   sendBroadcastSync,
   sendClassroomMessageSync,
   sendGmDmMessageSync,
@@ -49,6 +54,33 @@ import {
   type PlayerDoc,
   type SessionDoc,
 } from './sync'
+
+const ATTACK_STAMINA_COST = 10
+const BASE_ATK = 5
+
+function rollD20(): number {
+  return 1 + Math.floor(Math.random() * 20)
+}
+
+function makeCombatLog(text: string): CombatLogEntry {
+  return { id: `cl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text }
+}
+
+function applyItemEffect(
+  item: { kind: 'weapon' | 'armor' | 'food' | 'medicine'; amount: number },
+  target: PlayerDoc,
+): Partial<PlayerDoc> {
+  switch (item.kind) {
+    case 'food':
+      return { stamina: Math.min(100, target.stamina + item.amount) }
+    case 'medicine':
+      return { hp: Math.min(100, target.hp + item.amount) }
+    case 'weapon':
+      return { weaponAtkBonus: item.amount }
+    case 'armor':
+      return { armorDefBonus: item.amount }
+  }
+}
 
 const ADMIN_CODE = '316316316'
 const LS = {
@@ -108,10 +140,11 @@ interface GameState {
   continueMission: () => void
   resetMission: () => void
   abilityUnlocked: boolean
-  abilityUsed: boolean
+  abilityUseCount: number
+  abilityMaxUses: number
   personalClues: string[]
   forgottenIdentity: 'ward' | 'sin' | null
-  useRecordBook: () => void
+  useRecordBook: (targetAId: string, targetBId: string) => void
   investigate: (targetId: string) => void
   protect: (targetId: string) => void
   protectedId: string | null
@@ -120,6 +153,18 @@ interface GameState {
   erosionTargetId: string | null
   forgeResult: () => void
   revengerCheck: (targetId: string) => void
+  armDisguise: () => void
+  disguiseArmed: boolean
+  hp: number
+  stamina: number
+  coins: number
+  atk: number
+  def: number
+  incapacitated: boolean
+  attackCreature: (roomId: RoomId) => void
+  dispatchCreature: (roomId: RoomId, creature: Creature) => void
+  buyItem: (itemId: string) => void
+  giftItem: (itemId: string, targetId: string) => void
   createFeedPost: (title: string, body: string, commentsEnabled: boolean) => void
   toggleCommentsEnabled: (postId: string) => void
   addComment: (postId: string, text: string, secret: boolean) => void
@@ -163,12 +208,15 @@ function makeGmDmMsg(text: string): ChatMessage {
   }
 }
 
-function resolveTeamCheckPure(decoyUsedIn: boolean, targetId: string): { team: 'ward' | 'sin'; decoyUsed: boolean } {
+function resolveTeamCheckPure(
+  disguiseArmedIn: boolean,
+  targetId: string,
+): { team: 'ward' | 'sin'; disguiseArmed: boolean } {
   const target = CHARACTERS.find((c) => c.id === targetId)!
-  if (target.role === '잠입자' && !decoyUsedIn) {
-    return { team: 'ward', decoyUsed: true }
+  if (target.role === '잠입자' && disguiseArmedIn) {
+    return { team: 'ward', disguiseArmed: false }
   }
-  return { team: target.team === 'ward' ? 'ward' : 'sin', decoyUsed: decoyUsedIn }
+  return { team: target.team === 'ward' ? 'ward' : 'sin', disguiseArmed: disguiseArmedIn }
 }
 
 const BROADCAST_TAG: Record<BroadcastKind, string> = { event: '이벤트', sin: '괴이', notice: '공지' }
@@ -238,8 +286,16 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const grade = isAdminFlag ? '—' : myPlayer?.grade ?? '1 학년'
   const photo = isAdminFlag ? null : myPlayer?.photo ?? null
   const abilityUnlocked = myPlayer?.abilityUnlocked ?? false
-  const abilityUsed = myPlayer?.abilityUsed ?? false
+  const abilityUseCount = myPlayer?.abilityUseCount ?? 0
+  const viewerRole = viewerId ? CHARACTERS.find((c) => c.id === viewerId)?.role : undefined
+  const abilityMaxUses = viewerRole ? ABILITY_MAX_USES[viewerRole] ?? 1 : 1
   const personalClues = myPlayer?.personalClues ?? []
+  const hp = myPlayer?.hp ?? 100
+  const stamina = myPlayer?.stamina ?? 100
+  const coins = myPlayer?.coins ?? 0
+  const atk = BASE_ATK + (myPlayer?.weaponAtkBonus ?? 0)
+  const def = myPlayer?.armorDefBonus ?? 0
+  const incapacitated = hp <= 0 || stamina <= 0
 
   function displayName(id: string) {
     if (id === 'admin') return '불가'
@@ -383,13 +439,34 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       cleared: false,
       clue: null,
       note: null,
+      combat: null,
     }))
     const room = ROOMS.find((r) => r.id === roomId)!
     sendBroadcast('event', `${room.name}이(가) 열렸다`, `《${puzzle.title}》 — 지금 ${room.name}으로 가보자.......`)
   }
 
+  function dispatchCreature(roomId: RoomId, creature: Creature) {
+    void updateRoomEventSync(roomId, () => ({
+      event: {
+        title: creature.name,
+        description: creature.intro,
+        reward: '',
+        kind: 'combat',
+        category: creature.category,
+        icon: creature.icon,
+        creatureId: creature.id,
+      },
+      cleared: false,
+      clue: null,
+      note: null,
+      combat: { creatureId: creature.id, creatureHp: creature.hp, log: [], defeated: false },
+    }))
+    const room = ROOMS.find((r) => r.id === roomId)!
+    sendBroadcast('sin', `${room.name}에서 무언가 나타났다`, `${creature.intro} — 지금 바로 ${room.name}으로 가 보자.......`)
+  }
+
   function closeRoomInvestigation(roomId: RoomId) {
-    void updateRoomEventSync(roomId, () => ({ event: null, cleared: false, clue: null, note: null }))
+    void updateRoomEventSync(roomId, () => ({ event: null, cleared: false, clue: null, note: null, combat: null }))
   }
 
   function dispatchClassroomEvent(item: EventLibraryItem) {
@@ -576,26 +653,31 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void assignRoleManuallySync(characterId, nickname)
   }
 
-  function useRecordBook() {
-    if (!viewerId) return
+  function abilityMax(role: string): number {
+    return ABILITY_MAX_USES[role as keyof typeof ABILITY_MAX_USES] ?? 1
+  }
+
+  function useRecordBook(targetAId: string, targetBId: string) {
+    if (!viewerId || targetAId === targetBId || targetAId === viewerId || targetBId === viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
-      if (!player.abilityUnlocked || player.abilityUsed) return {}
-      const others = CHARACTERS.filter((c) => c.id !== viewerId)
-      const shuffled = [...others].sort(() => Math.random() - 0.5)
-      const [a, b] = shuffled.slice(0, 2)
+      if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('기록자')) return {}
+      const a = CHARACTERS.find((c) => c.id === targetAId)
+      const b = CHARACTERS.find((c) => c.id === targetBId)
+      if (!a || !b) return {}
       const lieOnA = Math.random() < 0.5
       const teamLabel = (team: 'ward' | 'sin') => (team === 'ward' ? '선' : '악')
-      const firstCheck = resolveTeamCheckPure(sess.decoyUsed, a.id)
-      const secondCheck = resolveTeamCheckPure(firstCheck.decoyUsed, b.id)
+      const firstCheck = resolveTeamCheckPure(sess.disguiseArmed, a.id)
+      const secondCheck = resolveTeamCheckPure(firstCheck.disguiseArmed, b.id)
       const trueA = firstCheck.team
       const trueB = secondCheck.team
       const shownA = lieOnA ? (trueA === 'ward' ? 'sin' : 'ward') : trueA
       const shownB = !lieOnA ? (trueB === 'ward' ? 'sin' : 'ward') : trueB
       const text = `《출석부》 ${displayName(a.id)} = ${teamLabel(shownA)}, ${displayName(b.id)} = ${teamLabel(shownB)} — 둘 중 하나는 거짓이다.`
       return {
-        session: secondCheck.decoyUsed !== sess.decoyUsed ? { decoyUsed: secondCheck.decoyUsed } : undefined,
+        session:
+          secondCheck.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: secondCheck.disguiseArmed } : undefined,
         player: {
-          abilityUsed: true,
+          abilityUseCount: player.abilityUseCount + 1,
           personalClues: [...player.personalClues, text],
           gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(text)],
         },
@@ -606,20 +688,20 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function investigate(targetId: string) {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
-      if (!player.abilityUnlocked || player.abilityUsed) return {}
+      if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('감찰자')) return {}
       let resultText: string
-      let decoyUsed = sess.decoyUsed
+      let disguiseArmed = sess.disguiseArmed
       if (sess.protectedId === targetId) {
         resultText = `《학생부 조사》 ${displayName(targetId)} — 보호받고 있어 판별 불가.`
       } else {
-        const check = resolveTeamCheckPure(decoyUsed, targetId)
-        decoyUsed = check.decoyUsed
+        const check = resolveTeamCheckPure(disguiseArmed, targetId)
+        disguiseArmed = check.disguiseArmed
         resultText = `《학생부 조사》 ${displayName(targetId)} — 실패 카드를 ${check.team === 'sin' ? '낼 수 있다' : '낼 수 없다'}.`
       }
       return {
-        session: decoyUsed !== sess.decoyUsed ? { decoyUsed } : undefined,
+        session: disguiseArmed !== sess.disguiseArmed ? { disguiseArmed } : undefined,
         player: {
-          abilityUsed: true,
+          abilityUseCount: player.abilityUseCount + 1,
           personalClues: [...player.personalClues, resultText],
           gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(resultText)],
         },
@@ -630,12 +712,14 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function protect(targetId: string) {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (_sess, player) => {
-      if (!player.abilityUnlocked || player.abilityUsed) return {}
+      if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('보호자')) return {}
+      const target = CHARACTERS.find((c) => c.id === targetId)
+      if (!target || target.team !== 'ward') return {}
       const text = `《동행》 ${displayName(targetId)}을(를) 보호하기 시작했다.`
       return {
         session: { protectedId: targetId },
         player: {
-          abilityUsed: true,
+          abilityUseCount: player.abilityUseCount + 1,
           personalClues: [...player.personalClues, text],
           gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(text)],
         },
@@ -646,13 +730,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function checkCctv(missionIndex: number) {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
-      if (!player.abilityUnlocked || player.abilityUsed) return {}
+      if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('목격자')) return {}
       const count = sess.mission.failCounts[missionIndex]
       if (count === null || count === undefined) return {}
       const text = `《CCTV》 ${missionIndex + 1} 차 원정 — 실패 카드 ${count} 장.`
       return {
         player: {
-          abilityUsed: true,
+          abilityUseCount: player.abilityUseCount + 1,
           personalClues: [...player.personalClues, text],
           gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(text)],
         },
@@ -663,12 +747,12 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function erode(targetId: string) {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (_sess, player) => {
-      if (!player.abilityUnlocked || player.abilityUsed) return {}
+      if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('괴이의 사도')) return {}
       const text = `《침식》 ${displayName(targetId)}을(를) 표적으로 삼았다.`
       return {
         session: { erosionTargetId: targetId },
         player: {
-          abilityUsed: true,
+          abilityUseCount: player.abilityUseCount + 1,
           personalClues: [...player.personalClues, text],
           gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(text)],
         },
@@ -679,7 +763,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function forgeResult() {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
-      if (!player.abilityUnlocked || player.abilityUsed) return {}
+      if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('공범')) return {}
       if (!sess.mission.proposedTeam.includes(viewerId)) return {}
       if (sess.mission.missionResults[sess.mission.missionIndex] !== 'success') return {}
       const nextMission = missionReducer(sess.mission, { type: 'FORGE_RESULT' })
@@ -687,7 +771,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       return {
         session: { mission: nextMission },
         player: {
-          abilityUsed: true,
+          abilityUseCount: player.abilityUseCount + 1,
           gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(text)],
         },
       }
@@ -697,28 +781,157 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function revengerCheck(targetId: string) {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
-      if (!player.abilityUnlocked || player.abilityUsed) return {}
+      if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('복수자')) return {}
       let resultText: string
-      let decoyUsed = sess.decoyUsed
+      let disguiseArmed = sess.disguiseArmed
       if (sess.protectedId === targetId) {
         resultText = `《공략》 ${displayName(targetId)} — 보호받고 있어 판별 불가.`
       } else {
         const target = CHARACTERS.find((c) => c.id === targetId)!
-        const check = resolveTeamCheckPure(decoyUsed, targetId)
-        decoyUsed = check.decoyUsed
+        const check = resolveTeamCheckPure(disguiseArmed, targetId)
+        disguiseArmed = check.disguiseArmed
         const trueRoleLabel =
           check.team === target.team ? target.role : check.team === 'ward' ? '선(위장 감지)' : '악'
         resultText = `《공략》 ${displayName(targetId)}의 진짜 정체 — ${trueRoleLabel}.`
       }
       return {
-        session: decoyUsed !== sess.decoyUsed ? { decoyUsed } : undefined,
+        session: disguiseArmed !== sess.disguiseArmed ? { disguiseArmed } : undefined,
         player: {
-          abilityUsed: true,
+          abilityUseCount: player.abilityUseCount + 1,
           personalClues: [...player.personalClues, resultText],
           gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(resultText)],
         },
       }
     })
+  }
+
+  function armDisguise() {
+    if (!viewerId) return
+    void runAbilityTransaction(viewerId, (sess, player) => {
+      if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('잠입자')) return {}
+      if (sess.disguiseArmed) return {}
+      const text = '《위장》을 걸었다 — 다음번 정체 확인을 한 번 무효화한다.'
+      return {
+        session: { disguiseArmed: true },
+        player: {
+          abilityUseCount: player.abilityUseCount + 1,
+          personalClues: [...player.personalClues, text],
+          gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(text)],
+        },
+      }
+    })
+  }
+
+  function attackCreature(roomId: RoomId) {
+    if (!viewerId) return
+    const myId = viewerId
+    void runCombatTransaction(
+      myId,
+      (sess) => {
+        const others = (sess.roomOccupancy[roomId] ?? []).filter((id) => id !== myId)
+        if (others.length === 0) return null
+        return others[Math.floor(Math.random() * others.length)]
+      },
+      (sess, me, target, targetId) => {
+        const roomEvent = sess.roomEvents[roomId]
+        const combat = roomEvent?.combat
+        if (!combat || combat.defeated) return {}
+        if (me.hp <= 0 || me.stamina < ATTACK_STAMINA_COST) return {}
+        const creature = creatureById(combat.creatureId)
+        if (!creature) return {}
+
+        const myAtk = BASE_ATK + me.weaponAtkBonus
+        const roll = rollD20()
+        const hit = roll + myAtk >= 10 + creature.def
+        const damage = hit ? myAtk : 0
+        const newCreatureHp = Math.max(0, combat.creatureHp - damage)
+        const defeated = newCreatureHp <= 0
+
+        const log: CombatLogEntry[] = [...combat.log]
+        log.push(
+          makeCombatLog(
+            hit
+              ? `${displayName(myId)}이(가) ${creature.name}을(를) 공격했다....... 명중! ${damage}의 피해를 입혔다.`
+              : `${displayName(myId)}이(가) ${creature.name}을(를) 공격했다....... 빗나갔다.`,
+          ),
+        )
+
+        let mePatch: Partial<PlayerDoc> = { stamina: me.stamina - ATTACK_STAMINA_COST }
+        let targetPatch: Partial<PlayerDoc> | undefined
+
+        if (defeated) {
+          log.push(makeCombatLog(`${creature.name}이(가) 쓰러졌다....... 짙게 배어 있던 기운이 서서히 옅어진다.`))
+          mePatch = { ...mePatch, coins: me.coins + creature.coinReward, abilityUnlocked: true }
+        } else {
+          const retaliateAgainstSelf = !target
+          const defenderDef = retaliateAgainstSelf ? me.armorDefBonus : target!.armorDefBonus
+          const rollC = rollD20()
+          const hitC = rollC + creature.atk >= 10 + defenderDef
+          const dmgC = hitC ? Math.max(1, creature.atk - Math.floor(defenderDef / 2)) : 0
+          const defenderName = retaliateAgainstSelf ? displayName(myId) : displayName(targetId!)
+          log.push(
+            makeCombatLog(
+              hitC
+                ? `${creature.name}이(가) ${defenderName}을(를) 향해 반격했다....... 명중! ${dmgC}의 피해를 입었다.`
+                : `${creature.name}이(가) ${defenderName}을(를) 향해 반격했다....... 빗나갔다.`,
+            ),
+          )
+          if (hitC) {
+            if (retaliateAgainstSelf) {
+              mePatch = { ...mePatch, hp: Math.max(0, me.hp - dmgC) }
+            } else {
+              targetPatch = { hp: Math.max(0, target!.hp - dmgC) }
+            }
+          }
+        }
+
+        const nextRoomEvents = {
+          ...sess.roomEvents,
+          [roomId]: {
+            ...roomEvent,
+            combat: { ...combat, creatureHp: newCreatureHp, log, defeated },
+          },
+        }
+
+        return {
+          session: { roomEvents: nextRoomEvents },
+          me: mePatch,
+          target: targetPatch,
+        }
+      },
+    )
+  }
+
+  function buyItem(itemId: string) {
+    if (!viewerId) return
+    const item = shopItemById(itemId)
+    if (!item) return
+    void runCombatTransaction(
+      viewerId,
+      () => null,
+      (_sess, me) => {
+        if (me.coins < item.price) return {}
+        return { me: { coins: me.coins - item.price, ...applyItemEffect(item, me) } }
+      },
+    )
+  }
+
+  function giftItem(itemId: string, targetId: string) {
+    if (!viewerId || targetId === viewerId) return
+    const item = shopItemById(itemId)
+    if (!item) return
+    void runCombatTransaction(
+      viewerId,
+      () => targetId,
+      (_sess, me, target) => {
+        if (!target) return {}
+        if (me.coins < item.price) return {}
+        return {
+          me: { coins: me.coins - item.price },
+          target: applyItemEffect(item, target),
+        }
+      },
+    )
   }
 
   const forgottenIdentity: 'ward' | 'sin' | null = (() => {
@@ -800,7 +1013,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       continueMission,
       resetMission,
       abilityUnlocked,
-      abilityUsed,
+      abilityUseCount,
+      abilityMaxUses,
       personalClues,
       forgottenIdentity,
       useRecordBook,
@@ -812,6 +1026,18 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       erosionTargetId: session.erosionTargetId,
       forgeResult,
       revengerCheck,
+      armDisguise,
+      disguiseArmed: session.disguiseArmed,
+      hp,
+      stamina,
+      coins,
+      atk,
+      def,
+      incapacitated,
+      attackCreature,
+      dispatchCreature,
+      buyItem,
+      giftItem,
     }),
     [
       viewerId,
@@ -826,9 +1052,16 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       feed,
       broadcast,
       abilityUnlocked,
-      abilityUsed,
+      abilityUseCount,
+      abilityMaxUses,
       personalClues,
       forgottenIdentity,
+      hp,
+      stamina,
+      coins,
+      atk,
+      def,
+      incapacitated,
       players,
       myPlayer,
     ],

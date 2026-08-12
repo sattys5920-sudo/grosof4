@@ -44,7 +44,7 @@ export interface SessionDoc {
   mission: MissionState
   protectedId: string | null
   erosionTargetId: string | null
-  decoyUsed: boolean
+  disguiseArmed: boolean
   collectedClues: ClueItem[]
   missionMessages: ChatMessage[]
   discussionOpen: boolean
@@ -56,9 +56,14 @@ export interface PlayerDoc {
   grade: string
   photo: string | null
   abilityUnlocked: boolean
-  abilityUsed: boolean
+  abilityUseCount: number
   personalClues: string[]
   gmDmMessages: ChatMessage[]
+  hp: number
+  stamina: number
+  coins: number
+  weaponAtkBonus: number
+  armorDefBonus: number
 }
 
 export interface FeedPostDoc {
@@ -90,7 +95,7 @@ const INITIAL_ROOM_MESSAGES: Record<RoomId, ChatMessage[]> = {
 function initialRoomEvents(): Record<RoomId, RoomEventState> {
   const result = {} as Record<RoomId, RoomEventState>
   for (const room of ROOMS) {
-    result[room.id] = { event: null, cleared: false, clue: null, note: null }
+    result[room.id] = { event: null, cleared: false, clue: null, note: null, combat: null }
   }
   return result
 }
@@ -108,7 +113,7 @@ export function defaultSessionState(): SessionDoc {
     mission: initialMissionState(),
     protectedId: null,
     erosionTargetId: null,
-    decoyUsed: false,
+    disguiseArmed: false,
     collectedClues: [],
     missionMessages: [],
     discussionOpen: false,
@@ -194,9 +199,14 @@ export async function claimRandomSlot(
       grade,
       photo,
       abilityUnlocked: false,
-      abilityUsed: false,
+      abilityUseCount: 0,
       personalClues: [],
       gmDmMessages: [],
+      hp: 100,
+      stamina: 100,
+      coins: 0,
+      weaponAtkBonus: 0,
+      armorDefBonus: 0,
     })
     return assigned.id
   })
@@ -221,9 +231,14 @@ export async function assignRoleManuallySync(characterId: string, nickname: stri
       grade: '1 학년',
       photo: null,
       abilityUnlocked: false,
-      abilityUsed: false,
+      abilityUseCount: 0,
       personalClues: [],
       gmDmMessages: [],
+      hp: 100,
+      stamina: 100,
+      coins: 0,
+      weaponAtkBonus: 0,
+      armorDefBonus: 0,
     })
   })
 }
@@ -346,6 +361,43 @@ export async function runAbilityTransaction(
     const { session: sessionPatch, player: playerPatch } = fn(session, player)
     if (sessionPatch) tx.update(sref, sessionPatch)
     if (playerPatch) tx.update(pref, playerPatch)
+  })
+}
+
+/**
+ * Runs a combat transaction: reads the shared session doc, the acting player's doc, and —
+ * if pickTargetId returns an id — a second (retaliation) target player's doc, all before any
+ * writes so Firestore's transaction rules are respected.
+ */
+export async function runCombatTransaction(
+  myId: string,
+  pickTargetId: (session: SessionDoc) => string | null,
+  fn: (
+    session: SessionDoc,
+    me: PlayerDoc,
+    target: PlayerDoc | null,
+    targetId: string | null,
+  ) => { session?: Partial<SessionDoc>; me?: Partial<PlayerDoc>; target?: Partial<PlayerDoc> },
+) {
+  const sref = sessionRef()
+  const meRef = playerRef(myId)
+  await runTransaction(requireDb(), async (tx) => {
+    const sSnap = await tx.get(sref)
+    const meSnap = await tx.get(meRef)
+    if (!meSnap.exists()) return
+    const session = sSnap.data() as SessionDoc
+    const me = meSnap.data() as PlayerDoc
+    const targetId = pickTargetId(session)
+    let target: PlayerDoc | null = null
+    const targetRef = targetId && targetId !== myId ? playerRef(targetId) : null
+    if (targetRef) {
+      const tSnap = await tx.get(targetRef)
+      target = tSnap.exists() ? (tSnap.data() as PlayerDoc) : null
+    }
+    const patch = fn(session, me, target, targetId)
+    if (patch.session) tx.update(sref, patch.session)
+    if (patch.me) tx.update(meRef, patch.me)
+    if (patch.target && targetRef) tx.update(targetRef, patch.target)
   })
 }
 

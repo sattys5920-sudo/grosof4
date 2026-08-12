@@ -3,10 +3,12 @@ import './RoomsScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS, ROOMS } from '../data/characters'
 import { ROOM_PUZZLE_BANK } from '../data/events'
+import { CREATURES } from '../data/creatures'
 import type { RoomId } from '../data/types'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
 import { EventDispatchSheet, type DispatchSection } from '../components/EventDispatchSheet'
+import { AbilityUseModal } from '../components/AbilityUseModal'
 import { ChatAvatar } from '../components/ChatAvatar'
 
 function charOf(id: string) {
@@ -26,7 +28,12 @@ export function RoomsScreen() {
     roomEvents,
     submitRoomAnswer,
     dispatchRoomPuzzle,
+    dispatchCreature,
     closeRoomInvestigation,
+    attackCreature,
+    hp,
+    stamina,
+    incapacitated,
     displayName,
     players,
   } = useGame()
@@ -34,6 +41,7 @@ export function RoomsScreen() {
   const [draft, setDraft] = useState('')
   const [answer, setAnswer] = useState('')
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [blockedModalOpen, setBlockedModalOpen] = useState(false)
   const viewer = viewerId ? charOf(viewerId) : null
 
   function revealedFor(c: ReturnType<typeof charOf>) {
@@ -67,7 +75,21 @@ export function RoomsScreen() {
           onSend: () => dispatchRoomPuzzle(openRoom!, puzzle),
         })),
       },
+      {
+        label: '괴이 발동',
+        items: CREATURES.map((creature) => ({
+          id: creature.id,
+          category: `${creature.category} · ${
+            creature.difficulty === 'easy' ? '하' : creature.difficulty === 'medium' ? '중' : '상'
+          } · HP ${creature.hp}`,
+          title: creature.name,
+          brief: creature.intro,
+          onSend: () => dispatchCreature(openRoom!, creature),
+        })),
+      },
     ]
+    const combat = roomEvent.combat
+    const creature = combat ? CREATURES.find((cr) => cr.id === combat.creatureId) : null
 
     return (
       <div className="rooms">
@@ -107,7 +129,10 @@ export function RoomsScreen() {
                 <button
                   className="rooms__pin-toggle"
                   disabled={occupants.length >= room.capacity}
-                  onClick={() => joinRoom(openRoom!)}
+                  onClick={() => {
+                    if (incapacitated) setBlockedModalOpen(true)
+                    else joinRoom(openRoom!)
+                  }}
                 >
                   {occupants.length >= room.capacity ? '인원 초과' : '입장'}
                 </button>
@@ -116,7 +141,7 @@ export function RoomsScreen() {
 
           {!roomEvent.event && <p className="rooms__pin-ambient">{room.ambientText}</p>}
 
-          {roomEvent.event && (
+          {roomEvent.event && roomEvent.event.kind !== 'combat' && (
             <>
               {roomEvent.event.category && (
                 <span className="rooms__pin-tag">{roomEvent.event.category}</span>
@@ -148,6 +173,46 @@ export function RoomsScreen() {
                 </div>
               )}
             </>
+          )}
+
+          {roomEvent.event && roomEvent.event.kind === 'combat' && combat && creature && (
+            <div className="rooms__combat">
+              {roomEvent.event.category && <span className="rooms__pin-tag">{roomEvent.event.category}</span>}
+              <span className="rooms__pin-puzzle-title">{creature.name}</span>
+              <p className="rooms__pin-desc">{roomEvent.event.description}</p>
+              <div className="rooms__combat-hp">
+                <div
+                  className="rooms__combat-hp-fill"
+                  style={{ width: `${Math.max(0, (combat.creatureHp / creature.hp) * 100)}%` }}
+                />
+                <span className="rooms__combat-hp-label">
+                  HP {combat.creatureHp}/{creature.hp}
+                </span>
+              </div>
+              <div className="rooms__combat-log">
+                {combat.log.length === 0 && (
+                  <p className="rooms__empty">아직 아무도 손을 대지 않았다.......</p>
+                )}
+                {combat.log.map((entry) => (
+                  <p key={entry.id} className="rooms__combat-log-line">
+                    {entry.text}
+                  </p>
+                ))}
+              </div>
+              {combat.defeated ? (
+                <p className="rooms__pin-note">쓰러뜨렸다....... 능력이 잠금 해제되고, 코인을 얻었다.</p>
+              ) : iAmHere ? (
+                <button
+                  className="rooms__combat-attack"
+                  disabled={incapacitated || stamina < 10}
+                  onClick={() => attackCreature(openRoom!)}
+                >
+                  공격하기 (스태미나 -10, 현재 HP {hp} · 스태미나 {stamina})
+                </button>
+              ) : (
+                !isAdmin && <p className="rooms__pin-note">입장한 사람만 싸울 수 있다.</p>
+              )}
+            </div>
           )}
         </div>
 
@@ -186,6 +251,15 @@ export function RoomsScreen() {
         )}
 
         {sheetOpen && <EventDispatchSheet sections={sections} onClose={() => setSheetOpen(false)} />}
+        {blockedModalOpen && (
+          <AbilityUseModal
+            title="입장 불가"
+            prompt="지금은 너무 힘들어서 조사실에 들어갈 수 없다....... HP나 스태미나가 바닥났다. 매점에서 음식이나 약을 구해 회복한 뒤 다시 시도하자."
+            confirmLabel="확인"
+            onConfirm={() => setBlockedModalOpen(false)}
+            onClose={() => setBlockedModalOpen(false)}
+          />
+        )}
       </div>
     )
   }

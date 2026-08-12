@@ -50,11 +50,50 @@ export interface GroupEventSpec {
   title: string
   description: string
   reward: string
-  kind?: 'duel' | 'puzzle'
+  kind?: 'duel' | 'puzzle' | 'combat'
   category?: string
   puzzleText?: string
   answer?: string
   icon?: string
+  creatureId?: string
+}
+
+export type CreatureDifficulty = 'easy' | 'medium' | 'hard'
+
+export interface Creature {
+  id: string
+  name: string
+  category: string
+  difficulty: CreatureDifficulty
+  intro: string
+  hp: number
+  atk: number
+  def: number
+  coinReward: number
+  icon?: string
+}
+
+export type ShopItemKind = 'weapon' | 'armor' | 'food' | 'medicine'
+
+export interface ShopItem {
+  id: string
+  name: string
+  kind: ShopItemKind
+  amount: number
+  price: number
+  icon?: string
+}
+
+export interface CombatLogEntry {
+  id: string
+  text: string
+}
+
+export interface CombatState {
+  creatureId: string
+  creatureHp: number
+  log: CombatLogEntry[]
+  defeated: boolean
 }
 
 export type ClassroomStatus = 'locked' | 'active' | 'cleared'
@@ -72,6 +111,7 @@ export interface RoomEventState {
   cleared: boolean
   clue: string | null
   note: string | null
+  combat: CombatState | null
 }
 
 export interface FeedComment {
