@@ -410,7 +410,9 @@ export function ProfileScreen() {
           {endingKey && (
             <div className="profile__personal-clues">
               <span className="profile__section-label">엔딩</span>
-              <p>{ENDING_SCRIPTS[endingKey]}</p>
+              <p className={`profile__ending-text profile__ending-text--${endingKey}`}>
+                {ENDING_SCRIPTS[endingKey]}
+              </p>
             </div>
           )}
 

@@ -214,7 +214,7 @@ interface GameState {
   toggleHeart: (postId: string) => void
   gmReveal: boolean
   broadcast: Broadcast | null
-  sendBroadcast: (kind: BroadcastKind, title: string, body: string) => void
+  sendBroadcast: (kind: BroadcastKind, title: string, body: string, variant?: string) => void
   dismissBroadcast: () => void
   clearBroadcastForAll: () => void
   notifyRoomEvents: boolean
@@ -1151,10 +1151,16 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
   // 브로드캐스트(공지/괴이 출현/이벤트)는 팝업·상단바로만 전달되고, 메인 피드에는 절대 자동으로
   // 올라가지 않는다. 피드에는 GM이 메인 화면의 + 버튼으로 직접 작성한 글만 올라간다.
-  function sendBroadcast(kind: BroadcastKind, title: string, body: string) {
+  function sendBroadcast(kind: BroadcastKind, title: string, body: string, variant?: string) {
     if (!title.trim() || !body.trim()) return
     const id = `bc-${Date.now()}`
-    const bc: Broadcast = { id, kind, title: title.trim(), body: body.trim() }
+    const bc: Broadcast = {
+      id,
+      kind,
+      title: title.trim(),
+      body: body.trim(),
+      ...(variant ? { variant } : {}),
+    }
     void sendBroadcastSync(bc)
   }
 
@@ -1281,7 +1287,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function sendEnding(key: EndingKey) {
     if (!isAdminFlag) return
     void sendEndingSync(key)
-    sendBroadcast('notice', '엔딩', ENDING_SCRIPTS[key])
+    sendBroadcast('notice', '엔딩', ENDING_SCRIPTS[key], key)
   }
 
   function abilityMax(role: string): number {

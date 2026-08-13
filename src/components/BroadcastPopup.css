@@ -37,6 +37,26 @@
   box-shadow: 0 0 0 4px var(--void);
 }
 
+.bcpopup--variant-ward-broken {
+  border-color: var(--ward);
+  box-shadow: 0 0 0 4px var(--void), 0 0 24px rgba(107, 132, 81, 0.4);
+}
+
+.bcpopup--variant-ward-unbroken {
+  border-color: var(--veil);
+  box-shadow: 0 0 0 4px var(--void), 0 0 24px rgba(125, 106, 168, 0.3);
+}
+
+.bcpopup--variant-sin-broken {
+  border-color: var(--veil-dim);
+  box-shadow: 0 0 0 4px var(--void), 0 0 24px rgba(54, 45, 74, 0.4);
+}
+
+.bcpopup--variant-sin-unbroken {
+  border-color: var(--sin);
+  box-shadow: 0 0 0 4px var(--void), 0 0 24px rgba(168, 56, 47, 0.4);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bcpopup--sin {
     animation: none;
@@ -64,6 +84,22 @@
 
 .bcpopup--notice .bcpopup__kind {
   color: var(--bone-dim);
+}
+
+.bcpopup--variant-ward-broken .bcpopup__kind {
+  color: var(--ward);
+}
+
+.bcpopup--variant-ward-unbroken .bcpopup__kind {
+  color: var(--veil);
+}
+
+.bcpopup--variant-sin-broken .bcpopup__kind {
+  color: var(--veil);
+}
+
+.bcpopup--variant-sin-unbroken .bcpopup__kind {
+  color: var(--sin);
 }
 
 .bcpopup__title {

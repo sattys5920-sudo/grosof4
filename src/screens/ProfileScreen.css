@@ -181,6 +181,26 @@
   line-height: 1.55;
 }
 
+.profile__ending-text--ward-broken {
+  border-color: var(--ward) !important;
+  box-shadow: 0 0 12px rgba(107, 132, 81, 0.25);
+}
+
+.profile__ending-text--ward-unbroken {
+  border-color: var(--veil) !important;
+  box-shadow: 0 0 12px rgba(125, 106, 168, 0.2);
+}
+
+.profile__ending-text--sin-broken {
+  border-color: var(--veil-dim) !important;
+  box-shadow: 0 0 12px rgba(54, 45, 74, 0.25);
+}
+
+.profile__ending-text--sin-unbroken {
+  border-color: var(--sin) !important;
+  box-shadow: 0 0 12px rgba(168, 56, 47, 0.25);
+}
+
 .profile__role {
   font-family: var(--font-pixel);
   font-size: 11px;

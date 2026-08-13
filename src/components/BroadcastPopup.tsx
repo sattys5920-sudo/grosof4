@@ -21,7 +21,11 @@ export function BroadcastPopup() {
 
   return (
     <div className="bcpopup__backdrop" role="alertdialog" aria-modal="true">
-      <div className={`bcpopup bcpopup--${broadcast.kind}`}>
+      <div
+        className={`bcpopup bcpopup--${broadcast.kind}${
+          broadcast.variant ? ` bcpopup--variant-${broadcast.variant}` : ''
+        }`}
+      >
         <span className="bcpopup__kind">{KIND_LABEL[broadcast.kind]}</span>
         <h3 className="bcpopup__title">{broadcast.title}</h3>
         <p className="bcpopup__body">{broadcast.body}</p>

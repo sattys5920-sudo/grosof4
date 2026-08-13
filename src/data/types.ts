@@ -148,6 +148,7 @@ export interface Broadcast {
   kind: BroadcastKind
   title: string
   body: string
+  variant?: string
 }
 
 export type EventCategory = '대결' | '공포연출'
