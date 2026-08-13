@@ -135,6 +135,7 @@ export function defaultSessionState(): SessionDoc {
       completedEventIds: [],
       logVotes: {},
       logResolutions: {},
+      extraTimeMs: 0,
     },
     collectedClues: [],
     missionMessages: [],

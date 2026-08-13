@@ -356,6 +356,16 @@
   color: var(--sin);
 }
 
+.hallevent__add-time {
+  font-family: var(--font-pixel);
+  font-size: 9.5px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border: 1px solid var(--ward);
+  background: var(--void-3);
+  color: var(--bone-bright);
+}
+
 .hallevent__logs {
   display: flex;
   flex-direction: column;

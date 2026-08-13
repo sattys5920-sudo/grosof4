@@ -246,4 +246,5 @@ export interface HallEventState {
   completedEventIds: string[]
   logVotes: Record<string, string>
   logResolutions: Record<string, string>
+  extraTimeMs: number
 }

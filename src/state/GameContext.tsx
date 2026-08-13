@@ -200,6 +200,7 @@ interface GameState {
   attemptDuel: (choice: 'odd' | 'even') => void
   hallEvent: HallEventState
   dispatchHallEvent: (eventId: string) => void
+  addHallEventTime: () => void
   advanceHallLog: () => void
   voteHallLogChoice: (choiceId: string) => void
   closeHallLogVote: () => void
@@ -853,9 +854,18 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       completedEventIds: session.hallEvent.completedEventIds,
       logVotes: {},
       logResolutions: {},
+      extraTimeMs: 0,
     }
     void patchSession({ hallEvent: nextHallEvent, classroomMessages: [] })
     sendBroadcast('event', `${event.roomName}이(가) 열렸다`, `${event.creatureName} — 지금 강당으로 모이자.......`)
+  }
+
+  function addHallEventTime() {
+    if (!isAdminFlag) return
+    if (!session.hallEvent.eventId) return
+    void patchSession({
+      hallEvent: { ...session.hallEvent, extraTimeMs: session.hallEvent.extraTimeMs + 10 * 60 * 1000 },
+    })
   }
 
   function advanceHallLog() {
@@ -941,6 +951,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         completedEventIds,
         logVotes: {},
         logResolutions: {},
+        extraTimeMs: 0,
       },
     })
   }
@@ -1653,6 +1664,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       attemptDuel,
       hallEvent: session.hallEvent,
       dispatchHallEvent,
+      addHallEventTime,
       advanceHallLog,
       voteHallLogChoice,
       closeHallLogVote,

@@ -46,6 +46,7 @@ export function ClassroomScreen() {
     setClassroomOpen,
     hallEvent,
     dispatchHallEvent,
+    addHallEventTime,
     advanceHallLog,
     voteHallLogChoice,
     closeHallLogVote,
@@ -71,7 +72,9 @@ export function ClassroomScreen() {
   const canChat = (!!viewerId && classroomOpen) || isAdmin
   const activeEvent = hallEvent.eventId ? hallEventById(hallEvent.eventId) : null
   const logsRevealed = activeEvent ? hallEvent.logIndex >= activeEvent.logs.length : false
-  const remainingMs = hallEvent.startedAtMs ? Math.max(0, hallEvent.startedAtMs + HALL_TIME_LIMIT_MS - now) : null
+  const remainingMs = hallEvent.startedAtMs
+    ? Math.max(0, hallEvent.startedAtMs + HALL_TIME_LIMIT_MS + hallEvent.extraTimeMs - now)
+    : null
   const lastRevealedLog =
     activeEvent && hallEvent.logIndex > 0 ? activeEvent.logs[hallEvent.logIndex - 1] : null
   const pendingChoiceExists =
@@ -288,6 +291,11 @@ export function ClassroomScreen() {
                 <span className={`hallevent__timer ${remainingMs === 0 ? 'is-over' : ''}`}>
                   {remainingMs > 0 ? `남은 시간 ${formatRemaining(remainingMs)}` : '시간 종료'}
                 </span>
+              )}
+              {gmReveal && (
+                <button className="hallevent__add-time" onClick={addHallEventTime}>
+                  +10 분
+                </button>
               )}
             </div>
 
