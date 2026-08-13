@@ -17,7 +17,6 @@ import type {
   EventLibraryItem,
   FeedComment,
   FeedPost,
-  HallClueKind,
   HallEventState,
   HallMinigameKind,
   HallObjectResult,
@@ -304,17 +303,13 @@ function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, '')
 }
 
-function makeClue(
-  data: { title: string; text: string; icon?: string | null; clueKind?: HallClueKind },
-  source: string,
-): ClueItem {
+function makeClue(data: { title: string; text: string; icon?: string | null }, source: string): ClueItem {
   return {
     id: `clue-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     title: data.title,
     text: data.text,
     source,
     icon: data.icon ?? null,
-    clueKind: data.clueKind,
   }
 }
 
@@ -940,15 +935,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       authorId: 'admin',
       text: `【최종 단서】 ${event.finalClue}`,
       time: '지금',
-      clueKind: event.finalClueKind,
     }
     void sendClassroomMessageSync(clueMsg)
-    void addClueSync(
-      makeClue(
-        { title: `${event.roomName} 조사 결과`, text: event.finalClue, clueKind: event.finalClueKind },
-        '강당',
-      ),
-    )
+    void addClueSync(makeClue({ title: `${event.roomName} 조사 결과`, text: event.finalClue }, '강당'))
     const completedEventIds = session.hallEvent.completedEventIds.includes(event.id)
       ? session.hallEvent.completedEventIds
       : [...session.hallEvent.completedEventIds, event.id]

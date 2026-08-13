@@ -9,7 +9,6 @@ import { MINIGAME_OPTIONS } from '../data/hallMinigames'
 import { EventDispatchSheet, type DispatchSection } from '../components/EventDispatchSheet'
 import { ChatAvatar } from '../components/ChatAvatar'
 import { AbilityUseModal } from '../components/AbilityUseModal'
-import { HallClueArt } from '../components/HallClueArt'
 
 const HALL_TIME_LIMIT_MS = 60 * 60 * 1000
 const KIND_LABEL: Record<HallObject['kind'], string> = {
@@ -383,11 +382,7 @@ export function ClassroomScreen() {
                   <div className="classroom__msg-head">
                     <span className="classroom__msg-name">{name}</span>
                   </div>
-                  {m.clueKind ? (
-                    <HallClueArt kind={m.clueKind} />
-                  ) : (
-                    <p className="classroom__msg-text">{m.text}</p>
-                  )}
+                  <p className="classroom__msg-text">{m.text}</p>
                 </div>
                 {isMe && (
                   <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />

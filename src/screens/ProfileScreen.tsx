@@ -7,7 +7,6 @@ import { SHOP_ITEMS } from '../data/shop'
 import { Badge } from '../components/Badge'
 import { AbilityUseModal } from '../components/AbilityUseModal'
 import { PixelIcon } from '../components/PixelIcon'
-import { HallClueArt } from '../components/HallClueArt'
 import { PixelArt } from '../components/PixelArt'
 import type { BroadcastKind, EndingKey } from '../data/types'
 
@@ -651,12 +650,7 @@ export function ProfileScreen() {
                     <span className="profile__clue-title">{clue.title}</span>
                     <span className="profile__clue-source">{clue.source}</span>
                   </button>
-                  {isOpen &&
-                    (clue.clueKind ? (
-                      <HallClueArt kind={clue.clueKind} />
-                    ) : (
-                      <p className="profile__clue-text">{clue.text}</p>
-                    ))}
+                  {isOpen && <p className="profile__clue-text">{clue.text}</p>}
                 </div>
               )
             })}
