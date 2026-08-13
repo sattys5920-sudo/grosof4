@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './RoomsScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS, ROOMS } from '../data/characters'
@@ -13,6 +13,15 @@ import { PixelArt } from '../components/PixelArt'
 
 function charOf(id: string) {
   return CHARACTERS.find((c) => c.id === id)!
+}
+
+const ROOM_EVICT_MS = 5 * 60 * 1000
+
+function formatRemaining(ms: number) {
+  const total = Math.max(0, Math.ceil(ms / 1000))
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
 }
 
 // 전투 중 실제로 차례를 진행할 수 있는 사람을 계산한다. 저장된 차례가 이미 방을 나갔거나
@@ -51,7 +60,13 @@ export function RoomsScreen() {
   const [draft, setDraft] = useState('')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [blockedModalOpen, setBlockedModalOpen] = useState(false)
+  const [now, setNow] = useState(Date.now())
   const viewer = viewerId ? charOf(viewerId) : null
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
 
   function revealedFor(c: ReturnType<typeof charOf>) {
     return viewer ? isRevealedTo(viewer, c, gmReveal) : gmReveal
@@ -174,6 +189,13 @@ export function RoomsScreen() {
               {combat.defeated ? (
                 <p className="rooms__pin-note">
                   쓰러뜨렸다....... 전투에 참여한 모두가 코인 {creature.coinReward}을(를) 얻었다.
+                  {combat.defeatedAtMs && (
+                    <>
+                      {' '}
+                      남은 시간 {formatRemaining(ROOM_EVICT_MS - (now - combat.defeatedAtMs))} — 이 방은 곧
+                      자동으로 닫힌다.
+                    </>
+                  )}
                 </p>
               ) : occupants.length < room.capacity ? (
                 <p className="rooms__pin-note">

@@ -42,6 +42,7 @@ import {
   defaultSessionState,
   ensureSessionInitialized,
   feedPostToFeedPost,
+  forceCloseRoomSync,
   joinRoomSync,
   leaveRoomSync,
   openMissionsSync,
@@ -78,6 +79,8 @@ import {
 const ATTACK_STAMINA_COST = 4
 const BASE_ATK = 5
 const DICE_COUNT = 3
+const ROOM_DEFEAT_EVICT_MIN = 5
+const ROOM_DEFEAT_EVICT_MS = ROOM_DEFEAT_EVICT_MIN * 60 * 1000
 const DICE_SUCCESS_THRESHOLD = 11
 
 // 전투 중 실제로 차례를 진행할 수 있는 사람을 계산한다. 저장된 차례가 이미 방을 나갔거나
@@ -579,6 +582,22 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     lastGmInboxTotalRef.current = total
   }, [players, isAdminFlag])
 
+  // 구관에서 크리처를 쓰러뜨린 뒤 유예 시간(ROOM_DEFEAT_EVICT_MS)이 지나면, 누군가의 화면이든
+  // 켜져 있는 클라이언트가 대신 방을 비우고 조사 상태를 초기화한다(멱등적이라 여러 클라이언트가
+  // 동시에 감지해도 문제없다).
+  useEffect(() => {
+    const t = setInterval(() => {
+      const now = Date.now()
+      for (const room of ROOMS) {
+        const combat = session.roomEvents[room.id]?.combat
+        if (combat?.defeated && combat.defeatedAtMs && now - combat.defeatedAtMs >= ROOM_DEFEAT_EVICT_MS) {
+          void forceCloseRoomSync(room.id)
+        }
+      }
+    }, 5000)
+    return () => clearInterval(t)
+  }, [session.roomEvents])
+
   // 로그아웃 후 다른 계정으로 다시 가입·로그인하면, 이전 계정에서 쌓인 추적 상태(ref)가
   // 새 계정으로 새어들어 오작동(예: 되돌리기 판정 오류)을 일으키지 않도록 초기화한다.
   const prevViewerIdRef = useRef(viewerId)
@@ -773,6 +792,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         creatureHp: creature.hp,
         log: [],
         defeated: false,
+        defeatedAtMs: null,
         turnPlayerId: null,
         defenderId: null,
       },
@@ -1515,6 +1535,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
       if (defeated) {
         log.push(makeCombatLog(`${creature.name}이(가) 쓰러졌다....... 짙게 배어 있던 기운이 서서히 옅어진다.`))
+        log.push(makeCombatLog(`겨우 쓰러뜨렸다....... ${ROOM_DEFEAT_EVICT_MIN} 분 내로 이 방에서 나가자!`))
         for (const pid of occupantIds) {
           const occ = occupants[pid]
           if (!occ) continue
@@ -1560,7 +1581,15 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         ...sess.roomEvents,
         [roomId]: {
           ...roomEvent,
-          combat: { ...combat, creatureHp: newCreatureHp, log, defeated, turnPlayerId: nextTurnId, defenderId: nextDefenderId },
+          combat: {
+            ...combat,
+            creatureHp: newCreatureHp,
+            log,
+            defeated,
+            defeatedAtMs: defeated ? Date.now() : combat.defeatedAtMs,
+            turnPlayerId: nextTurnId,
+            defenderId: nextDefenderId,
+          },
         },
       }
 

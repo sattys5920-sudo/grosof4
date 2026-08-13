@@ -386,6 +386,22 @@ export async function leaveRoomSync(myId: string, roomId: RoomId) {
   })
 }
 
+/** 크리처를 쓰러뜨린 뒤 유예 시간이 지나면 방을 비우고 조사 상태를 초기화한다. */
+export async function forceCloseRoomSync(roomId: RoomId) {
+  const sref = sessionRef()
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(sref)
+    const data = snap.data() as SessionDoc
+    if (!data.roomEvents[roomId]?.combat?.defeated) return
+    const nextOccupancy = { ...data.roomOccupancy, [roomId]: [] }
+    const nextEvents = {
+      ...data.roomEvents,
+      [roomId]: { event: null, cleared: false, clue: null, note: null, combat: null },
+    }
+    tx.update(sref, { roomOccupancy: nextOccupancy, roomEvents: nextEvents })
+  })
+}
+
 export async function sendRoomMessageSync(roomId: RoomId, msg: ChatMessage) {
   await updateDoc(sessionRef(), { [`roomMessages.${roomId}`]: arrayUnion(msg) })
 }

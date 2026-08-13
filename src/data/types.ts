@@ -99,6 +99,7 @@ export interface CombatState {
   creatureHp: number
   log: CombatLogEntry[]
   defeated: boolean
+  defeatedAtMs: number | null
   turnPlayerId: string | null
   defenderId: string | null
 }
