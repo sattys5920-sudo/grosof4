@@ -70,6 +70,7 @@ import {
   updateClassroomSync,
   updateMissionSync,
   updateRoomEventSync,
+  type AbilityLogEntry,
   type ClueItem,
   type FeedPostDoc,
   type PlayerDoc,
@@ -307,6 +308,7 @@ interface GameState {
   sendGmDm: (text: string) => void
   sendGmDmAsAdmin: (characterId: string, text: string) => void
   collectedClues: ClueItem[]
+  abilityLog: AbilityLogEntry[]
   missionMessages: ChatMessage[]
   sendMissionMessage: (text: string) => void
   discussionOpen: boolean
@@ -354,6 +356,16 @@ function makeGmDmMsg(text: string): ChatMessage {
     authorId: 'admin',
     text,
     time: '지금',
+  }
+}
+
+function makeAbilityLogEntry(characterId: string, abilityName: string, resultText: string): AbilityLogEntry {
+  return {
+    id: `al-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    characterId,
+    abilityName,
+    resultText,
+    atMs: Date.now(),
   }
 }
 
@@ -1437,8 +1449,10 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       const shownB = !lieOnA ? (trueB === 'ward' ? 'sin' : 'ward') : trueB
       const text = `《출석부》 ${displayName(a.id)} = ${teamLabel(shownA)}, ${displayName(b.id)} = ${teamLabel(shownB)} — 둘 중 하나는 거짓이다.`
       return {
-        session:
-          secondCheck.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: secondCheck.disguiseArmed } : undefined,
+        session: {
+          ...(secondCheck.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: secondCheck.disguiseArmed } : {}),
+          abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '출석부', text)],
+        },
         player: {
           abilityUseCount: player.abilityUseCount + 1,
           lastRecordBookDate: today,
@@ -1456,7 +1470,10 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       const check = resolveTeamCheckPure(sess.disguiseArmed, targetId)
       const resultText = `《학생부 조사》 ${displayName(targetId)} — 실패 카드를 ${check.team === 'sin' ? '낼 수 있다' : '낼 수 없다'}.`
       return {
-        session: check.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: check.disguiseArmed } : undefined,
+        session: {
+          ...(check.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: check.disguiseArmed } : {}),
+          abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '학생부 조사', resultText)],
+        },
         player: {
           abilityUseCount: player.abilityUseCount + 1,
           personalClues: [...player.personalClues, resultText],
@@ -1473,7 +1490,10 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       if (sess.mission.shielded) return {}
       const text = '《수호》를 발동했다 — 다음 조사 결과에서 실패 카드 1 장이 무효화된다.'
       return {
-        session: { mission: { ...sess.mission, shielded: true } },
+        session: {
+          mission: { ...sess.mission, shielded: true },
+          abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '수호', text)],
+        },
         player: {
           abilityUseCount: player.abilityUseCount + 1,
           personalClues: [...player.personalClues, text],
@@ -1491,6 +1511,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       if (count === null || count === undefined) return {}
       const text = `《CCTV》 ${missionIndex + 1} 차 조사 — 실패 카드 ${count} 장.`
       return {
+        session: { abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, 'CCTV', text)] },
         player: {
           abilityUseCount: player.abilityUseCount + 1,
           personalClues: [...player.personalClues, text],
@@ -1505,7 +1526,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void runCombatTransaction(
       viewerId,
       () => targetId,
-      (_sess, me, target) => {
+      (sess, me, target) => {
         if (!me.abilityUnlocked || me.abilityUseCount >= abilityMax('괴이의 사도')) return {}
         const today = new Date().toISOString().slice(0, 10)
         if (me.lastDiscernDate === today) return {}
@@ -1513,6 +1534,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         const targetChar = CHARACTERS.find((c) => c.id === targetId)!
         const text = `《분별》 ${displayName(targetId)}의 능력 — ${targetChar.abilityName}(${ABILITY_SUMMARY[targetChar.role]}), 지금까지 ${target.abilityUseCount} 회 발동.`
         return {
+          session: { abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '분별', text)] },
           me: {
             abilityUseCount: me.abilityUseCount + 1,
             lastDiscernDate: today,
@@ -1533,7 +1555,10 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       const nextMission = missionReducer(sess.mission, { type: 'FORGE_RESULT' })
       const text = `《파괴》 ${sess.mission.missionIndex + 1} 차 조사의 결과를 몰래 조작했다.`
       return {
-        session: { mission: nextMission },
+        session: {
+          mission: nextMission,
+          abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '파괴', text)],
+        },
         player: {
           abilityUseCount: player.abilityUseCount + 1,
           gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(text)],
@@ -1552,7 +1577,10 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         check.team === target.team ? (target.role === '일반학생' ? '(???)' : target.role) : '(???)'
       const resultText = `《투시》 ${displayName(targetId)}의 진짜 정체 — ${trueRoleLabel}.`
       return {
-        session: check.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: check.disguiseArmed } : undefined,
+        session: {
+          ...(check.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: check.disguiseArmed } : {}),
+          abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '투시', resultText)],
+        },
         player: {
           abilityUseCount: player.abilityUseCount + 1,
           personalClues: [...player.personalClues, resultText],
@@ -1569,7 +1597,10 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       if (sess.disguiseArmed) return {}
       const text = '《위장》을 걸었다 — 다음번 정체 확인을 한 번 무효화한다.'
       return {
-        session: { disguiseArmed: true },
+        session: {
+          disguiseArmed: true,
+          abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '위장', text)],
+        },
         player: {
           abilityUseCount: player.abilityUseCount + 1,
           personalClues: [...player.personalClues, text],
@@ -1897,6 +1928,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       sendGmDm,
       sendGmDmAsAdmin,
       collectedClues: session.collectedClues,
+      abilityLog: session.abilityLog ?? [],
       missionMessages: session.missionMessages,
       sendMissionMessage,
       discussionOpen: session.discussionOpen,

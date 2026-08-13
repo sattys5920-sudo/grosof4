@@ -31,6 +31,38 @@ const PRESETS: { kind: BroadcastKind; label: string; title: string; body: string
   },
 ]
 
+function formatLogTime(ms: number): string {
+  const d = new Date(ms)
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${hh}:${mm}`
+}
+
+function AdminAbilityLogPanel() {
+  const { abilityLog, displayName } = useGame()
+  const sorted = [...abilityLog].sort((a, b) => b.atMs - a.atMs)
+
+  return (
+    <div className="profile__gm">
+      <span className="profile__section-label">불가 전용 — 능력 사용 기록</span>
+      <p className="profile__gm-note">누가 언제 어떤 능력을 썼고 그 결과로 무엇을 받았는지 시간순으로 모아 보여준다.</p>
+      <div className="profile__ability-log">
+        {sorted.length === 0 && <p className="profile__dm-empty">아직 사용된 능력이 없다.</p>}
+        {sorted.map((entry) => (
+          <div key={entry.id} className="profile__ability-log-row">
+            <div className="profile__ability-log-head">
+              <span className="profile__ability-log-name">{displayName(entry.characterId)}</span>
+              <span className="profile__ability-log-ability">{entry.abilityName}</span>
+              <span className="profile__ability-log-time">{formatLogTime(entry.atMs)}</span>
+            </div>
+            <p className="profile__ability-log-result">{entry.resultText}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function PlayerGmDmPanel() {
   const { gmDmMessages, sendGmDm, markDmRead } = useGame()
   const [draft, setDraft] = useState('')
@@ -909,6 +941,7 @@ export function ProfileScreen() {
             </button>
           </div>
 
+          <AdminAbilityLogPanel />
           <AdminGmDmPanel />
         </>
       )}

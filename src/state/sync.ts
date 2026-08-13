@@ -38,6 +38,14 @@ export interface ClueItem {
   emphasize?: boolean
 }
 
+export interface AbilityLogEntry {
+  id: string
+  characterId: string
+  abilityName: string
+  resultText: string
+  atMs: number
+}
+
 export interface SessionDoc {
   claimedSlots: string[]
   roomOccupancy: Record<RoomId, string[]>
@@ -59,6 +67,7 @@ export interface SessionDoc {
   storyDay: 0 | 1 | 2 | 3 | 4
   truthRevealed: boolean
   endingKey: EndingKey | null
+  abilityLog: AbilityLogEntry[]
 }
 
 export interface PlayerDoc {
@@ -148,6 +157,7 @@ export function defaultSessionState(): SessionDoc {
     storyDay: 0,
     truthRevealed: false,
     endingKey: null,
+    abilityLog: [],
   }
 }
 
