@@ -83,7 +83,7 @@ function MissionDiscussionPanel() {
         <>
           <div className="mdisc__log">
             {missionMessages.length === 0 && (
-              <p className="mdisc__empty">아직 아무도 말하지 않았다....... 2 분 동안 자유롭게 의논해보자.</p>
+              <p className="mdisc__empty">아직 아무도 말하지 않았다.</p>
             )}
             {missionMessages.map((m) => {
               const isMe = m.authorId === viewerId
@@ -218,7 +218,7 @@ export function MissionScreen() {
     return (
       <div className="mission mission--locked">
         <span className="mission__lock-icon">▧</span>
-        <p className="mission__lock-text">조사는 아직 열리지 않았다. 아직은 때가 아니다....... 조금 더 기다려야 한다.</p>
+        <p className="mission__lock-text">조사는 아직 열리지 않았다.</p>
       </div>
     )
   }
@@ -369,9 +369,7 @@ export function MissionScreen() {
               </button>
             </>
           ) : (
-            <p className="mission__waiting">
-              {displayName(leader.id)}이(가) 조사대 {teamSize} 명을 고르는 중이다....... 직접 상의해서 정해보자.
-            </p>
+            <p className="mission__waiting">{displayName(leader.id)}이(가) 고르는 중이다.</p>
           )}
         </div>
       )}
@@ -413,9 +411,7 @@ export function MissionScreen() {
               </button>
             </div>
           ) : (
-            <p className="mission__waiting">
-              투표를 마쳤다....... 다른 사람들의 투표를 기다리는 중이다.
-            </p>
+            <p className="mission__waiting">투표를 마쳤다. 기다리는 중이다.</p>
           )}
         </div>
       )}
@@ -458,10 +454,10 @@ export function MissionScreen() {
                 )}
               </div>
             ) : (
-              <p className="mission__waiting">카드를 제출했다....... 결과를 기다리는 중이다.</p>
+              <p className="mission__waiting">카드를 제출했다. 기다리는 중이다.</p>
             )
           ) : (
-            <p className="mission__waiting">조사대가 돌아올 때까지 기다려 보자.......</p>
+            <p className="mission__waiting">조사대를 기다리는 중이다.</p>
           )}
         </div>
       )}

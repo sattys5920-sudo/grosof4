@@ -134,7 +134,7 @@ export function ClassroomScreen() {
           )}
           {myPending && myResult === undefined && (
             <p className="hallobj__minigame-waiting">
-              '{options.find((o) => o.id === myChoice)?.label}'을(를) 선택했다....... 승부가 시작되기를 기다리는 중이다.
+              '{options.find((o) => o.id === myChoice)?.label}'을(를) 선택했다. 기다리는 중이다.
             </p>
           )}
           {pending.length > 0 && (
@@ -177,7 +177,7 @@ export function ClassroomScreen() {
 
         {status === 'idle' && !isAdmin && (
           <div className="hallobj__actions">
-            <p className="hallobj__warn">한 명만 선택할 수 있다....... 다 같이 상의하고 신중하게 눌러야 한다.</p>
+            <p className="hallobj__warn">한 명만 선택할 수 있다.</p>
             <div className="hallobj__action-row">
               <button onClick={() => setPendingChoice({ objectId: obj.id, choice: 'open' })}>열어 본다</button>
               <button onClick={() => setPendingChoice({ objectId: obj.id, choice: 'leave' })}>그냥 둔다</button>
@@ -275,7 +275,7 @@ export function ClassroomScreen() {
         </div>
 
         {!classroomOpen && !gmReveal && (
-          <p className="classroom__pin-ambient">강당 문이 아직 잠겨 있다....... 열릴 때까지 기다려야 한다.</p>
+          <p className="classroom__pin-ambient">강당 문이 아직 잠겨 있다.</p>
         )}
 
         {(classroomOpen || gmReveal) && !activeEvent && (
@@ -342,7 +342,7 @@ export function ClassroomScreen() {
                 </button>
               )}
               {!logsRevealed && !gmReveal && hallEvent.logIndex === 0 && (
-                <p className="hallevent__waiting">교내 방송이 상황을 전하는 중이다.......</p>
+                <p className="hallevent__waiting">아직 방송이 없다.</p>
               )}
             </div>
 
@@ -355,7 +355,7 @@ export function ClassroomScreen() {
                   </button>
                 )}
                 {hallEvent.objectIndex === 0 && !gmReveal && (
-                  <p className="hallevent__waiting">불가가 첫 번째 물건을 공개할 때까지 기다려 보자.......</p>
+                  <p className="hallevent__waiting">아직 공개된 물건이 없다.</p>
                 )}
               </div>
             )}

@@ -50,7 +50,7 @@ function PlayerGmDmPanel() {
       <p className="profile__gm-note">다른 부원에게는 보이지 않는, 교내 방송과 나 사이의 개인 대화다.</p>
       <div className="profile__dm-log">
         {gmDmMessages.length === 0 && (
-          <p className="profile__dm-empty">아직 대화가 없다....... 궁금한 게 있으면 먼저 말을 걸어보자.</p>
+          <p className="profile__dm-empty">아직 대화가 없다.</p>
         )}
         {gmDmMessages.map((m) => (
           <div key={m.id} className={`profile__dm-msg ${m.authorId === 'admin' ? 'is-gm' : 'is-me'}`}>

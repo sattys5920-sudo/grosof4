@@ -163,7 +163,7 @@ export function RoomsScreen() {
               </div>
               <div className="rooms__combat-log">
                 {combat.log.length === 0 && (
-                  <p className="rooms__empty">아직 아무도 손을 대지 않았다.......</p>
+                  <p className="rooms__empty">아직 아무도 손을 대지 않았다.</p>
                 )}
                 {combat.log.map((entry) => (
                   <p key={entry.id} className="rooms__combat-log-line">
@@ -177,7 +177,7 @@ export function RoomsScreen() {
                 </p>
               ) : occupants.length < room.capacity ? (
                 <p className="rooms__pin-note">
-                  정원이 다 찰 때까지는 싸울 수 없다....... ({occupants.length}/{room.capacity})
+                  정원이 다 찰 때까지는 싸울 수 없다. ({occupants.length}/{room.capacity})
                 </p>
               ) : iAmHere ? (
                 (() => {
