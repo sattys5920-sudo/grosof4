@@ -32,9 +32,6 @@ function formatRemaining(ms: number) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-const CLASSROOM_AMBIENT_TEXT =
-  '강당은 조용하다....... 다들 각자 자리에 앉아 서로 눈치만 보고 있다. 아직 아무것도 열리지 않았다.......'
-
 export function ClassroomScreen() {
   const {
     viewerId,
@@ -280,10 +277,6 @@ export function ClassroomScreen() {
 
         {!classroomOpen && !gmReveal && (
           <p className="classroom__pin-ambient">강당 문이 아직 잠겨 있다.</p>
-        )}
-
-        {(classroomOpen || gmReveal) && !activeEvent && (
-          <p className="classroom__pin-ambient">{CLASSROOM_AMBIENT_TEXT}</p>
         )}
 
         {(classroomOpen || gmReveal) && activeEvent && (
