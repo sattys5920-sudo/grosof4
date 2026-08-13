@@ -168,6 +168,7 @@ export function ProfileScreen() {
     checkCctv,
     discern,
     usedDiscernToday,
+    usedRecordBookToday,
     forgeResult,
     revengerCheck,
     armDisguise,
@@ -332,6 +333,10 @@ export function ProfileScreen() {
                       완료된 조사가 있어야 사용할 수 있다. (남은 횟수 {usesLeft}/{abilityMaxUses})
                     </p>
                   ) : viewer.role === '괴이의 사도' && usedDiscernToday ? (
+                    <p className="profile__ability-locked">
+                      오늘은 이미 사용했다....... 내일 다시 사용할 수 있다. (남은 횟수 {usesLeft}/{abilityMaxUses})
+                    </p>
+                  ) : viewer.role === '기록자' && usedRecordBookToday ? (
                     <p className="profile__ability-locked">
                       오늘은 이미 사용했다....... 내일 다시 사용할 수 있다. (남은 횟수 {usesLeft}/{abilityMaxUses})
                     </p>
@@ -783,7 +788,7 @@ export function ProfileScreen() {
           </div>
 
           <div className="profile__gm">
-            <span className="profile__section-label">불가 전용 — 강당 조사 10종 (스포일러)</span>
+            <span className="profile__section-label">불가 전용 — 강당 조사 10 종 (스포일러)</span>
             <p className="profile__gm-note">
               강당 조사 이벤트 10 개가 각각 공개하는 최종 단서와 오브젝트 구성 전체다. 플레이어들이
               실제로 어디까지 진행했는지와 무관하게 항상 전부 보인다 — 진행 페이스를 가늠할 때 참고한다.

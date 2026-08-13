@@ -69,6 +69,7 @@ export interface PlayerDoc {
   abilityUnlocked: boolean
   abilityUseCount: number
   lastDiscernDate: string | null
+  lastRecordBookDate: string | null
   personalClues: string[]
   gmDmMessages: ChatMessage[]
   hp: number
@@ -281,6 +282,7 @@ export async function registerAccountSync(username: string, password: string): P
       abilityUnlocked: true,
       abilityUseCount: 0,
       lastDiscernDate: null,
+      lastRecordBookDate: null,
       personalClues: [],
       gmDmMessages: [],
       hp: 100,
@@ -331,6 +333,7 @@ export async function assignRoleManuallySync(characterId: string, nickname: stri
       abilityUnlocked: true,
       abilityUseCount: 0,
       lastDiscernDate: null,
+      lastRecordBookDate: null,
       personalClues: [],
       gmDmMessages: [],
       hp: 100,

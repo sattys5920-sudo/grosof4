@@ -264,6 +264,7 @@ interface GameState {
   checkCctv: (missionIndex: number) => void
   discern: (targetId: string) => void
   usedDiscernToday: boolean
+  usedRecordBookToday: boolean
   forgeResult: () => void
   revengerCheck: (targetId: string) => void
   armDisguise: () => void
@@ -468,6 +469,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const abilityUnlocked = myPlayer?.abilityUnlocked ?? false
   const abilityUseCount = myPlayer?.abilityUseCount ?? 0
   const usedDiscernToday = myPlayer?.lastDiscernDate === new Date().toISOString().slice(0, 10)
+  const usedRecordBookToday = myPlayer?.lastRecordBookDate === new Date().toISOString().slice(0, 10)
   const viewerRole = viewerId ? CHARACTERS.find((c) => c.id === viewerId)?.role : undefined
   const abilityMaxUses = viewerRole ? ABILITY_MAX_USES[viewerRole] ?? 1 : 1
   const personalClues = myPlayer?.personalClues ?? []
@@ -1318,6 +1320,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     if (!viewerId || targetAId === targetBId || targetAId === viewerId || targetBId === viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
       if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('기록자')) return {}
+      const today = new Date().toISOString().slice(0, 10)
+      if (player.lastRecordBookDate === today) return {}
       const a = CHARACTERS.find((c) => c.id === targetAId)
       const b = CHARACTERS.find((c) => c.id === targetBId)
       if (!a || !b) return {}
@@ -1335,6 +1339,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
           secondCheck.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: secondCheck.disguiseArmed } : undefined,
         player: {
           abilityUseCount: player.abilityUseCount + 1,
+          lastRecordBookDate: today,
           personalClues: [...player.personalClues, text],
           gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(text)],
         },
@@ -1779,6 +1784,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       checkCctv,
       discern,
       usedDiscernToday,
+      usedRecordBookToday,
       forgeResult,
       revengerCheck,
       armDisguise,
@@ -1813,6 +1819,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       abilityUseCount,
       abilityMaxUses,
       usedDiscernToday,
+      usedRecordBookToday,
       personalClues,
       forgottenIdentity,
       hp,

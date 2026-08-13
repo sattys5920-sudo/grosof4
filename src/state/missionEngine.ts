@@ -5,7 +5,7 @@ import { CHARACTERS } from '../data/characters'
 // 최종 승패는 5 차가 끝난 뒤 승수가 더 많은 진영으로 결정한다.
 export const MISSION_SIZES = [3, 4, 4, 5, 5]
 export const TWO_FAILS_REQUIRED = [false, false, false, true, false]
-export const MAX_REJECTIONS = 5
+export const MAX_REJECTIONS = 3
 
 // 조사대 구성 / 찬반 투표 / 성공-실패 제출, 세 단계 모두 참여자 10 인이 각자 직접
 // 응답해야 한다. 각 단계는 10 분 동안 진행되며, 불가가 표결·제출을 마감하면 실제로
@@ -146,7 +146,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
           teamHistory,
           sinWins: state.sinWins + 1,
           phase: 'result',
-          lastNote: `찬성 ${tally.approve} · 반대 ${tally.reject} — 5 회 연속 부결로 조사가 자동 실패했다.`,
+          lastNote: `찬성 ${tally.approve} · 반대 ${tally.reject} — ${MAX_REJECTIONS} 회 연속 부결로 조사가 자동 실패했다.`,
         }
       }
       const nextLeaderIdx = (state.leaderIdx + 1) % state.turnOrder.length

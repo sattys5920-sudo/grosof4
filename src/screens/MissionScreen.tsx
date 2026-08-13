@@ -5,7 +5,13 @@ import { CHARACTERS } from '../data/characters'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
 import { ChatAvatar } from '../components/ChatAvatar'
-import { MISSION_PHASE_MS, MISSION_SIZES, TWO_FAILS_REQUIRED, resolvedTeam } from '../state/missionEngine'
+import {
+  MAX_REJECTIONS,
+  MISSION_PHASE_MS,
+  MISSION_SIZES,
+  TWO_FAILS_REQUIRED,
+  resolvedTeam,
+} from '../state/missionEngine'
 
 function MissionPopup({ text, onClose }: { text: string; onClose: () => void }) {
   return (
@@ -207,7 +213,7 @@ export function MissionScreen() {
       } else if (prev.phase === 'vote' && mission.phase === 'propose') {
         setPopupText('조사단 선정에 실패했다....... 다음 리더에게 넘어간다.')
       } else if (prev.phase === 'vote' && mission.phase === 'result') {
-        setPopupText('다섯 번의 부결 끝에 조사대 구성에 실패했다....... 이번 조사는 불발되었다.')
+        setPopupText(`${MAX_REJECTIONS} 번의 부결 끝에 조사대 구성에 실패했다....... 이번 조사는 불발되었다.`)
       } else if (prev.phase === 'execute' && mission.phase === 'result') {
         const flavor =
           trueResult === 'fail'
@@ -416,7 +422,7 @@ export function MissionScreen() {
       {mission.phase === 'vote' && (
         <div className="mission__panel">
           <p className="mission__leader">
-            <strong>{displayName(leader.id)}</strong>의 제안 — 부결 {mission.rejectionCount}/5
+            <strong>{displayName(leader.id)}</strong>의 제안 — 부결 {mission.rejectionCount}/{MAX_REJECTIONS}
             {phaseRemainingMs !== null && (
               <span className="mission__timer">
                 {' '}
