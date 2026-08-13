@@ -859,7 +859,7 @@ export function ProfileScreen() {
             <span className="profile__section-label">불가 전용 — 엔딩 발송</span>
             <p className="profile__gm-note">
               학생 진영의 승패와 괴이를 끊었는지 여부를 골라 확정하면, 그에 맞는 엔딩 기사를 전원에게
-              한 번에 전달한다. 한 번 보내면 되돌릴 수 없다.
+              한 번에 전달한다. 한번 보내면 되돌릴 수 없다.
             </p>
             <div className="profile__gm-presets">
               <button
