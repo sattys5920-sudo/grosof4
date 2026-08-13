@@ -304,7 +304,8 @@ export const LEAKER_ABILITY_NAME = '유포'
 export const LEAKER_ABILITY_DESCRIPTION =
   '한 명을 지목해 그 사람이 누구에게 자신의 능력을 썼는지(혹은 아무에게도 쓰지 않았는지) 알아낼 수 있다. 게임 전체에서 총 2 회까지 조사할 수 있으며, 알아낸 사실을 전원에게 익명으로 유포할지는 그때그때 직접 선택할 수 있다.'
 
-// 정체가 확정되는 순간 표시되는 개인 팝업/메시지. {team} 자리에 "학생" 또는 "괴이"가 들어간다.
+// 정체가 확정되는 순간 표시되는 개인 팝업/메시지.
 export function leakerRevealText(team: '학생' | '괴이'): string {
-  return `기억이 돌아온 것 같다....... 나는 사실 ${team} 쪽이었다. 그리고 지금 이 순간부터, 나는 유포자다.`
+  const identity = team === '학생' ? '나는 일반 학생이다.' : '나는 괴이 학생이다.'
+  return `기억이 돌아온 것 같다....... ${identity} 그리고 지금 이 순간부터, 나는 유포자다.`
 }

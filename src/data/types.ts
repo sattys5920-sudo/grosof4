@@ -121,6 +121,24 @@ export interface RoomEventState {
   note: string | null
   combat: CombatState | null
   open: boolean
+  investigation: HallwayInvestigationState
+}
+
+// 구관 각 방(도서관/보건실/방송실/옥상)에 고정된, 최초 조사 시 재생되는 튜토리얼성
+// 서사 이벤트. 로그를 순서대로 재생하다가 마지막에 종이가 떨어지며 그 방에 얽힌
+// 두 역할의 이름과 능력을 공개한다. 괴이 발동(전투)과는 별개의, 병행 가능한 트랙이다.
+export interface HallwayInvestigation {
+  roomId: RoomId
+  creatureName: string
+  creatureIntro: string
+  logs: string[]
+  revealRoles: [Role, Role]
+}
+
+export interface HallwayInvestigationState {
+  started: boolean
+  logIndex: number
+  completed: boolean
 }
 
 export interface FeedComment {

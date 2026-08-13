@@ -11,6 +11,7 @@ import {
 import { creatureById } from '../data/creatures'
 import { shopItemById } from '../data/shop'
 import { hallEventById } from '../data/hallEvents'
+import { hallwayInvestigationByRoom } from '../data/hallwayInvestigations'
 import { hallPuzzleById } from '../data/hallPuzzles'
 import { MINIGAME_OPTIONS } from '../data/hallMinigames'
 import type {
@@ -217,6 +218,9 @@ interface GameState {
   roomEvents: Record<RoomId, RoomEventState>
   closeRoomInvestigation: (roomId: RoomId) => void
   setRoomOpen: (roomId: RoomId, open: boolean) => void
+  startHallwayInvestigation: (roomId: RoomId) => void
+  advanceHallwayInvestigationLog: (roomId: RoomId) => void
+  finishHallwayInvestigation: (roomId: RoomId) => void
   classroomMessages: ChatMessage[]
   sendClassroomMessage: (text: string) => void
   classroom: ClassroomState
@@ -899,6 +903,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         defenderId: null,
       },
       open: state.open,
+      investigation: state.investigation,
     }))
     const room = ROOMS.find((r) => r.id === roomId)!
     sendBroadcast('sin', `${room.name}에서 무언가 나타났다`, `${creature.intro} — 지금 바로 ${room.name}으로 가 보자.......`)
@@ -912,6 +917,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       note: null,
       combat: null,
       open: state.open,
+      investigation: state.investigation,
     }))
   }
 
@@ -922,6 +928,52 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     if (open) {
       sendBroadcast('event', `${room.name} 개방`, `${room.name}이(가) 열렸다....... 지금 입장할 수 있다.`)
     }
+  }
+
+  function startHallwayInvestigation(roomId: RoomId) {
+    if (!isAdminFlag) return
+    const investigation = hallwayInvestigationByRoom(roomId)
+    if (!investigation) return
+    void updateRoomEventSync(roomId, (state) => {
+      if (state.investigation.started) return state
+      return { ...state, investigation: { started: true, logIndex: 0, completed: false } }
+    })
+  }
+
+  function advanceHallwayInvestigationLog(roomId: RoomId) {
+    if (!isAdminFlag) return
+    const investigation = hallwayInvestigationByRoom(roomId)
+    if (!investigation) return
+    void updateRoomEventSync(roomId, (state) => {
+      if (!state.investigation.started || state.investigation.completed) return state
+      const nextLogIndex = Math.min(state.investigation.logIndex + 1, investigation.logs.length)
+      return { ...state, investigation: { ...state.investigation, logIndex: nextLogIndex } }
+    })
+  }
+
+  function finishHallwayInvestigation(roomId: RoomId) {
+    if (!isAdminFlag) return
+    const investigation = hallwayInvestigationByRoom(roomId)
+    if (!investigation) return
+    const room = ROOMS.find((r) => r.id === roomId)!
+    const paperText = investigation.revealRoles
+      .map((role) => {
+        const character = CHARACTERS.find((c) => c.role === role)
+        return character ? `${role} — ${character.abilityName}\n${character.abilityDescription}` : role
+      })
+      .join('\n\n')
+    const clueMsg: ChatMessage = {
+      id: `room-${Date.now()}-clue`,
+      authorId: 'admin',
+      text: `【최종 단서】 ${paperText}`,
+      time: '지금',
+    }
+    void sendRoomMessageSync(roomId, clueMsg)
+    void addClueSync(makeClue({ title: `${room.name} 조사 결과`, text: paperText }, '구관'))
+    void updateRoomEventSync(roomId, (state) => {
+      if (!state.investigation.started || state.investigation.completed) return state
+      return { ...state, investigation: { ...state.investigation, completed: true } }
+    })
   }
 
   function dispatchClassroomEvent(item: EventLibraryItem) {
@@ -2002,6 +2054,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       roomEvents: session.roomEvents,
       closeRoomInvestigation,
       setRoomOpen,
+      startHallwayInvestigation,
+      advanceHallwayInvestigationLog,
+      finishHallwayInvestigation,
       classroomMessages: session.classroomMessages,
       sendClassroomMessage,
       classroom: session.classroom,

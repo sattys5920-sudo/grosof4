@@ -3,6 +3,7 @@ import './RoomsScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS, ROOMS } from '../data/characters'
 import { CREATURES } from '../data/creatures'
+import { hallwayInvestigationByRoom } from '../data/hallwayInvestigations'
 import type { RoomId } from '../data/types'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
@@ -51,6 +52,9 @@ export function RoomsScreen() {
     dispatchCreature,
     closeRoomInvestigation,
     setRoomOpen,
+    startHallwayInvestigation,
+    advanceHallwayInvestigationLog,
+    finishHallwayInvestigation,
     attackCreature,
     defendInCombat,
     hp,
@@ -82,6 +86,7 @@ export function RoomsScreen() {
     const occupants = roomOccupancy[openRoom]
     const iAmHere = !!viewerId && occupants.includes(viewerId)
     const roomEvent = roomEvents[openRoom]
+    const investigation = hallwayInvestigationByRoom(openRoom)
 
     function submitChat() {
       sendRoomMessage(openRoom!, draft)
@@ -123,9 +128,19 @@ export function RoomsScreen() {
                     초기화
                   </button>
                 )}
-                <button className="rooms__pin-plus" onClick={() => setSheetOpen(true)} aria-label="괴이 발동">
+                <button className="rooms__pin-plus" onClick={() => setSheetOpen(true)} aria-label="괴이 발동" title="괴이 발동">
                   +
                 </button>
+                {!roomEvent.investigation.started && (
+                  <button
+                    className="rooms__pin-plus rooms__pin-plus--investigate"
+                    onClick={() => startHallwayInvestigation(openRoom!)}
+                    aria-label="조사 시작"
+                    title="조사 시작"
+                  >
+                    +
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -164,6 +179,45 @@ export function RoomsScreen() {
 
           {(roomEvent.open || isAdmin || iAmHere) && !roomEvent.event && (
             <p className="rooms__pin-ambient">{room.ambientText}</p>
+          )}
+
+          {investigation && roomEvent.investigation.started && (
+            <div className="rooms__investigation">
+              <span className="rooms__investigation-creature">{investigation.creatureName}</span>
+              <div className="rooms__investigation-logs">
+                {investigation.logs.slice(0, roomEvent.investigation.logIndex).map((line, i) => (
+                  <p key={i} className="rooms__investigation-log-line">
+                    {line}
+                  </p>
+                ))}
+                {roomEvent.investigation.logIndex === 0 && !gmReveal && (
+                  <p className="rooms__investigation-waiting">아직 아무 일도 일어나지 않았다.</p>
+                )}
+                {roomEvent.investigation.logIndex < investigation.logs.length && gmReveal && (
+                  <button
+                    className="rooms__investigation-next"
+                    onClick={() => advanceHallwayInvestigationLog(openRoom!)}
+                  >
+                    다음 로그 ({roomEvent.investigation.logIndex}/{investigation.logs.length})
+                  </button>
+                )}
+              </div>
+              {roomEvent.investigation.logIndex >= investigation.logs.length &&
+                !roomEvent.investigation.completed &&
+                gmReveal && (
+                  <button
+                    className="rooms__investigation-finish"
+                    onClick={() => finishHallwayInvestigation(openRoom!)}
+                  >
+                    종이 줍기 (역할 정보 공개)
+                  </button>
+                )}
+              {roomEvent.investigation.completed && (
+                <p className="rooms__investigation-done">
+                  조사를 마쳤다....... 채팅에 남은 단서를 확인하자.
+                </p>
+              )}
+            </div>
           )}
 
           {roomEvent.event && combat && creature && (

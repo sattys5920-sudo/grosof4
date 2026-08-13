@@ -132,7 +132,15 @@ const INITIAL_ROOM_MESSAGES: Record<RoomId, ChatMessage[]> = {
 function initialRoomEvents(): Record<RoomId, RoomEventState> {
   const result = {} as Record<RoomId, RoomEventState>
   for (const room of ROOMS) {
-    result[room.id] = { event: null, cleared: false, clue: null, note: null, combat: null, open: false }
+    result[room.id] = {
+      event: null,
+      cleared: false,
+      clue: null,
+      note: null,
+      combat: null,
+      open: false,
+      investigation: { started: false, logIndex: 0, completed: false },
+    }
   }
   return result
 }
@@ -436,6 +444,7 @@ export async function forceCloseRoomSync(roomId: RoomId) {
         note: null,
         combat: null,
         open: data.roomEvents[roomId]?.open ?? false,
+        investigation: data.roomEvents[roomId]?.investigation ?? { started: false, logIndex: 0, completed: false },
       },
     }
     tx.update(sref, { roomOccupancy: nextOccupancy, roomEvents: nextEvents })
