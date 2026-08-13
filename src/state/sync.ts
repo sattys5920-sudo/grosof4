@@ -467,7 +467,12 @@ export async function updateRoomEventSync(
   await runTransaction(requireDb(), async (tx) => {
     const snap = await tx.get(sref)
     const data = snap.data() as SessionDoc
-    const next = { ...data.roomEvents, [roomId]: updater(data.roomEvents[roomId]) }
+    const current = data.roomEvents[roomId]
+    const withInvestigation: RoomEventState = {
+      ...current,
+      investigation: current.investigation ?? { started: false, logIndex: 0, completed: false },
+    }
+    const next = { ...data.roomEvents, [roomId]: updater(withInvestigation) }
     tx.update(sref, { roomEvents: next })
   })
 }

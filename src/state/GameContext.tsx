@@ -88,6 +88,21 @@ const ROOM_DEFEAT_EVICT_MIN = 5
 const ROOM_DEFEAT_EVICT_MS = ROOM_DEFEAT_EVICT_MIN * 60 * 1000
 const DICE_SUCCESS_THRESHOLD = 11
 
+// 기존(스키마 변경 이전) 세션 문서에는 roomEvents[room].investigation 필드가 없을 수
+// 있으므로, 구독해서 받은 데이터를 그대로 쓰기 전에 누락된 필드를 기본값으로 채운다.
+function normalizeSession(data: SessionDoc): SessionDoc {
+  const roomEvents = { ...data.roomEvents }
+  for (const roomId of Object.keys(roomEvents) as RoomId[]) {
+    if (!roomEvents[roomId].investigation) {
+      roomEvents[roomId] = {
+        ...roomEvents[roomId],
+        investigation: { started: false, logIndex: 0, completed: false },
+      }
+    }
+  }
+  return { ...data, roomEvents }
+}
+
 // 전투 중 실제로 차례를 진행할 수 있는 사람을 계산한다. 저장된 차례가 이미 방을 나갔거나
 // 빈사(HP 0) 상태라면 (방에 남아 움직일 수 있는 사람 중) 맨 앞 사람으로 자연스럽게 넘어간다.
 function effectiveTurnPlayerId(
@@ -467,7 +482,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     ensureSessionInitialized().catch(() => {})
-    const unsubSession = subscribeSession((data) => setSession({ ...defaultSessionState(), ...data }))
+    const unsubSession = subscribeSession((data) => setSession(normalizeSession({ ...defaultSessionState(), ...data })))
     const unsubPlayers = subscribeAllPlayers((p) => {
       setPlayers(p)
       setPlayersLoaded(true)
