@@ -159,7 +159,7 @@ export function RoomsScreen() {
           </div>
 
           {!roomEvent.open && !isAdmin && !iAmHere && (
-            <p className="rooms__pin-ambient">아직 이 구관은 잠겨 있다....... 불가가 열어야 들어갈 수 있다.</p>
+            <p className="rooms__pin-ambient">이 구관은 아직 잠겨 있다.</p>
           )}
 
           {(roomEvent.open || isAdmin || iAmHere) && !roomEvent.event && (
