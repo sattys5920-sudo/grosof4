@@ -116,7 +116,17 @@
 .feed__list {
   display: flex;
   flex-direction: column;
+  flex: 1;
   gap: 12px;
+}
+
+.feed__empty {
+  margin: auto;
+  max-width: 260px;
+  text-align: center;
+  color: var(--bone-dim);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .feed__post {

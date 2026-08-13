@@ -260,10 +260,6 @@ export function ClassroomScreen() {
           )}
         </div>
 
-        {!classroomOpen && !gmReveal && (
-          <p className="classroom__pin-ambient">강당 문이 아직 잠겨 있다.</p>
-        )}
-
         {(classroomOpen || gmReveal) && activeEvent && (
           <div className="hallevent">
             <div className="hallevent__head">
@@ -350,6 +346,12 @@ export function ClassroomScreen() {
           </div>
         )}
       </div>
+
+      {!classroomOpen && !gmReveal && (
+        <div className="classroom__locked">
+          <p className="classroom__pin-ambient">강당 문이 아직 잠겨 있다.</p>
+        </div>
+      )}
 
       {(classroomOpen || gmReveal) && (
         <div className="classroom__log">

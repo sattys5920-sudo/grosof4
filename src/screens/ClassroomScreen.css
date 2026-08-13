@@ -206,6 +206,20 @@
   line-height: 1.6;
 }
 
+.classroom__locked {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 24px;
+}
+
+.classroom__locked .classroom__pin-ambient {
+  max-width: 260px;
+}
+
 .classroom__log {
   flex: 1;
   min-height: 0;
