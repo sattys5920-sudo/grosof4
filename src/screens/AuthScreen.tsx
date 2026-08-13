@@ -45,7 +45,6 @@ export function AuthScreen() {
       <div className="auth__intro">
         <span className="auth__eyebrow">{SCHOOL_NAME} · 재학생 확인</span>
         <h1>{mode === 'register' ? '처음 왔다면' : '다시 왔다면'}</h1>
-        <p>아이디와 비밀번호로 자신을 증명해야 한다....... 이 안개 속에서는 그것만이 유일한 증거다.</p>
       </div>
 
       <div className="auth__tabs">

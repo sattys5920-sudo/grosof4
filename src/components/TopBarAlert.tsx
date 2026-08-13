@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import './TopBarAlert.css'
 import { useGame } from '../state/GameContext'
 
-const VISIBLE_MS = 6000
+const VISIBLE_MS = 3000
 const EXIT_MS = 300
 
 export function TopBarAlert() {
