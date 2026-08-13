@@ -1,8 +1,9 @@
 import type { HallPuzzle } from './types'
 
-// 강당 조사 이벤트용 문제 뱅크 30개. 사용자가 직접 만든 13개(hp03, hp05, hp07, hp10,
-// hp11, hp12, hp13, hp14, hp15, hp17, hp22, hp29, hp30)와 그에 맞춰 새로 제작한 17개로 구성했다.
-// 원소기호/암호/애너그램/논리/방정식/수열 등 다양한 유형을 섞었고, 전반적으로
+// 강당 조사 이벤트용 문제 뱅크 30개. 사용자가 직접 만든 23개(hp03, hp04, hp05, hp06,
+// hp07, hp09, hp10, hp11, hp12, hp13, hp14, hp15, hp17, hp18, hp20, hp21, hp22, hp23,
+// hp25, hp26, hp28, hp29, hp30)와 그에 맞춰 새로 제작한 7개로 구성했다.
+// 원소기호/암호/애너그램/방정식/수열 등 다양한 유형을 섞었고, 전반적으로
 // 난이도를 높여 배치했다. 정답 제출은 최대 3 회, 맞히면 정답과 풀이가 함께 공개된다.
 export const HALL_PUZZLES: HallPuzzle[] = [
   {
@@ -35,12 +36,13 @@ export const HALL_PUZZLES: HallPuzzle[] = [
   },
   {
     id: 'hp04',
-    title: '세 자리에 들어갈 한 글자',
-    category: '동음이의어',
+    title: '자모를 흩어놓은 이름',
+    category: '애너그램',
     questionText:
-      '다음 세 문장에 공통으로 들어갈 한 글자는 무엇인가?\n"__를 타고 강을 건넜다."\n"__가 아파서 병원에 갔다."\n"__ 하나를 깎아 먹었다."',
-    answer: '배',
-    solution: '배(舟-배를 타다, 복부, 과일)는 발음이 같지만 뜻이 다른 세 단어에 모두 해당한다.',
+      '다음 다섯 글자의 자음과 모음을 모두 낱낱이 흩뜨린 뒤(획을 돌리거나 뒤집지 않고) 다시 조합하면 어떤 단어가 되는가? (한글로 답하시오)\n으 셀 다 비 에',
+    answer: '에델바이스',
+    solution:
+      '각 글자를 자음과 모음으로 분해하면 으=ㅇㅡ, 셀=ㅅㅔㄹ, 다=ㄷㅏ, 비=ㅂㅣ, 에=ㅇㅔ이다. 이 낱글자들을 다시 조합하면 에(ㅇㅔ)-델(ㄷㅔㄹ)-바(ㅂㅏ)-이(ㅇㅣ)-스(ㅅㅡ), 즉 에델바이스가 된다.',
   },
   {
     id: 'hp05',
@@ -53,12 +55,13 @@ export const HALL_PUZZLES: HallPuzzle[] = [
   },
   {
     id: 'hp06',
-    title: '책상 밑 낙서',
-    category: '위치암호',
+    title: '나무 속 쪽지',
+    category: '단어',
     questionText:
-      '어느 책상 밑에 낙서가 남아 있다. 알파벳별로 나타나는 자리(왼쪽부터, 공백 없이 총 6 자리)가 다음과 같을 때 완성되는 단어는? (영문 대문자로 답하시오)\nH: 1\nE: 2, 6\nL: 3\nP: 4\nM: 5',
-    answer: 'HELPME',
-    solution: '1 번 자리 H, 2 번 자리 E, 3 번 자리 L, 4 번 자리 P, 5 번 자리 M, 6 번 자리 E를 순서대로 이으면 HELPME.',
+      '나무 속에 쪽지가 숨어 있다. 다음 아홉 단어를 순서대로 이어 붙인 뒤, 그 안에 섞여 들어간 TREE의 글자들을 지우고 남은 글자를 다시 이으면 하나의 문장이 나타난다. 그 문장은 무엇인가? (영문 대문자, 띄어쓰기 없이 답하시오)\nTIRE LET OVER EYE TO RUDE EAR LINT GREET',
+    answer: 'ILOVEYOUDARLING',
+    solution:
+      '아홉 단어를 순서대로 이어 붙이면 TIRELETOVEREYETORUDEEARLINTGREET이 된다. 이 안에 나무(TREE)를 이루는 글자들이 여러 겹 섞여 있는데, 이를 지우고 남은 글자를 다시 이으면 ILOVEYOUDARLING이 완성된다.',
   },
   {
     id: 'hp07',
@@ -80,11 +83,13 @@ export const HALL_PUZZLES: HallPuzzle[] = [
   },
   {
     id: 'hp09',
-    title: '250 일 후',
-    category: '요일',
-    questionText: '오늘은 화요일이다. 250 일 후는 무슨 요일인가?',
-    answer: '일요일',
-    solution: '250을 7로 나누면 몫 35, 나머지 5. 화요일에서 5 일을 더하면 화→수→목→금→토→일, 즉 일요일.',
+    title: '숫자 말의 꼬리잇기',
+    category: '연쇄',
+    questionText:
+      '숫자를 영단어로 바꾸었을 때, 앞 단어의 끝 글자와 다음 단어의 첫 글자가 이어지는 고리 규칙이 있다.\n1 > 8 > 2 > 1\n13 > 9 > 11 > 99 > 8 > 13\n8 > 12 > 11 > ? > 8',
+    answer: '9',
+    solution:
+      '숫자를 영단어로 바꾸면 앞 단어의 마지막 글자가 다음 단어의 첫 글자와 같아지는 고리가 만들어진다(ONE-EIGHT-TWO-ONE, THIRTEEN-NINE-ELEVEN-NINETYNINE-EIGHT-THIRTEEN). EIGHT(T)-TWELVE(E)-ELEVEN(N) 다음에는 N으로 시작해 E로 끝나는 단어가 이어져야 다시 EIGHT(E)로 연결되므로, 정답은 NINE(9)이다.',
   },
   {
     id: 'hp10',
@@ -161,12 +166,11 @@ export const HALL_PUZZLES: HallPuzzle[] = [
   },
   {
     id: 'hp18',
-    title: '겹치는 불행',
-    category: '초성',
-    questionText:
-      '"눈 위에 서리까지 더해지다"라는 뜻으로, 불행한 일이 겹쳐 일어남을 비유하는 사자성어를 초성 힌트로 맞히시오.\nㅅㅅㄱㅅ',
-    answer: '설상가상',
-    solution: '雪上加霜(설상가상) — 설(ㅅ) 상(ㅅ) 가(ㄱ) 상(ㅅ).',
+    title: '빠진 기호',
+    category: '수학기호',
+    questionText: '다음 식이 성립하도록 빈칸에 공통으로 들어갈 기호는 무엇인가?\n3? × 5? = 6?',
+    answer: '!',
+    solution: '팩토리얼(!) 기호를 넣으면 3!×5!=6×120=720이고, 6!=720으로 두 값이 같아진다.',
   },
   {
     id: 'hp19',
@@ -178,21 +182,21 @@ export const HALL_PUZZLES: HallPuzzle[] = [
   },
   {
     id: 'hp20',
-    title: '한 명만 거짓말',
-    category: '논리',
-    questionText:
-      '세 사람 갑, 을, 병 중 한 명이 범인이다. 갑은 "범인은 나다", 을은 "범인은 갑이 아니다", 병은 "범인은 을이다"라고 말했다. 이 중 정확히 한 명만 거짓말을 했다. 범인은 누구인가? (갑/을/병 중 하나로 답하시오)',
-    answer: '을',
+    title: '제곱을 뒤집으면',
+    category: '숫자규칙',
+    questionText: '다음 규칙에 따라 빈칸에 들어갈 두 자리 숫자를 구하시오.\n0240-0552\n0918-0846\n0110-03??',
+    answer: '90',
     solution:
-      '범인이 을이라고 가정하면 갑의 말(범인은 나다)은 거짓, 을의 말(범인은 갑이 아니다)은 참, 병의 말(범인은 을이다)은 참 — 거짓말이 정확히 한 명이라는 조건과 맞는다. 다른 경우를 대입하면 거짓말한 사람이 0 명이거나 2 명이 되어 모순된다. 따라서 범인은 을.',
+      '앞 두 자리 수를 제곱한 뒤(두 자리로 채워) 그 숫자를 뒤집으면 뒤 두 자리가 된다. 02²=04, 뒤집으면 40 → 0240. 05²=25, 뒤집으면 52 → 0552. 09²=81, 뒤집으면 18 → 0918. 08²=64, 뒤집으면 46 → 0846. 01²=01, 뒤집으면 10 → 0110. 같은 방식으로 03²=09, 뒤집으면 90이므로 정답은 90.',
   },
   {
     id: 'hp21',
-    title: '곱에서 합을 빼면',
-    category: '숫자규칙',
-    questionText: '24 -> 2\n36 -> 9\n48 -> 20\n67 -> ?',
-    answer: '29',
-    solution: '두 자릿수의 곱에서 두 자릿수의 합을 뺀다. 24: 2×4-(2+4)=2. 36: 3×6-(3+6)=9. 48: 4×8-(4+8)=20. 67: 6×7-(6+7)=29.',
+    title: '단어들의 가면',
+    category: '알파벳',
+    questionText:
+      '다음 단어들 앞에 공통으로 한 글자를 붙이면 모두 새로운 단어가 된다. 그 글자는 무엇인가? (영문 소문자로 답하시오)\ntop  it  ing  have  truck',
+    answer: 's',
+    solution: '앞에 s를 붙이면 stop, sit, sing, shave, struck으로 모두 뜻이 통하는 단어가 된다.',
   },
   {
     id: 'hp22',
@@ -201,16 +205,16 @@ export const HALL_PUZZLES: HallPuzzle[] = [
     questionText: 'ONE + ZERO = 6\nEERHT + THREE = 8\nZERO + ONE = (?)',
     answer: '9',
     solution:
-      '숫자를 겹쳐 쓸 때 생기는 교차점의 개수를 세는 규칙이다. 1(ONE)의 오른쪽 아래로 0(ZERO)을 겹쳐 쓰면 만들어지는 교차점이 6 개가 된다. 같은 방식으로 ZERO와 ONE을 겹치면 교차점은 9 개가 된다.',
+      '숫자를 글자 모양 그대로 겹쳐 쓸 때 만들어지는 새로운 숫자를 찾는 규칙이다. 예를 들어 3을 좌우로 뒤집은 모양(EERHT)과 원래 3(THREE)을 겹치면 8이 된다. 같은 방식으로 0(ZERO)과 1(ONE)을 겹치면 6이 되고, 순서를 바꾸어 1(ONE)과 0(ZERO)을 겹치면 6을 뒤집은 모양인 9가 된다.',
   },
   {
     id: 'hp23',
-    title: '색칠된 정육면체',
-    category: '도형',
-    questionText:
-      '겉면을 모두 칠한 정육면체를 각 모서리를 3 등분해 27 개의 작은 정육면체로 잘랐다. 이 중 정확히 두 면만 칠해진 작은 정육면체는 몇 개인가?',
-    answer: '12',
-    solution: '모서리 위에 있지만 꼭짓점은 아닌 작은 정육면체가 두 면만 칠해진다. 정육면체는 모서리가 12 개이고, 각 모서리마다 그런 조각이 정확히 1 개씩 있으므로 총 12 개.',
+    title: '숫자 속 세 조각',
+    category: '숫자규칙',
+    questionText: 'one 314\ntwo 325\nthree 538\nfour 448\nfive ?',
+    answer: '459',
+    solution:
+      '세 자리 숫자는 [글자 수][몇 번째 수인지][글자 수+순서]로 이루어진다. one은 글자 수 3, 순서 1, 합 4 → 314. two는 3, 2, 5 → 325. three는 5, 3, 8 → 538. four는 4, 4, 8 → 448. five는 글자 수 4, 순서 5, 합 9이므로 459.',
   },
   {
     id: 'hp24',
@@ -222,19 +226,21 @@ export const HALL_PUZZLES: HallPuzzle[] = [
   },
   {
     id: 'hp25',
-    title: '세 수의 합',
-    category: '방정식',
-    questionText: '세 자연수 x, y, z가 있다. x+y=10, y+z=14, z+x=16이다. 이 중 가장 큰 수는 얼마인가?',
-    answer: '10',
-    solution: '세 식을 모두 더하면 2(x+y+z)=40, x+y+z=20. z=20-10=10, x=20-14=6, y=20-16=4. 가장 큰 수는 z=10.',
+    title: '곱셈의 디지털 루트',
+    category: '숫자규칙',
+    questionText: '11 11 = 4\n13 15 = 6\n15 19 = 6\n17 23 = ?',
+    answer: '4',
+    solution:
+      '두 수를 곱한 뒤, 각 자리 숫자를 한 자리 수가 될 때까지 계속 더한다(디지털 루트). 11×11=121→1+2+1=4. 13×15=195→1+9+5=15→1+5=6. 15×19=285→2+8+5=15→6. 17×23=391→3+9+1=13→1+3=4.',
   },
   {
     id: 'hp26',
-    title: '흩어진 기숙사',
-    category: '단어',
-    questionText: '다음 아홉 글자를 재배열하면 잠을 자고 머무는 시설을 뜻하는 영단어가 된다. "ROTIMROYD" — 그 단어는?',
-    answer: 'DORMITORY',
-    solution: 'R, O, T, I, M, R, O, Y, D를 재배열하면 DORMITORY(기숙사)가 된다.',
+    title: '방위 숫자의 합',
+    category: '숫자규칙',
+    questionText: 'WE = 360\nNEW = 360\nSEE = ?',
+    answer: '360',
+    solution:
+      '각 알파벳을 나침반 방위 각도로 바꾼다: N=0, E=90, S=180, W=270. 그 값을 모두 더한다. WE: 270+90=360. NEW: 0+90+270=360. SEE: 180+90+90=360.',
   },
   {
     id: 'hp27',
@@ -246,11 +252,13 @@ export const HALL_PUZZLES: HallPuzzle[] = [
   },
   {
     id: 'hp28',
-    title: '16 진수 해독',
-    category: '숫자',
-    questionText: '16 진수 2F를 10 진수로 바꾸면 얼마인가?',
-    answer: '47',
-    solution: '2F = 2×16 + 15 = 32+15 = 47.',
+    title: '거꾸로 선 숫자들',
+    category: '암호',
+    questionText:
+      '다음은 6부터 1까지의 영어 단어를 각각 거꾸로 뒤집어 이어붙인 문자열이다. 물음표(?) 자리에 들어갈 글자를 순서대로 이으면 무엇이 되는가? (영문 소문자로 답하시오)\nxis??ifruofeerhtowt??o',
+    answer: 'even',
+    solution:
+      '6, 5, 4, 3, 2, 1을 영단어(SIX, FIVE, FOUR, THREE, TWO, ONE)로 바꾸고 각 단어를 거꾸로 뒤집어 이어 붙이면 XISEVIFRUOFEERHTOWTENO가 된다. 물음표로 가려진 자리(EVIF의 EV, ENO의 EN)를 순서대로 이으면 EVEN이 완성된다.',
   },
   {
     id: 'hp29',
