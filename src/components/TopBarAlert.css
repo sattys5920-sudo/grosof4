@@ -1,17 +1,24 @@
 .topalert {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 5;
+  position: fixed;
+  top: env(safe-area-inset-top);
+  left: 50%;
+  width: 100%;
+  max-width: 430px;
+  transform: translateX(-50%);
+  z-index: 90;
   display: flex;
   align-items: center;
   gap: 7px;
   padding: 8px 12px;
-  background: var(--void-3);
-  border-bottom: 1px solid var(--veil);
+  background: var(--void-2);
+  border-bottom: 2px solid var(--veil);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   cursor: pointer;
-  animation: topalert-in 0.2s ease-out;
+  animation: topalert-in 0.2s ease-out forwards;
+}
+
+.topalert.is-closing {
+  animation: topalert-out 0.3s ease-in forwards;
 }
 
 .topalert__dot {
@@ -35,11 +42,22 @@
 
 @keyframes topalert-in {
   from {
-    transform: translateY(-6px);
+    transform: translateX(-50%) translateY(-100%);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
     opacity: 1;
+  }
+}
+
+@keyframes topalert-out {
+  from {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-50%) translateY(-100%);
+    opacity: 0;
   }
 }

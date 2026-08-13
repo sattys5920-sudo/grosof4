@@ -59,12 +59,12 @@ function Shell() {
           <span className="shell__dot" />
           {weather} · 시간 미상
         </span>
-        <TopBarAlert />
       </header>
       <main className="shell__body">
         <Screen />
       </main>
       <TabBar />
+      <TopBarAlert />
       <BroadcastPopup />
     </div>
   )

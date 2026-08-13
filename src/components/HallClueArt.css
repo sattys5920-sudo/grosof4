@@ -46,16 +46,6 @@
   width: 20px;
 }
 
-.clueart__list li.is-flagged {
-  color: var(--sin);
-  font-weight: bold;
-  text-shadow: 0 0 6px var(--sin-dim);
-}
-
-.clueart__list li.is-flagged .clueart__list-num {
-  color: var(--sin);
-}
-
 /* 학생증 */
 .clueart__idcard {
   display: flex;
