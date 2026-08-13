@@ -254,7 +254,7 @@ export const ROOMS: Room[] = [
     id: 'rooftop',
     name: '옥상',
     capacity: 2,
-    description: '유민서가 마지막으로 목격된 장소. 안개는 이곳에서 가장 짙다.',
+    description: '옥상 밖 하늘은 별 하나 없이 깜깜하고, 난간 너머로는 짙은 안개만 끝없이 깔려 있다.',
     ambientText: '옥상은 고요하다....... 안개가 유독 짙게 깔려 있어 난간 너머는 아무것도 보이지 않는다. 아직 아무것도 열리지 않았다.',
   },
 ]
