@@ -545,8 +545,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     if (msgs.length > lastDmCountRef.current) {
       const last = msgs[msgs.length - 1]
       if (last.authorId === 'admin') {
-        setTopAlert({ id: last.id, text: `교내 방송: ${last.text}` })
-        notifyBackground('교내 방송', last.text, 'profile')
+        setTopAlert({ id: last.id, text: `??: ${last.text}` })
+        notifyBackground('??', last.text, 'profile')
       }
     }
     lastDmCountRef.current = msgs.length
@@ -692,7 +692,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   }
 
   function displayName(id: string) {
-    if (id === 'admin') return '교내 방송'
+    if (id === 'admin') return '??'
     if (id === viewerId) return nickname
     return players[id]?.nickname ?? CHARACTERS.find((c) => c.id === id)?.name ?? '???'
   }
@@ -721,7 +721,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
   function loginAsAdmin(code: string) {
     if (code.trim() !== ADMIN_CODE) throw new Error('코드가 올바르지 않다.')
-    const finalNickname = '불가'
+    const finalNickname = '??'
     localStorage.setItem(LS.isAdmin, 'true')
     localStorage.setItem(LS.adminNickname, finalNickname)
     localStorage.setItem(LS.roleRevealed, 'true')
@@ -1233,7 +1233,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function createFeedPost(title: string, body: string, commentsEnabled: boolean) {
     if (!title.trim() || !body.trim()) return
     void createFeedPostSync({
-      authorLabel: '[교내 방송]',
+      authorLabel: '[??]',
       tag: '공지',
       title: title.trim(),
       body: body.trim(),

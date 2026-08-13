@@ -29,7 +29,7 @@ export function AbilityUseModal({
         </div>
         <div className="ability-modal__chat">
           <div className="ability-modal__msg">
-            <span className="ability-modal__msg-name">교내 방송</span>
+            <span className="ability-modal__msg-name">??</span>
             <p className="ability-modal__msg-text">{prompt}</p>
           </div>
         </div>

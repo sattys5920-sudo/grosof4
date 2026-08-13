@@ -13,9 +13,12 @@ export function ChatAvatar({
 }) {
   if (authorId === 'admin') {
     return (
-      <span className="chat-avatar chat-avatar--gm" style={{ width: size, height: size, fontSize: size * 0.28 }}>
-        방송
-      </span>
+      <img
+        className="chat-avatar chat-avatar--gm"
+        style={{ width: size, height: size }}
+        src={`${import.meta.env.BASE_URL}images/admin-eye.jpg`}
+        alt="??"
+      />
     )
   }
   if (photo) {

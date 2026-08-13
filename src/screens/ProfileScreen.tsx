@@ -46,15 +46,15 @@ function PlayerGmDmPanel() {
 
   return (
     <div className="profile__section profile__dm">
-      <span className="profile__section-label">교내 방송에 개인 메시지</span>
-      <p className="profile__gm-note">다른 부원에게는 보이지 않는, 교내 방송과 나 사이의 개인 대화다.</p>
+      <span className="profile__section-label">??에게 개인 메시지</span>
+      <p className="profile__gm-note">다른 부원에게는 보이지 않는, ??와 나 사이의 개인 대화다.</p>
       <div className="profile__dm-log">
         {gmDmMessages.length === 0 && (
           <p className="profile__dm-empty">아직 대화가 없다.</p>
         )}
         {gmDmMessages.map((m) => (
           <div key={m.id} className={`profile__dm-msg ${m.authorId === 'admin' ? 'is-gm' : 'is-me'}`}>
-            <span className="profile__dm-msg-name">{m.authorId === 'admin' ? '교내 방송' : '나'}</span>
+            <span className="profile__dm-msg-name">{m.authorId === 'admin' ? '??' : '나'}</span>
             <p className="profile__dm-msg-text">{m.text}</p>
           </div>
         ))}
@@ -64,7 +64,7 @@ function PlayerGmDmPanel() {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder="교내 방송에 메시지 보내기......"
+          placeholder="??에게 메시지 보내기......"
         />
         <button onClick={submit}>전송</button>
       </div>
@@ -109,7 +109,7 @@ function AdminGmDmPanel() {
                     {messages.length === 0 && <p className="profile__dm-empty">아직 대화가 없다.</p>}
                     {messages.map((m) => (
                       <div key={m.id} className={`profile__dm-msg ${m.authorId === 'admin' ? 'is-gm' : 'is-me'}`}>
-                        <span className="profile__dm-msg-name">{m.authorId === 'admin' ? '불가' : player.nickname}</span>
+                        <span className="profile__dm-msg-name">{m.authorId === 'admin' ? '??' : player.nickname}</span>
                         <p className="profile__dm-msg-text">{m.text}</p>
                       </div>
                     ))}
@@ -320,7 +320,7 @@ export function ProfileScreen() {
                 <>
                   {usesLeft <= 0 ? (
                     <p className="profile__ability-locked">
-                      사용 완료 ({abilityUseCount}/{abilityMaxUses}) — 교내 방송과의 개인 대화에서 결과를 다시
+                      사용 완료 ({abilityUseCount}/{abilityMaxUses}) — ??와의 개인 대화에서 결과를 다시
                       확인할 수 있다.
                     </p>
                   ) : viewer.role === '파괴자' && !accompliceReady ? (
@@ -569,7 +569,9 @@ export function ProfileScreen() {
       {!viewer && (
         <div className="profile__card">
           <div className="profile__card-head">
-            <div className="profile__admin-badge">불가</div>
+            <div className="profile__admin-badge">
+              <img src={`${import.meta.env.BASE_URL}images/admin-eye.jpg`} alt="??" />
+            </div>
             <div className="profile__name-block">
               <span className="profile__name-static">{nickname}</span>
               <span className="profile__role">진행자 계정</span>

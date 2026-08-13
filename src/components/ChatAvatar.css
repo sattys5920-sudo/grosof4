@@ -21,8 +21,7 @@
 }
 
 .chat-avatar--gm {
-  background: var(--veil-dim);
+  background: #000;
   border: 1px solid var(--veil);
-  color: var(--veil);
-  letter-spacing: -0.5px;
+  object-fit: cover;
 }
