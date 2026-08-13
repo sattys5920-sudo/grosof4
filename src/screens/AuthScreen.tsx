@@ -4,19 +4,15 @@ import { useGame } from '../state/GameContext'
 import { SCHOOL_NAME } from '../data/characters'
 
 export function AuthScreen() {
-  const { register, login, loginAsAdmin, registerAdmin, loginAdmin } = useGame()
+  const { register, login, loginAsAdmin } = useGame()
   const [mode, setMode] = useState<'register' | 'login'>('register')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [adminOpen, setAdminOpen] = useState(false)
-  const [adminMode, setAdminMode] = useState<'quick' | 'register' | 'login'>('quick')
   const [adminCode, setAdminCode] = useState('')
-  const [adminUsername, setAdminUsername] = useState('')
-  const [adminPassword, setAdminPassword] = useState('')
   const [adminError, setAdminError] = useState('')
-  const [adminBusy, setAdminBusy] = useState(false)
 
   async function submit() {
     if (!username.trim() || !password.trim() || busy) return
@@ -35,22 +31,12 @@ export function AuthScreen() {
     }
   }
 
-  async function submitAdmin() {
-    if (adminBusy) return
+  function submitAdmin() {
     setAdminError('')
-    setAdminBusy(true)
     try {
-      if (adminMode === 'quick') {
-        loginAsAdmin(adminCode)
-      } else if (adminMode === 'register') {
-        await registerAdmin(adminUsername, adminPassword, adminCode)
-      } else {
-        await loginAdmin(adminUsername, adminPassword)
-      }
+      loginAsAdmin(adminCode)
     } catch (e) {
       setAdminError(e instanceof Error ? e.message : '알 수 없는 오류가 발생했다.')
-    } finally {
-      setAdminBusy(false)
     }
   }
 
@@ -105,71 +91,13 @@ export function AuthScreen() {
 
       {adminOpen && (
         <div className="auth__admin-box">
-          <div className="auth__admin-modes">
-            <button
-              className={adminMode === 'quick' ? 'is-active' : ''}
-              onClick={() => setAdminMode('quick')}
-            >
-              코드로 입장
-            </button>
-            <button
-              className={adminMode === 'register' ? 'is-active' : ''}
-              onClick={() => setAdminMode('register')}
-            >
-              불가 가입
-            </button>
-            <button
-              className={adminMode === 'login' ? 'is-active' : ''}
-              onClick={() => setAdminMode('login')}
-            >
-              불가 로그인
-            </button>
-          </div>
-
-          {adminMode === 'quick' && (
-            <input
-              value={adminCode}
-              onChange={(e) => setAdminCode(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && submitAdmin()}
-              placeholder="관리자 코드"
-            />
-          )}
-
-          {(adminMode === 'register' || adminMode === 'login') && (
-            <>
-              <input
-                value={adminUsername}
-                onChange={(e) => setAdminUsername(e.target.value)}
-                placeholder="관리자 아이디"
-              />
-              <input
-                type="password"
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && submitAdmin()}
-                placeholder="관리자 비밀번호"
-              />
-            </>
-          )}
-
-          {adminMode === 'register' && (
-            <input
-              value={adminCode}
-              onChange={(e) => setAdminCode(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && submitAdmin()}
-              placeholder="관리자 코드 (가입 확인용)"
-            />
-          )}
-
-          <button onClick={submitAdmin} disabled={adminBusy}>
-            {adminBusy
-              ? '확인 중......'
-              : adminMode === 'quick'
-                ? '관리자로 입장'
-                : adminMode === 'register'
-                  ? '불가로 가입하기'
-                  : '불가로 로그인'}
-          </button>
+          <input
+            value={adminCode}
+            onChange={(e) => setAdminCode(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submitAdmin()}
+            placeholder="관리자 코드"
+          />
+          <button onClick={submitAdmin}>관리자로 입장</button>
           {adminError && <p className="auth__error">{adminError}</p>}
         </div>
       )}

@@ -307,32 +307,6 @@ export async function loginAccountSync(username: string, password: string): Prom
   return account.characterId
 }
 
-/** 불가 전용: 캐릭터 자리와 무관하게 별도의 아이디/비밀번호 계정을 새로 만든다. */
-export async function registerAdminAccountSync(username: string, password: string): Promise<void> {
-  const uname = username.trim().toLowerCase()
-  if (!uname || !password) throw new Error('아이디와 비밀번호를 모두 입력해야 한다.')
-  const passwordHash = await hashPassword(password)
-  const aref = accountRef(uname)
-  await runTransaction(requireDb(), async (tx) => {
-    const snap = await tx.get(aref)
-    if (snap.exists()) throw new Error('이미 사용 중인 아이디다.')
-    const account: AccountDoc = { passwordHash, characterId: null, isAdmin: true, createdAtMs: Date.now() }
-    tx.set(aref, account)
-  })
-}
-
-/** 불가 전용: 아이디/비밀번호로 관리자 계정에 로그인한다. */
-export async function loginAdminAccountSync(username: string, password: string): Promise<void> {
-  const uname = username.trim().toLowerCase()
-  if (!uname || !password) throw new Error('아이디와 비밀번호를 모두 입력해야 한다.')
-  const aSnap = await getDoc(accountRef(uname))
-  if (!aSnap.exists()) throw new Error('존재하지 않는 아이디다.')
-  const account = aSnap.data() as AccountDoc
-  if (!account.isAdmin) throw new Error('불가 계정이 아니다.')
-  const passwordHash = await hashPassword(password)
-  if (passwordHash !== account.passwordHash) throw new Error('비밀번호가 일치하지 않는다.')
-}
-
 /** GM fallback: manually assign a specific unclaimed character slot to a nickname. */
 export async function assignRoleManuallySync(characterId: string, nickname: string) {
   const sref = sessionRef()
@@ -556,6 +530,42 @@ export async function runHallMinigameTransaction(
       if (snap.exists()) participants[pendingIds[i]] = snap.data() as PlayerDoc
     })
     const { session: sessionPatch, playerPatches } = fn(session, participants)
+    if (sessionPatch) {
+      tx.update(sref, sessionPatch.mission ? { ...sessionPatch, mission: serializeMission(sessionPatch.mission) } : sessionPatch)
+    }
+    if (playerPatches) {
+      for (const [id, patch] of Object.entries(playerPatches)) {
+        tx.update(playerRef(id), patch)
+      }
+    }
+  })
+}
+
+/**
+ * Runs a room-combat transaction: reads the shared session doc plus every current occupant's
+ * player doc for that room (a dynamic list read from the session itself), so the caller can see
+ * everyone's hp/stamina at once — needed to skip incapacitated players in turn order and to
+ * redirect retaliation to whoever is defending.
+ */
+export async function runRoomCombatTransaction(
+  roomId: RoomId,
+  fn: (
+    session: SessionDoc,
+    occupants: Record<string, PlayerDoc>,
+  ) => { session?: Partial<SessionDoc>; playerPatches?: Record<string, Partial<PlayerDoc>> },
+) {
+  const sref = sessionRef()
+  await runTransaction(requireDb(), async (tx) => {
+    const sSnap = await tx.get(sref)
+    const rawSession = sSnap.data() as SessionDoc
+    const session = { ...rawSession, mission: deserializeMission(rawSession.mission) }
+    const occupantIds = session.roomOccupancy[roomId] ?? []
+    const playerSnaps = await Promise.all(occupantIds.map((id) => tx.get(playerRef(id))))
+    const occupants: Record<string, PlayerDoc> = {}
+    playerSnaps.forEach((snap, i) => {
+      if (snap.exists()) occupants[occupantIds[i]] = snap.data() as PlayerDoc
+    })
+    const { session: sessionPatch, playerPatches } = fn(session, occupants)
     if (sessionPatch) {
       tx.update(sref, sessionPatch.mission ? { ...sessionPatch, mission: serializeMission(sessionPatch.mission) } : sessionPatch)
     }

@@ -3,7 +3,7 @@ import './SignupScreen.css'
 import { useGame } from '../state/GameContext'
 import { SCHOOL_NAME } from '../data/characters'
 
-const GRADES = ['1 학년', '2 학년', '3 학년', '교사']
+const GRADES = ['1 학년', '2 학년', '3 학년']
 
 export function SignupScreen() {
   const { completeProfile } = useGame()

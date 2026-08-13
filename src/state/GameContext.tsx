@@ -4,6 +4,7 @@ import { creatureById } from '../data/creatures'
 import { shopItemById } from '../data/shop'
 import { hallEventById } from '../data/hallEvents'
 import { hallPuzzleById } from '../data/hallPuzzles'
+import { MINIGAME_OPTIONS } from '../data/hallMinigames'
 import type {
   Broadcast,
   BroadcastKind,
@@ -29,9 +30,7 @@ import {
   addCommentSync,
   assignRoleManuallySync,
   loginAccountSync,
-  loginAdminAccountSync,
   registerAccountSync,
-  registerAdminAccountSync,
   createFeedPostSync,
   defaultSessionState,
   ensureSessionInitialized,
@@ -48,6 +47,7 @@ import {
   runAbilityTransaction,
   runCombatTransaction,
   runHallMinigameTransaction,
+  runRoomCombatTransaction,
   sendBroadcastSync,
   sendClassroomMessageSync,
   sendGmDmMessageSync,
@@ -68,17 +68,35 @@ import {
   type SessionDoc,
 } from './sync'
 
-const ATTACK_STAMINA_COST = 10
+const ATTACK_STAMINA_COST = 4
 const BASE_ATK = 5
 const DICE_COUNT = 3
 const DICE_SUCCESS_THRESHOLD = 11
 
-// 전투 중 실제로 공격할 차례인 사람을 계산한다. 저장된 차례가 이미 방을 나간 사람이면
-// (방에 남은 사람 중) 맨 앞 사람으로 자연스럽게 넘어간다.
-function effectiveTurnPlayerId(occupants: string[], turnPlayerId: string | null): string | null {
-  if (occupants.length === 0) return null
-  if (turnPlayerId && occupants.includes(turnPlayerId)) return turnPlayerId
-  return occupants[0]
+// 전투 중 실제로 차례를 진행할 수 있는 사람을 계산한다. 저장된 차례가 이미 방을 나갔거나
+// 빈사(HP 0) 상태라면 (방에 남아 움직일 수 있는 사람 중) 맨 앞 사람으로 자연스럽게 넘어간다.
+function effectiveTurnPlayerId(
+  occupants: string[],
+  turnPlayerId: string | null,
+  isEligible: (id: string) => boolean,
+): string | null {
+  if (turnPlayerId && occupants.includes(turnPlayerId) && isEligible(turnPlayerId)) return turnPlayerId
+  return occupants.find((id) => isEligible(id)) ?? null
+}
+
+// 현재 차례 다음으로, 빈사 상태가 아닌 사람에게 차례를 넘긴다.
+function advanceTurnPlayerId(
+  occupants: string[],
+  fromId: string,
+  isEligible: (id: string) => boolean,
+): string | null {
+  const idx = occupants.indexOf(fromId)
+  if (idx === -1) return occupants.find((id) => isEligible(id)) ?? null
+  for (let i = 1; i <= occupants.length; i++) {
+    const candidate = occupants[(idx + i) % occupants.length]
+    if (isEligible(candidate)) return candidate
+  }
+  return null
 }
 
 // TRPG 전투 판정: 주사위(1d6) 3 개를 굴려 합이 11 이상이면 성공.
@@ -96,32 +114,19 @@ function makeCombatLog(text: string): CombatLogEntry {
   return { id: `cl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text }
 }
 
-// 강당 미니게임: 참여 인원 전체가 공동으로 AI(그것)와 승부를 겨룬다. 종류별로 그럴듯한
-// 승부 서사를 지어내되, 실제 승패는 미리 정해진 won 값과 항상 일치하도록 구성한다.
-function buildMinigameLog(kind: HallMinigameKind | undefined, label: string, won: boolean): string {
+// 강당 미니게임: 참여자는 참여할 때 직접 선택지를 고른다(홀/짝, 하이/로우, 오버/언더).
+// 불가가 게임을 진행시키면 실제 결과가 하나 뽑히고, 자신의 선택과 일치한 사람만 이긴다.
+function buildMinigameLog(kind: HallMinigameKind | undefined, label: string, outcomeLabel: string): string {
   if (kind === 'oddeven') {
-    const guess: '홀' | '짝' = Math.random() < 0.5 ? '홀' : '짝'
-    const finalParity = won ? guess : guess === '홀' ? '짝' : '홀'
-    const evens = [2, 4, 6, 8]
-    const odds = [1, 3, 5, 7, 9]
-    const n = finalParity === '짝' ? evens[Math.floor(Math.random() * evens.length)] : odds[Math.floor(Math.random() * odds.length)]
-    return `${label} 앞에서 그것과 홀짝을 걸었다....... 조사단은 '${guess}'을 외쳤다. 펼쳐 보니 ${n}개, '${finalParity}' — ${won ? '조사단의 승리다' : '조사단의 패배다'}.`
+    return `${label} 앞에서 그것과 홀짝을 걸었다....... 펼쳐 보니 결과는 '${outcomeLabel}'.`
   }
   if (kind === 'poker') {
-    const winnerScore = Math.floor(Math.random() * 5) + 6
-    const loserScore = Math.floor(Math.random() * 5) + 1
-    const mine = won ? winnerScore : loserScore
-    const theirs = won ? loserScore : winnerScore
-    return `${label} 앞에서 그것과 패를 나눴다....... 조사단 패는 ${mine}, 그것의 패는 ${theirs} — ${won ? '조사단의 승리다' : '조사단의 패배다'}.`
+    return `${label} 앞에서 그것과 패를 나눴다....... 결과는 '${outcomeLabel}'.`
   }
   if (kind === 'robo77') {
-    const winnerScore = Math.floor(Math.random() * 20) + 77
-    const loserScore = Math.floor(Math.random() * 40) + 30
-    const mine = won ? winnerScore : loserScore
-    const theirs = won ? loserScore : winnerScore
-    return `${label} 앞에서 그것과 로보 77 승부를 걸었다....... 조사단 ${mine}점, 그것 ${theirs}점 — ${won ? '조사단의 승리다' : '조사단의 패배다'}.`
+    return `${label} 앞에서 그것과 로보 77 승부를 걸었다....... 결과는 '${outcomeLabel}'.`
   }
-  return won ? `${label}에서 그것과 승부를 벌여 이겼다.` : `${label}에서 그것과 승부를 벌여 졌다.`
+  return `${label}에서 그것과 승부가 갈렸다....... 결과는 '${outcomeLabel}'.`
 }
 
 function applyItemEffect(
@@ -171,8 +176,6 @@ interface GameState {
   register: (username: string, password: string) => Promise<void>
   login: (username: string, password: string) => Promise<void>
   loginAsAdmin: (code: string) => void
-  registerAdmin: (username: string, password: string, code: string) => Promise<void>
-  loginAdmin: (username: string, password: string) => Promise<void>
   logout: () => void
   profileComplete: boolean
   completeProfile: (nickname: string, grade: string, photo: string | null) => Promise<void>
@@ -204,7 +207,7 @@ interface GameState {
   finishHallEvent: () => void
   resolveHallObject: (objectId: string, choice: 'open' | 'leave') => void
   submitHallPuzzleAnswer: (objectId: string, text: string) => void
-  joinHallMinigame: (objectId: string) => void
+  joinHallMinigame: (objectId: string, choiceId: string) => void
   resolveHallMinigame: (objectId: string) => void
   feed: FeedPost[]
   toggleHeart: (postId: string) => void
@@ -257,6 +260,7 @@ interface GameState {
   def: number
   incapacitated: boolean
   attackCreature: (roomId: RoomId) => void
+  defendInCombat: (roomId: RoomId) => void
   dispatchCreature: (roomId: RoomId, creature: Creature) => void
   buyItem: (itemId: string) => void
   useItem: (itemId: string) => void
@@ -628,30 +632,6 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     setRoleRevealedLocal(true)
   }
 
-  function enterAdminAccount(username: string) {
-    const uname = username.trim().toLowerCase()
-    const finalNickname = '불가'
-    localStorage.setItem(LS.isAdmin, 'true')
-    localStorage.setItem(LS.adminNickname, finalNickname)
-    localStorage.setItem(LS.roleRevealed, 'true')
-    localStorage.setItem(LS.accountUsername, uname)
-    setIsAdminFlag(true)
-    setAdminNicknameLocal(finalNickname)
-    setRoleRevealedLocal(true)
-    setAccountUsernameLocal(uname)
-  }
-
-  async function registerAdmin(username: string, password: string, code: string) {
-    if (code.trim() !== ADMIN_CODE) throw new Error('관리자 코드가 올바르지 않다.')
-    await registerAdminAccountSync(username, password)
-    enterAdminAccount(username)
-  }
-
-  async function loginAdmin(username: string, password: string) {
-    await loginAdminAccountSync(username, password)
-    enterAdminAccount(username)
-  }
-
   function logout() {
     localStorage.removeItem(LS.viewerId)
     localStorage.removeItem(LS.roleRevealed)
@@ -767,7 +747,14 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       cleared: false,
       clue: null,
       note: null,
-      combat: { creatureId: creature.id, creatureHp: creature.hp, log: [], defeated: false, turnPlayerId: null },
+      combat: {
+        creatureId: creature.id,
+        creatureHp: creature.hp,
+        log: [],
+        defeated: false,
+        turnPlayerId: null,
+        defenderId: null,
+      },
     }))
     const room = ROOMS.find((r) => r.id === roomId)!
     sendBroadcast('sin', `${room.name}에서 무언가 나타났다`, `${creature.intro} — 지금 바로 ${room.name}으로 가 보자.......`)
@@ -932,6 +919,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     if (!isAdminFlag) return
     const event = hallEventById(session.hallEvent.eventId ?? '')
     if (!event) return
+    const clueMsg: ChatMessage = {
+      id: `cr-${Date.now()}-clue`,
+      authorId: 'admin',
+      text: `【최종 단서】 ${event.finalClue}`,
+      time: '지금',
+    }
+    void sendClassroomMessageSync(clueMsg)
     void addClueSync(makeClue({ title: `${event.roomName} 조사 결과`, text: event.finalClue }, '강당'))
     const completedEventIds = session.hallEvent.completedEventIds.includes(event.id)
       ? session.hallEvent.completedEventIds
@@ -967,6 +961,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         puzzleSolved: false,
         puzzleAttempts: 0,
         minigamePending: [],
+        minigameChoices: {},
         minigameParticipants: {},
         minigameLog: [],
       }
@@ -1020,7 +1015,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     })
   }
 
-  function joinHallMinigame(objectId: string) {
+  function joinHallMinigame(objectId: string, choiceId: string) {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (sess) => {
       const he = sess.hallEvent
@@ -1029,6 +1024,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       if (!event) return {}
       const obj = event.objects.find((o) => o.id === objectId)
       if (!obj || obj.kind !== 'minigame') return {}
+      const options = MINIGAME_OPTIONS[obj.minigameKind ?? 'oddeven']
+      if (!options.some((o) => o.id === choiceId)) return {}
       const existing = he.objectResults[objectId]
       const alreadyIn =
         existing && (existing.minigamePending.includes(viewerId) || existing.minigameParticipants[viewerId] !== undefined)
@@ -1039,6 +1036,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         puzzleSolved: false,
         puzzleAttempts: 0,
         minigamePending: [...(existing?.minigamePending ?? []), viewerId],
+        minigameChoices: { ...(existing?.minigameChoices ?? {}), [viewerId]: choiceId },
         minigameParticipants: existing?.minigameParticipants ?? {},
         minigameLog: existing?.minigameLog ?? [],
       }
@@ -1055,21 +1053,21 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     if (!event) return
     const obj = event.objects.find((o) => o.id === objectId)
     if (!obj || obj.kind !== 'minigame') return
+    const options = MINIGAME_OPTIONS[obj.minigameKind ?? 'oddeven']
     void runHallMinigameTransaction(objectId, (sess, participants) => {
       const heInner = sess.hallEvent
       const existing = heInner.objectResults[objectId]
       if (!existing || existing.minigamePending.length === 0) return {}
       const pendingIds = existing.minigamePending
-      const won = Math.random() < 0.5
-      const gameLog = buildMinigameLog(obj.minigameKind, obj.label, won)
+      const actualOutcome = options[Math.floor(Math.random() * options.length)]
+      const gameLog = buildMinigameLog(obj.minigameKind, obj.label, actualOutcome.label)
       const nextParticipants = { ...existing.minigameParticipants }
-      pendingIds.forEach((id) => {
-        nextParticipants[id] = won
-      })
       const playerPatches: Record<string, Partial<PlayerDoc>> = {}
       pendingIds.forEach((id) => {
         const p = participants[id]
         if (!p) return
+        const won = existing.minigameChoices[id] === actualOutcome.id
+        nextParticipants[id] = won
         if (won) {
           playerPatches[id] = { coins: p.coins + (obj.minigameWinCoins ?? 2) }
         } else {
@@ -1177,7 +1175,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   }
 
   function confirmProposal(team: string[]) {
-    void updateMissionSync((m) => missionReducer(m, { type: 'CONFIRM_PROPOSAL', team }))
+    const leaderName = displayName(session.mission.turnOrder[session.mission.leaderIdx])
+    void updateMissionSync((m) => missionReducer(m, { type: 'CONFIRM_PROPOSAL', team, leaderName }))
   }
   function castVote(approve: boolean) {
     if (!viewerId) return
@@ -1419,84 +1418,124 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function attackCreature(roomId: RoomId) {
     if (!viewerId) return
     const myId = viewerId
-    void runCombatTransaction(
-      myId,
-      (sess) => {
-        const others = (sess.roomOccupancy[roomId] ?? []).filter((id) => id !== myId)
-        if (others.length === 0) return null
-        return others[Math.floor(Math.random() * others.length)]
-      },
-      (sess, me, target, targetId) => {
-        const roomEvent = sess.roomEvents[roomId]
-        const combat = roomEvent?.combat
-        if (!combat || combat.defeated) return {}
-        const occupants = sess.roomOccupancy[roomId] ?? []
-        if (effectiveTurnPlayerId(occupants, combat.turnPlayerId) !== myId) return {}
-        if (me.hp <= 0 || me.stamina < ATTACK_STAMINA_COST) return {}
-        const creature = creatureById(combat.creatureId)
-        if (!creature) return {}
+    void runRoomCombatTransaction(roomId, (sess, occupants) => {
+      const roomEvent = sess.roomEvents[roomId]
+      const combat = roomEvent?.combat
+      if (!combat || combat.defeated) return {}
+      const room = ROOMS.find((r) => r.id === roomId)
+      const occupantIds = sess.roomOccupancy[roomId] ?? []
+      if (!room || occupantIds.length < room.capacity) return {}
+      const isEligible = (id: string) => (occupants[id]?.hp ?? 0) > 0
+      if (effectiveTurnPlayerId(occupantIds, combat.turnPlayerId, isEligible) !== myId) return {}
+      const me = occupants[myId]
+      if (!me || me.hp <= 0 || me.stamina < ATTACK_STAMINA_COST) return {}
+      const creature = creatureById(combat.creatureId)
+      if (!creature) return {}
 
-        const myAtk = BASE_ATK + me.weaponAtkBonus
-        const roll = rollDice()
-        const damage = roll.hit ? myAtk : 0
-        const newCreatureHp = Math.max(0, combat.creatureHp - damage)
-        const defeated = newCreatureHp <= 0
+      const myAtk = BASE_ATK + me.weaponAtkBonus
+      const roll = rollDice()
+      const damage = roll.hit ? myAtk : 0
+      const newCreatureHp = Math.max(0, combat.creatureHp - damage)
+      const defeated = newCreatureHp <= 0
 
-        const log: CombatLogEntry[] = [...combat.log]
+      const log: CombatLogEntry[] = [...combat.log]
+      log.push(
+        makeCombatLog(
+          roll.hit
+            ? `${displayName(myId)}이(가) ${creature.name}을(를) 공격했다....... ${describeDiceRoll(roll)} — 명중! 공격력 ${myAtk}만큼 피해를 입혔다.`
+            : `${displayName(myId)}이(가) ${creature.name}을(를) 공격했다....... ${describeDiceRoll(roll)} — 빗나갔다.`,
+        ),
+      )
+
+      const playerPatches: Record<string, Partial<PlayerDoc>> = {
+        [myId]: { stamina: me.stamina - ATTACK_STAMINA_COST },
+      }
+
+      if (defeated) {
+        log.push(makeCombatLog(`${creature.name}이(가) 쓰러졌다....... 짙게 배어 있던 기운이 서서히 옅어진다.`))
+        playerPatches[myId] = {
+          ...playerPatches[myId],
+          coins: me.coins + creature.coinReward,
+          abilityUnlocked: true,
+        }
+      } else {
+        const defenderId =
+          combat.defenderId && combat.defenderId !== myId && isEligible(combat.defenderId) ? combat.defenderId : null
+        const retaliateAgainstSelf = !defenderId
+        const defenderStats = retaliateAgainstSelf ? me : occupants[defenderId!]
+        const defenderDef = defenderStats?.armorDefBonus ?? 0
+        const rollC = rollDice()
+        const dmgC = rollC.hit ? Math.max(1, creature.atk - Math.floor(defenderDef / 2)) : 0
+        const defenderName = displayName(retaliateAgainstSelf ? myId : defenderId!)
         log.push(
           makeCombatLog(
-            roll.hit
-              ? `${displayName(myId)}이(가) ${creature.name}을(를) 공격했다....... ${describeDiceRoll(roll)} — 명중! 공격력 ${myAtk}만큼 피해를 입혔다.`
-              : `${displayName(myId)}이(가) ${creature.name}을(를) 공격했다....... ${describeDiceRoll(roll)} — 빗나갔다.`,
+            rollC.hit
+              ? `${creature.name}이(가) ${defenderName}을(를) 향해 반격했다....... ${describeDiceRoll(rollC)} — 명중! 공격력 ${creature.atk}(방어 적용 후 ${dmgC})만큼 피해를 입었다.`
+              : `${creature.name}이(가) ${defenderName}을(를) 향해 반격했다....... ${describeDiceRoll(rollC)} — 빗나갔다.`,
           ),
         )
-
-        let mePatch: Partial<PlayerDoc> = { stamina: me.stamina - ATTACK_STAMINA_COST }
-        let targetPatch: Partial<PlayerDoc> | undefined
-
-        if (defeated) {
-          log.push(makeCombatLog(`${creature.name}이(가) 쓰러졌다....... 짙게 배어 있던 기운이 서서히 옅어진다.`))
-          mePatch = { ...mePatch, coins: me.coins + creature.coinReward, abilityUnlocked: true }
-        } else {
-          const retaliateAgainstSelf = !target
-          const defenderDef = retaliateAgainstSelf ? me.armorDefBonus : target!.armorDefBonus
-          const rollC = rollDice()
-          const dmgC = rollC.hit ? Math.max(1, creature.atk - Math.floor(defenderDef / 2)) : 0
-          const defenderName = retaliateAgainstSelf ? displayName(myId) : displayName(targetId!)
-          log.push(
-            makeCombatLog(
-              rollC.hit
-                ? `${creature.name}이(가) ${defenderName}을(를) 향해 반격했다....... ${describeDiceRoll(rollC)} — 명중! 공격력 ${creature.atk}(방어 적용 후 ${dmgC})만큼 피해를 입었다.`
-                : `${creature.name}이(가) ${defenderName}을(를) 향해 반격했다....... ${describeDiceRoll(rollC)} — 빗나갔다.`,
-            ),
-          )
-          if (rollC.hit) {
-            if (retaliateAgainstSelf) {
-              mePatch = { ...mePatch, hp: Math.max(0, me.hp - dmgC) }
-            } else {
-              targetPatch = { hp: Math.max(0, target!.hp - dmgC) }
-            }
+        if (rollC.hit && defenderStats) {
+          const dId = retaliateAgainstSelf ? myId : defenderId!
+          playerPatches[dId] = {
+            ...playerPatches[dId],
+            hp: Math.max(0, defenderStats.hp - dmgC),
           }
         }
+      }
 
-        const myIdx = occupants.indexOf(myId)
-        const nextTurnPlayerId = occupants.length > 0 ? occupants[(myIdx + 1) % occupants.length] : null
+      const nextEligible = (id: string) => {
+        const patchedHp = playerPatches[id]?.hp
+        return (patchedHp ?? occupants[id]?.hp ?? 0) > 0
+      }
+      const nextTurnId = advanceTurnPlayerId(occupantIds, myId, nextEligible)
+      const nextDefenderId = combat.defenderId === nextTurnId ? null : combat.defenderId
 
-        const nextRoomEvents = {
-          ...sess.roomEvents,
-          [roomId]: {
-            ...roomEvent,
-            combat: { ...combat, creatureHp: newCreatureHp, log, defeated, turnPlayerId: nextTurnPlayerId },
-          },
-        }
+      const nextRoomEvents = {
+        ...sess.roomEvents,
+        [roomId]: {
+          ...roomEvent,
+          combat: { ...combat, creatureHp: newCreatureHp, log, defeated, turnPlayerId: nextTurnId, defenderId: nextDefenderId },
+        },
+      }
 
-        return {
-          session: { roomEvents: nextRoomEvents },
-          me: mePatch,
-          target: targetPatch,
-        }
-      },
-    )
+      return {
+        session: { roomEvents: nextRoomEvents },
+        playerPatches,
+      }
+    })
+  }
+
+  function defendInCombat(roomId: RoomId) {
+    if (!viewerId) return
+    const myId = viewerId
+    void runRoomCombatTransaction(roomId, (sess, occupants) => {
+      const roomEvent = sess.roomEvents[roomId]
+      const combat = roomEvent?.combat
+      if (!combat || combat.defeated) return {}
+      const room = ROOMS.find((r) => r.id === roomId)
+      const occupantIds = sess.roomOccupancy[roomId] ?? []
+      if (!room || occupantIds.length < room.capacity) return {}
+      const isEligible = (id: string) => (occupants[id]?.hp ?? 0) > 0
+      if (effectiveTurnPlayerId(occupantIds, combat.turnPlayerId, isEligible) !== myId) return {}
+      const me = occupants[myId]
+      if (!me || me.hp <= 0) return {}
+
+      const log: CombatLogEntry[] = [
+        ...combat.log,
+        makeCombatLog(
+          `${displayName(myId)}이(가) 앞으로 나서 방어 태세를 취했다....... 다음 자기 차례까지 팀원들이 받을 반격을 대신 맞는다.`,
+        ),
+      ]
+      const nextTurnId = advanceTurnPlayerId(occupantIds, myId, isEligible)
+      const nextRoomEvents = {
+        ...sess.roomEvents,
+        [roomId]: {
+          ...roomEvent,
+          combat: { ...combat, log, turnPlayerId: nextTurnId, defenderId: myId },
+        },
+      }
+      return { session: { roomEvents: nextRoomEvents } }
+    })
   }
 
   function buyItem(itemId: string) {
@@ -1584,8 +1623,6 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       register,
       login,
       loginAsAdmin,
-      registerAdmin,
-      loginAdmin,
       logout,
       profileComplete,
       completeProfile,
@@ -1695,6 +1732,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       def,
       incapacitated,
       attackCreature,
+      defendInCombat,
       dispatchCreature,
       buyItem,
       useItem,

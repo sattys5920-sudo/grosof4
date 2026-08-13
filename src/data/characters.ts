@@ -5,7 +5,7 @@ export const CLUB_NAME = '괴담연구회'
 export const MISSING_STUDENT = '유민서'
 export const INCIDENT_WEEKS_AGO = 3
 export const INCIDENT_SUMMARY =
-  '몇 주 전, 괴담연구회 회장이었던 유민서가 아무 이유도 없이 갑자기 실종되었다. 학교는 "가출 후 자퇴 처리"로 조용히 사건을 덮었다.'
+  '몇 주 전, 괴담연구회 유민서가 아무 이유도 없이 갑자기 실종되었다. 학교는 "가출 후 자퇴 처리"로 조용히 사건을 덮었다.'
 
 const COMMON_REVEAL_TEXT =
   '너는 {name}. 왜 이 늦은 시간까지 학교에 있는 건지 기억나지 않는다. 같은 동아리라고 하는 이 사람들도 모두 낯설기만 하다. 하지만 단 하나, 우리 모두가 유민서를 찾기 위해 이곳에 모였다는 사실만은 분명하다. 그 사실 하나만이 우리를 이 공간에 붙잡아 두고 있다.'

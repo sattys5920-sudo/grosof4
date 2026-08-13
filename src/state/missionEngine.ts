@@ -38,7 +38,7 @@ export interface MissionState {
 }
 
 export type MissionAction =
-  | { type: 'CONFIRM_PROPOSAL'; team: string[] }
+  | { type: 'CONFIRM_PROPOSAL'; team: string[]; leaderName: string }
   | { type: 'CAST_VOTE'; viewerId: string; approve: boolean }
   | { type: 'CLOSE_VOTE' }
   | { type: 'SUBMIT_CARD'; viewerId: string; card: 'success' | 'fail' }
@@ -81,7 +81,6 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
   switch (action.type) {
     case 'CONFIRM_PROPOSAL': {
       if (state.phase !== 'propose') return state
-      const leader = CHARACTERS.find((c) => c.id === state.turnOrder[state.leaderIdx])!
       return {
         ...state,
         proposedTeam: action.team,
@@ -89,7 +88,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         voteTally: null,
         votes: {},
         phaseStartedAtMs: Date.now(),
-        lastNote: `${leader.name}이(가) 조사대를 제안했다.`,
+        lastNote: `${action.leaderName}이(가) 조사대를 제안했다.`,
       }
     }
 

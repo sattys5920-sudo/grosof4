@@ -5,6 +5,7 @@ import { CHARACTERS } from '../data/characters'
 import { HALL_EVENTS, hallEventById } from '../data/hallEvents'
 import { hallPuzzleById } from '../data/hallPuzzles'
 import type { HallMinigameKind, HallObject } from '../data/types'
+import { MINIGAME_OPTIONS } from '../data/hallMinigames'
 import { EventDispatchSheet, type DispatchSection } from '../components/EventDispatchSheet'
 import { ChatAvatar } from '../components/ChatAvatar'
 import { AbilityUseModal } from '../components/AbilityUseModal'
@@ -101,11 +102,14 @@ export function ClassroomScreen() {
 
     if (obj.kind === 'minigame') {
       const pending = result?.minigamePending ?? []
+      const choices = result?.minigameChoices ?? {}
       const participants = result?.minigameParticipants ?? {}
       const entries = Object.entries(participants)
       const myPending = viewerId ? pending.includes(viewerId) : false
       const myResult = viewerId ? participants[viewerId] : undefined
+      const myChoice = viewerId ? choices[viewerId] : undefined
       const canJoin = !isAdmin && myResult === undefined && !myPending
+      const options = MINIGAME_OPTIONS[obj.minigameKind ?? 'oddeven']
       const latestLog = result?.minigameLog?.[result.minigameLog.length - 1]
       return (
         <div key={obj.id} className="hallobj hallobj--minigame">
@@ -117,16 +121,22 @@ export function ClassroomScreen() {
           </div>
           <p className="hallobj__note">{obj.minigameRule}</p>
           {canJoin && (
-            <button className="hallobj__minigame-join" onClick={() => joinHallMinigame(obj.id)}>
-              참여하기
-            </button>
+            <div className="hallobj__minigame-options">
+              {options.map((o) => (
+                <button key={o.id} className="hallobj__minigame-join" onClick={() => joinHallMinigame(obj.id, o.id)}>
+                  {o.label} 고르기
+                </button>
+              ))}
+            </div>
           )}
           {myPending && myResult === undefined && (
-            <p className="hallobj__minigame-waiting">참여 완료....... 승부가 시작되기를 기다리는 중이다.</p>
+            <p className="hallobj__minigame-waiting">
+              '{options.find((o) => o.id === myChoice)?.label}'을(를) 선택했다....... 승부가 시작되기를 기다리는 중이다.
+            </p>
           )}
           {pending.length > 0 && (
             <p className="hallobj__minigame-pending">
-              대기 인원: {pending.map((id) => displayName(id)).join(', ')}
+              대기 인원: {pending.map((id) => `${displayName(id)}(${options.find((o) => o.id === choices[id])?.label})`).join(', ')}
             </p>
           )}
           {isAdmin && pending.length > 0 && (
@@ -146,7 +156,7 @@ export function ClassroomScreen() {
             <div className="hallobj__minigame-list">
               {entries.map(([pid, won]) => (
                 <span key={pid} className={`hallobj__minigame-entry ${won ? 'is-win' : 'is-lose'}`}>
-                  {displayName(pid)} {won ? '승' : '패'}
+                  {displayName(pid)} ({options.find((o) => o.id === choices[pid])?.label}) {won ? '승' : '패'}
                 </span>
               ))}
             </div>
@@ -353,9 +363,6 @@ export function ClassroomScreen() {
 
       {(classroomOpen || gmReveal) && (
         <div className="classroom__log">
-          {classroomMessages.length === 0 && (
-            <p className="classroom__empty">아직 아무도 말하지 않았다....... 함께 의논해보자.</p>
-          )}
           {classroomMessages.map((m) => {
             const author = CHARACTERS.find((c) => c.id === m.authorId)
             const isMe = m.authorId === viewerId

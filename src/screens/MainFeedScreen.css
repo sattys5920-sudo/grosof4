@@ -293,15 +293,22 @@
 
 .feed__comment {
   display: flex;
-  gap: 6px;
+  gap: 8px;
+  align-items: flex-start;
   font-size: 13.5px;
   color: var(--bone);
   padding: 4px 0;
 }
 
+.feed__comment-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .feed__comment-author {
   color: var(--bone-bright);
-  flex-shrink: 0;
+  font-size: 12px;
 }
 
 .feed__comment-composer {

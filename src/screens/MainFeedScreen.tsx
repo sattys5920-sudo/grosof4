@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './MainFeedScreen.css'
 import { useGame } from '../state/GameContext'
+import { ChatAvatar } from '../components/ChatAvatar'
 
 export function MainFeedScreen() {
   const {
@@ -12,6 +13,7 @@ export function MainFeedScreen() {
     gmReveal,
     toggleCommentsEnabled,
     createFeedPost,
+    players,
   } = useGame()
   const [openPostId, setOpenPostId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
@@ -77,23 +79,24 @@ export function MainFeedScreen() {
           {!openPost.commentsEnabled && (
             <p className="feed__comment-disabled">이 게시글은 댓글이 비활성화되어 있다.</p>
           )}
-          {openPost.commentsEnabled && openPost.comments.length === 0 && (
-            <p className="feed__comment-disabled">아직 댓글이 없다....... 첫 댓글을 남겨보자.</p>
-          )}
           {openPost.commentsEnabled &&
             openPost.comments.map((c) => {
               const canSee = !c.secret || c.authorId === viewerId || gmReveal
+              const name = displayName(c.authorId)
               return (
                 <div key={c.id} className="feed__comment">
-                  <span className="feed__comment-author">{displayName(c.authorId)}</span>
-                  {canSee ? (
-                    <span>
-                      {c.secret && '🔒 '}
-                      {c.text}
-                    </span>
-                  ) : (
-                    <span className="feed__comment-hidden">🔒 비밀 댓글</span>
-                  )}
+                  <ChatAvatar authorId={c.authorId} name={name} photo={players[c.authorId]?.photo} />
+                  <div className="feed__comment-body">
+                    <span className="feed__comment-author">{name}</span>
+                    {canSee ? (
+                      <span>
+                        {c.secret && '🔒 '}
+                        {c.text}
+                      </span>
+                    ) : (
+                      <span className="feed__comment-hidden">🔒 비밀 댓글</span>
+                    )}
+                  </div>
                 </div>
               )
             })}
@@ -127,7 +130,6 @@ export function MainFeedScreen() {
         <div className="feed__intro-row">
           <div>
             <span className="feed__intro-label">방송실 게시판</span>
-            <p>방송실 명의로 올라오는 공지를 확인한다.</p>
           </div>
           {gmReveal && (
             <button
@@ -175,9 +177,6 @@ export function MainFeedScreen() {
       )}
 
       <div className="feed__list">
-        {feed.length === 0 && (
-          <p className="feed__empty">아직 게시된 공지가 없다....... 방송실의 새 방송을 기다려 보자.</p>
-        )}
         {feed.map((post) => (
           <button key={post.id} className="feed__post" onClick={() => setOpenPostId(post.id)}>
             <div className="feed__post-head">

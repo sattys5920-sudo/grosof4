@@ -17,6 +17,8 @@ import { ShopScreen } from './screens/ShopScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { SCHOOL_NAME, CHARACTERS } from './data/characters'
 
+const WEATHER_OPTIONS = ['안개 결계', '서리 결계', '정전 결계', '핏빛 결계', '잿빛 결계', '뒤틀린 결계']
+
 function shellDate(year: number) {
   const now = new Date()
   const mm = String(now.getMonth() + 1).padStart(2, '0')
@@ -46,6 +48,7 @@ function Shell() {
   const { viewerId } = useGame()
   const perceivedYear = viewerId ? CHARACTERS.find((c) => c.id === viewerId)?.perceivedYear : undefined
   const displayYear = perceivedYear ?? new Date().getFullYear()
+  const [weather] = useState(() => WEATHER_OPTIONS[Math.floor(Math.random() * WEATHER_OPTIONS.length)])
   return (
     <div className="shell">
       <div className="shell__fog" />
@@ -54,7 +57,7 @@ function Shell() {
         <span className="shell__status">
           <span className="shell__date">{shellDate(displayYear)}</span>
           <span className="shell__dot" />
-          안개 결계 · 자정 이후
+          {weather} · 시간 미상
         </span>
         <TopBarAlert />
       </header>

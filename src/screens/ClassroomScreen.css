@@ -644,6 +644,12 @@
   border-color: var(--ward);
 }
 
+.hallobj__minigame-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .hallobj__minigame-join {
   align-self: flex-start;
   font-family: var(--font-pixel);

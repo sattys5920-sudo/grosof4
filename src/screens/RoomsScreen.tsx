@@ -15,12 +15,15 @@ function charOf(id: string) {
   return CHARACTERS.find((c) => c.id === id)!
 }
 
-// 전투 중 실제로 공격할 차례인 사람을 계산한다. 저장된 차례가 이미 방을 나간 사람이면
-// (방에 남은 사람 중) 맨 앞 사람으로 자연스럽게 넘어간다.
-function effectiveTurnPlayerId(occupants: string[], turnPlayerId: string | null): string | null {
-  if (occupants.length === 0) return null
-  if (turnPlayerId && occupants.includes(turnPlayerId)) return turnPlayerId
-  return occupants[0]
+// 전투 중 실제로 차례를 진행할 수 있는 사람을 계산한다. 저장된 차례가 이미 방을 나갔거나
+// 빈사(HP 0) 상태라면 (방에 남아 움직일 수 있는 사람 중) 맨 앞 사람으로 자연스럽게 넘어간다.
+function effectiveTurnPlayerId(
+  occupants: string[],
+  turnPlayerId: string | null,
+  isEligible: (id: string) => boolean,
+): string | null {
+  if (turnPlayerId && occupants.includes(turnPlayerId) && isEligible(turnPlayerId)) return turnPlayerId
+  return occupants.find((id) => isEligible(id)) ?? null
 }
 
 export function RoomsScreen() {
@@ -37,6 +40,7 @@ export function RoomsScreen() {
     dispatchCreature,
     closeRoomInvestigation,
     attackCreature,
+    defendInCombat,
     hp,
     stamina,
     incapacitated,
@@ -144,7 +148,9 @@ export function RoomsScreen() {
               </div>
               <p className="rooms__combat-rule">
                 전투 규칙: 공격할 때마다 주사위(1~6) 3 개를 굴려 합이 11 이상이면 명중이다....... 명중하면
-                공격력만큼 피해를 입히고, 쓰러뜨리지 못하면 괴이가 같은 방식으로 반격한다.
+                공격력만큼 피해를 입히고, 쓰러뜨리지 못하면 괴이가 같은 방식으로 반격한다. 자기 차례에는
+                공격 대신 방어를 선택할 수 있다 — 방어하면 다음 자기 차례가 돌아올 때까지 팀원들이 받을
+                반격을 전부 대신 맞는다. 빈사(HP 0) 상태가 되면 회복할 때까지 차례에서 제외된다.
               </p>
               <div className="rooms__combat-hp">
                 <div
@@ -169,24 +175,46 @@ export function RoomsScreen() {
                 <p className="rooms__pin-note">
                   쓰러뜨렸다....... 마지막 일격을 가한 사람이 코인 {creature.coinReward}을(를) 얻었다.
                 </p>
+              ) : occupants.length < room.capacity ? (
+                <p className="rooms__pin-note">
+                  정원이 다 찰 때까지는 싸울 수 없다....... ({occupants.length}/{room.capacity})
+                </p>
               ) : iAmHere ? (
                 (() => {
-                  const turnId = effectiveTurnPlayerId(occupants, combat.turnPlayerId)
+                  const isEligible = (id: string) => (players[id]?.hp ?? 0) > 0
+                  const turnId = effectiveTurnPlayerId(occupants, combat.turnPlayerId, isEligible)
                   const myTurn = turnId === viewerId
                   return (
                     <>
                       <p className="rooms__combat-turn">
                         지금 차례: <strong>{turnId ? displayName(turnId) : '—'}</strong>
+                        {combat.defenderId && (
+                          <span className="rooms__combat-defender">
+                            {' '}
+                            (방어 중: {displayName(combat.defenderId)})
+                          </span>
+                        )}
                       </p>
-                      <button
-                        className="rooms__combat-attack"
-                        disabled={!myTurn || incapacitated || stamina < 10}
-                        onClick={() => attackCreature(openRoom!)}
-                      >
-                        {myTurn
-                          ? `공격하기 (스태미나 -10, 현재 HP ${hp} · 스태미나 ${stamina})`
-                          : `${turnId ? displayName(turnId) : '다른 사람'}의 차례를 기다리는 중......`}
-                      </button>
+                      <div className="rooms__combat-actions">
+                        <button
+                          className="rooms__combat-attack"
+                          disabled={!myTurn || incapacitated || stamina < 4}
+                          onClick={() => attackCreature(openRoom!)}
+                        >
+                          {myTurn
+                            ? `공격하기 (스태미나 -4, 현재 HP ${hp} · 스태미나 ${stamina})`
+                            : `${turnId ? displayName(turnId) : '다른 사람'}의 차례를 기다리는 중......`}
+                        </button>
+                        {myTurn && (
+                          <button
+                            className="rooms__combat-defend"
+                            disabled={incapacitated}
+                            onClick={() => defendInCombat(openRoom!)}
+                          >
+                            방어하기 (반격 대신 맞기)
+                          </button>
+                        )}
+                      </div>
                     </>
                   )
                 })()
@@ -198,9 +226,6 @@ export function RoomsScreen() {
         </div>
 
         <div className="rooms__log">
-          {roomMessages[openRoom].length === 0 && (
-            <p className="rooms__empty">아직 대화가 없다....... 먼저 말을 걸어보자.</p>
-          )}
           {roomMessages[openRoom].map((m) => {
             const isMe = m.authorId === viewerId
             const isGm = m.authorId === 'admin'

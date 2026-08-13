@@ -99,6 +99,7 @@ export interface CombatState {
   log: CombatLogEntry[]
   defeated: boolean
   turnPlayerId: string | null
+  defenderId: string | null
 }
 
 export type ClassroomStatus = 'locked' | 'active' | 'cleared'
@@ -231,6 +232,7 @@ export interface HallObjectResult {
   puzzleSolved: boolean
   puzzleAttempts: number
   minigamePending: string[]
+  minigameChoices: Record<string, string>
   minigameParticipants: Record<string, boolean>
   minigameLog: string[]
 }
