@@ -173,7 +173,7 @@ export function RoomsScreen() {
               </div>
               {combat.defeated ? (
                 <p className="rooms__pin-note">
-                  쓰러뜨렸다....... 마지막 일격을 가한 사람이 코인 {creature.coinReward}을(를) 얻었다.
+                  쓰러뜨렸다....... 전투에 참여한 모두가 코인 {creature.coinReward}을(를) 얻었다.
                 </p>
               ) : occupants.length < room.capacity ? (
                 <p className="rooms__pin-note">

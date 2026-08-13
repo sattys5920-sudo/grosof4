@@ -169,6 +169,54 @@
   background: var(--ward-dim);
 }
 
+.mission__vote-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mission__voter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--bone-dim);
+}
+
+.mission__voter-name {
+  flex: 1;
+}
+
+.mission__voter-choice {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+}
+
+.mission__voter.is-yes {
+  border-color: var(--ward);
+  color: var(--bone-bright);
+}
+
+.mission__voter.is-yes .mission__voter-choice {
+  color: var(--ward);
+}
+
+.mission__voter.is-no {
+  border-color: var(--sin);
+  color: var(--bone-bright);
+}
+
+.mission__voter.is-no .mission__voter-choice {
+  color: var(--sin);
+}
+
+.mission__voter.is-pending .mission__voter-choice {
+  color: var(--bone-dim);
+}
+
 .mission__cta {
   align-self: flex-start;
   font-family: var(--font-pixel);

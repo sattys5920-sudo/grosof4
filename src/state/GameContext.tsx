@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ABILITY_MAX_USES, CHARACTERS, ROOMS } from '../data/characters'
+import { ABILITY_MAX_USES, ABILITY_SUMMARY, CHARACTERS, ENDING_SCRIPTS, ROOMS } from '../data/characters'
 import { creatureById } from '../data/creatures'
 import { shopItemById } from '../data/shop'
 import { hallEventById } from '../data/hallEvents'
@@ -1268,6 +1268,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function sendEnding(key: EndingKey) {
     if (!isAdminFlag) return
     void sendEndingSync(key)
+    sendBroadcast('notice', '엔딩', ENDING_SCRIPTS[key])
   }
 
   function abilityMax(role: string): number {
@@ -1364,7 +1365,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         if (me.lastDiscernDate === today) return {}
         if (!target) return {}
         const targetChar = CHARACTERS.find((c) => c.id === targetId)!
-        const text = `《분별》 ${displayName(targetId)}의 능력 — ${targetChar.abilityName} (지금까지 ${target.abilityUseCount} 회 발동).`
+        const text = `《분별》 ${displayName(targetId)}의 능력 — ${targetChar.abilityName}(${ABILITY_SUMMARY[targetChar.role]}), 지금까지 ${target.abilityUseCount} 회 발동.`
         return {
           me: {
             abilityUseCount: me.abilityUseCount + 1,
@@ -1402,7 +1403,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       const target = CHARACTERS.find((c) => c.id === targetId)!
       const check = resolveTeamCheckPure(sess.disguiseArmed, targetId)
       const trueRoleLabel =
-        check.team === target.team ? target.role : check.team === 'ward' ? '학생(위장 감지)' : '괴이'
+        check.team === target.team ? (target.role === '일반학생' ? '(???)' : target.role) : '(???)'
       const resultText = `《투시》 ${displayName(targetId)}의 진짜 정체 — ${trueRoleLabel}.`
       return {
         session: check.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: check.disguiseArmed } : undefined,
@@ -1470,11 +1471,15 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
       if (defeated) {
         log.push(makeCombatLog(`${creature.name}이(가) 쓰러졌다....... 짙게 배어 있던 기운이 서서히 옅어진다.`))
-        playerPatches[myId] = {
-          ...playerPatches[myId],
-          coins: me.coins + creature.coinReward,
-          abilityUnlocked: true,
+        for (const pid of occupantIds) {
+          const occ = occupants[pid]
+          if (!occ) continue
+          playerPatches[pid] = {
+            ...playerPatches[pid],
+            coins: occ.coins + creature.coinReward,
+          }
         }
+        playerPatches[myId] = { ...playerPatches[myId], abilityUnlocked: true }
       } else {
         const defenderId =
           combat.defenderId && combat.defenderId !== myId && isEligible(combat.defenderId) ? combat.defenderId : null

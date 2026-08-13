@@ -375,10 +375,6 @@ export function ProfileScreen() {
                   : '3 차 조사가 끝나기 전까지는 자신의 정체를 알 수 없다.'}
               </p>
             )}
-
-            {viewer.role === '일반학생' && (
-              <p className="profile__ability-locked">따로 발동하는 능력은 없다. 다만 무언가 해야 한다는 느낌이 강하게 든다.</p>
-            )}
           </div>
 
           {storyDay >= 1 && (

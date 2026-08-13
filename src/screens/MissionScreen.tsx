@@ -23,6 +23,22 @@ function MissionPopup({ text, onClose }: { text: string; onClose: () => void }) 
 
 const DISCUSSION_MS = 2 * 60 * 1000
 
+const MISSION_SUCCESS_FLAVOR = [
+  '조사대가 흔적을 끝까지 쫓았다....... 괴이의 정체가 드러났다. 오래전 이 학교 어딘가에서 소리 없이 사라진 한 학생의 망령이었다.',
+  '조사대가 마지막 단서를 찾아냈다....... 괴이는 실체가 없었다. 그저 누군가 남기고 간 미련이, 사람의 형태를 하고 이 복도를 떠돌고 있었을 뿐이다.',
+  '조사대가 진실에 가까이 다가섰다....... 괴이의 정체는 몇 해 전 이 학교를 떠났다던 학생, 그 사라짐의 잔상이었다.',
+  '조사대가 마침내 실체를 확인했다....... 괴이는 다른 무엇도 아닌, 이곳에서 잊혀진 어느 부원의 원념이었다.',
+  '조사대가 모든 것을 밝혀냈다....... 괴이의 정체는 스스로도 자신이 사라졌다는 사실을 모르는, 어느 부원의 망령이었다.',
+]
+
+const MISSION_FAIL_FLAVOR = [
+  '조사가 실패로 끝났다....... 무언가를 보긴 했지만, 그게 뭐였는지는 끝내 알 수 없었다.',
+  '조사가 실패로 끝났다....... 손에 잡힐 듯했던 단서는 안개처럼 흩어져 사라졌다.',
+  '조사가 실패로 끝났다....... 분명 무언가 있었는데, 뭐가 뭔지 알 수가 없다.',
+  '조사가 실패로 끝났다....... 기록도, 기억도 남지 않았다. 아무것도 밝혀내지 못했다.',
+  '조사가 실패로 끝났다....... 괴이는 끝까지 정체를 드러내지 않았다.',
+]
+
 function charOf(id: string) {
   return CHARACTERS.find((c) => c.id === id)!
 }
@@ -156,6 +172,7 @@ export function MissionScreen() {
     continueMission,
     resetMission,
     displayName,
+    players,
   } = useGame()
   const [draftTeam, setDraftTeam] = useState<string[]>([])
   const leader = charOf(mission.turnOrder[mission.leaderIdx])
@@ -185,16 +202,21 @@ export function MissionScreen() {
     const prev = prevRef.current
     if (prev.missionIndex === mission.missionIndex) {
       if (prev.phase === 'vote' && mission.phase === 'execute') {
-        setPopupText('조사대가 승인되어 조사를 떠났다.')
+        const teamNames = mission.proposedTeam.map((id) => displayName(id)).join(', ')
+        setPopupText(`조사대(${teamNames})가 승인되어 조사를 떠났다.`)
       } else if (prev.phase === 'vote' && mission.phase === 'propose') {
         setPopupText('조사단 선정에 실패했다....... 다음 리더에게 넘어간다.')
       } else if (prev.phase === 'vote' && mission.phase === 'result') {
         setPopupText('다섯 번의 부결 끝에 조사대 구성에 실패했다....... 이번 조사는 불발되었다.')
       } else if (prev.phase === 'execute' && mission.phase === 'result') {
+        const flavor =
+          trueResult === 'fail'
+            ? MISSION_FAIL_FLAVOR[mission.missionIndex % MISSION_FAIL_FLAVOR.length]
+            : MISSION_SUCCESS_FLAVOR[mission.missionIndex % MISSION_SUCCESS_FLAVOR.length]
         if (onTeam) {
-          setPopupText(trueResult === 'fail' ? '조사가 실패로 끝났다.......' : '조사가 성공적으로 끝났다.')
+          setPopupText(flavor)
         } else {
-          setPopupText('조사가 성공적으로 끝났다.')
+          setPopupText(MISSION_SUCCESS_FLAVOR[mission.missionIndex % MISSION_SUCCESS_FLAVOR.length])
         }
       }
     }
@@ -267,6 +289,23 @@ export function MissionScreen() {
                 </span>
               )}
             </p>
+            <div className="mission__vote-roster">
+              {mission.turnOrder.map((id) => {
+                const voted = mission.votes[id]
+                return (
+                  <div
+                    key={id}
+                    className={`mission__voter ${voted === undefined ? 'is-pending' : voted ? 'is-yes' : 'is-no'}`}
+                  >
+                    <ChatAvatar authorId={id} name={displayName(id)} photo={players[id]?.photo} />
+                    <span className="mission__voter-name">{displayName(id)}</span>
+                    <span className="mission__voter-choice">
+                      {voted === undefined ? '투표 대기' : voted ? '찬성' : '반대'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
             <button className="mission__cta" onClick={closeVote}>
               표결 마감
             </button>
@@ -401,6 +440,23 @@ export function MissionScreen() {
             {Object.values(mission.votes).filter((v) => !v).length} (총 {Object.keys(mission.votes).length}/
             {mission.turnOrder.length} 명 투표)
           </p>
+          <div className="mission__vote-roster">
+            {mission.turnOrder.map((id) => {
+              const voted = mission.votes[id]
+              return (
+                <div
+                  key={id}
+                  className={`mission__voter ${voted === undefined ? 'is-pending' : voted ? 'is-yes' : 'is-no'}`}
+                >
+                  <ChatAvatar authorId={id} name={displayName(id)} photo={players[id]?.photo} />
+                  <span className="mission__voter-name">{displayName(id)}</span>
+                  <span className="mission__voter-choice">
+                    {voted === undefined ? '투표 대기' : voted ? '찬성' : '반대'}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
           {viewerId && mission.votes[viewerId] === undefined ? (
             <div className="mission__vote-row">
               <button className="mission__vote mission__vote--yes" onClick={() => castVote(true)}>

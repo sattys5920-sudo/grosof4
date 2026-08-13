@@ -214,9 +214,6 @@ export function ClassroomScreen() {
           return (
             <div className="hallobj__puzzle">
               <p className="hallobj__note">{actorName}이(가) 열어 보니 문제가 나타났다.</p>
-              <p className="hallobj__puzzle-title">
-                《{puzzle.category}》 {puzzle.title}
-              </p>
               <p className="hallobj__puzzle-text">{puzzle.questionText}</p>
               {solved ? (
                 <div className="hallobj__puzzle-solved">
