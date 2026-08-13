@@ -50,6 +50,7 @@ export function RoomsScreen() {
     roomEvents,
     dispatchCreature,
     closeRoomInvestigation,
+    setRoomOpen,
     attackCreature,
     defendInCombat,
     hp,
@@ -114,6 +115,9 @@ export function RoomsScreen() {
             <span className="rooms__pin-title">{room.name}</span>
             {gmReveal && (
               <div className="rooms__pin-gm">
+                <button className="rooms__pin-reset" onClick={() => setRoomOpen(openRoom!, !roomEvent.open)}>
+                  구관 {roomEvent.open ? '닫기' : '열기'}
+                </button>
                 {roomEvent.event && (
                   <button className="rooms__pin-reset" onClick={() => closeRoomInvestigation(openRoom!)}>
                     초기화
@@ -138,6 +142,8 @@ export function RoomsScreen() {
                 <button className="rooms__pin-toggle" onClick={() => leaveRoom(openRoom!)}>
                   나가기
                 </button>
+              ) : !roomEvent.open ? (
+                <span className="rooms__pin-locked">잠김</span>
               ) : (
                 <button
                   className="rooms__pin-toggle"
@@ -152,7 +158,13 @@ export function RoomsScreen() {
               ))}
           </div>
 
-          {!roomEvent.event && <p className="rooms__pin-ambient">{room.ambientText}</p>}
+          {!roomEvent.open && !isAdmin && !iAmHere && (
+            <p className="rooms__pin-ambient">아직 이 구관은 잠겨 있다....... 불가가 열어야 들어갈 수 있다.</p>
+          )}
+
+          {(roomEvent.open || isAdmin || iAmHere) && !roomEvent.event && (
+            <p className="rooms__pin-ambient">{room.ambientText}</p>
+          )}
 
           {roomEvent.event && combat && creature && (
             <div className="rooms__combat">
@@ -251,39 +263,40 @@ export function RoomsScreen() {
           )}
         </div>
 
-        <div className="rooms__log">
-          {roomMessages[openRoom].map((m) => {
-            const isMe = m.authorId === viewerId
-            const isGm = m.authorId === 'admin'
-            const name = displayName(m.authorId)
-            return (
-              <div key={m.id} className={`rooms__msg-row ${isMe ? 'is-me' : ''}`}>
-                {!isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />}
-                <div className={`rooms__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
-                  <span className="rooms__msg-name">{name}</span>
-                  <p className="rooms__msg-text">
-                    <TaggedText text={m.text} names={tagNames} />
-                  </p>
-                </div>
-                {isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />}
-              </div>
-            )
-          })}
-        </div>
-
         {iAmHere || isAdmin ? (
-          <div className="rooms__composer">
-            <TagPicker names={tagNames} onPick={(name) => setDraft((prev) => `${prev}@${name} `)} />
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && submitChat()}
-              placeholder={`${room.name}에서 대화하기......`}
-            />
-            <button onClick={submitChat}>전송</button>
-          </div>
+          <>
+            <div className="rooms__log">
+              {roomMessages[openRoom].map((m) => {
+                const isMe = m.authorId === viewerId
+                const isGm = m.authorId === 'admin'
+                const name = displayName(m.authorId)
+                return (
+                  <div key={m.id} className={`rooms__msg-row ${isMe ? 'is-me' : ''}`}>
+                    {!isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />}
+                    <div className={`rooms__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
+                      <span className="rooms__msg-name">{name}</span>
+                      <p className="rooms__msg-text">
+                        <TaggedText text={m.text} names={tagNames} />
+                      </p>
+                    </div>
+                    {isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />}
+                  </div>
+                )
+              })}
+            </div>
+            <div className="rooms__composer">
+              <TagPicker names={tagNames} onPick={(name) => setDraft((prev) => `${prev}@${name} `)} />
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submitChat()}
+                placeholder={`${room.name}에서 대화하기......`}
+              />
+              <button onClick={submitChat}>전송</button>
+            </div>
+          </>
         ) : (
-          <p className="rooms__locked-note">입장한 사람만 대화할 수 있다.</p>
+          <p className="rooms__locked-note">입장해야 대화를 볼 수 있다.</p>
         )}
 
         {sheetOpen && <EventDispatchSheet sections={sections} onClose={() => setSheetOpen(false)} />}
@@ -312,11 +325,13 @@ export function RoomsScreen() {
           const full = occupants.length >= room.capacity
           const cleared = roomEvents[room.id].cleared
           const investigating = !!roomEvents[room.id].event && !cleared
+          const open = roomEvents[room.id].open
           return (
-            <button key={room.id} className="rooms__card" onClick={() => setOpenRoom(room.id)}>
+            <button key={room.id} className={`rooms__card ${!open ? 'is-locked' : ''}`} onClick={() => setOpenRoom(room.id)}>
               <div className="rooms__card-top">
                 <span className="rooms__card-name">
                   {room.name}
+                  {!open && <span className="rooms__card-locked-tag">잠김</span>}
                   {cleared && <span className="rooms__card-clue-tag">단서 발견</span>}
                   {investigating && <span className="rooms__card-active-tag">조사 중</span>}
                 </span>

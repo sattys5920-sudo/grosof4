@@ -120,7 +120,7 @@ const INITIAL_ROOM_MESSAGES: Record<RoomId, ChatMessage[]> = {
 function initialRoomEvents(): Record<RoomId, RoomEventState> {
   const result = {} as Record<RoomId, RoomEventState>
   for (const room of ROOMS) {
-    result[room.id] = { event: null, cleared: false, clue: null, note: null, combat: null }
+    result[room.id] = { event: null, cleared: false, clue: null, note: null, combat: null, open: false }
   }
   return result
 }
@@ -379,6 +379,7 @@ export async function joinRoomSync(myId: string, roomId: RoomId) {
   await runTransaction(requireDb(), async (tx) => {
     const snap = await tx.get(sref)
     const data = snap.data() as SessionDoc
+    if (!data.roomEvents[roomId]?.open) return
     const occ = data.roomOccupancy
     const capacity = ROOMS.find((r) => r.id === roomId)!.capacity
     if ((occ[roomId] ?? []).length >= capacity) return
@@ -412,7 +413,14 @@ export async function forceCloseRoomSync(roomId: RoomId) {
     const nextOccupancy = { ...data.roomOccupancy, [roomId]: [] }
     const nextEvents = {
       ...data.roomEvents,
-      [roomId]: { event: null, cleared: false, clue: null, note: null, combat: null },
+      [roomId]: {
+        event: null,
+        cleared: false,
+        clue: null,
+        note: null,
+        combat: null,
+        open: data.roomEvents[roomId]?.open ?? false,
+      },
     }
     tx.update(sref, { roomOccupancy: nextOccupancy, roomEvents: nextEvents })
   })

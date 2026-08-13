@@ -120,6 +120,7 @@ export interface RoomEventState {
   clue: string | null
   note: string | null
   combat: CombatState | null
+  open: boolean
 }
 
 export interface FeedComment {

@@ -213,6 +213,7 @@ interface GameState {
   sendRoomMessage: (roomId: RoomId, text: string) => void
   roomEvents: Record<RoomId, RoomEventState>
   closeRoomInvestigation: (roomId: RoomId) => void
+  setRoomOpen: (roomId: RoomId, open: boolean) => void
   classroomMessages: ChatMessage[]
   sendClassroomMessage: (text: string) => void
   classroom: ClassroomState
@@ -860,7 +861,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   }
 
   function dispatchCreature(roomId: RoomId, creature: Creature) {
-    void updateRoomEventSync(roomId, () => ({
+    void updateRoomEventSync(roomId, (state) => ({
       event: {
         title: creature.name,
         description: creature.intro,
@@ -882,13 +883,30 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         turnPlayerId: null,
         defenderId: null,
       },
+      open: state.open,
     }))
     const room = ROOMS.find((r) => r.id === roomId)!
     sendBroadcast('sin', `${room.name}에서 무언가 나타났다`, `${creature.intro} — 지금 바로 ${room.name}으로 가 보자.......`)
   }
 
   function closeRoomInvestigation(roomId: RoomId) {
-    void updateRoomEventSync(roomId, () => ({ event: null, cleared: false, clue: null, note: null, combat: null }))
+    void updateRoomEventSync(roomId, (state) => ({
+      event: null,
+      cleared: false,
+      clue: null,
+      note: null,
+      combat: null,
+      open: state.open,
+    }))
+  }
+
+  function setRoomOpen(roomId: RoomId, open: boolean) {
+    if (!isAdminFlag) return
+    void updateRoomEventSync(roomId, (state) => ({ ...state, open }))
+    const room = ROOMS.find((r) => r.id === roomId)!
+    if (open) {
+      sendBroadcast('event', `${room.name} 개방`, `${room.name}이(가) 열렸다....... 지금 입장할 수 있다.`)
+    }
   }
 
   function dispatchClassroomEvent(item: EventLibraryItem) {
@@ -1898,6 +1916,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       sendRoomMessage,
       roomEvents: session.roomEvents,
       closeRoomInvestigation,
+      setRoomOpen,
       classroomMessages: session.classroomMessages,
       sendClassroomMessage,
       classroom: session.classroom,
