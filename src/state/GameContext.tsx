@@ -230,6 +230,7 @@ interface GameState {
   markDmThreadRead: (characterId: string) => void
   missionsOpen: boolean
   openMissions: (firstPlayerId?: string) => void
+  setMissionsOpen: (open: boolean) => void
   mission: MissionState
   confirmProposal: (team: string[]) => void
   castVote: (approve: boolean) => void
@@ -1174,6 +1175,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void openMissionsSync(initialMissionState(turnOrder))
   }
 
+  function setMissionsOpen(open: boolean) {
+    if (!isAdminFlag) return
+    void patchSession({ missionsOpen: open })
+  }
+
   function confirmProposal(team: string[]) {
     const leaderName = displayName(session.mission.turnOrder[session.mission.leaderIdx])
     void updateMissionSync((m) => missionReducer(m, { type: 'CONFIRM_PROPOSAL', team, leaderName }))
@@ -1702,6 +1708,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       markDmThreadRead,
       missionsOpen: session.missionsOpen,
       openMissions,
+      setMissionsOpen,
       mission: session.mission,
       confirmProposal,
       castVote,

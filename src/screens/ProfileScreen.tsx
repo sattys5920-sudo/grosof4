@@ -157,6 +157,7 @@ export function ProfileScreen() {
     requestBrowserNotifications,
     missionsOpen,
     openMissions,
+    setMissionsOpen,
     abilityUseCount,
     abilityMaxUses,
     personalClues,
@@ -215,6 +216,8 @@ export function ProfileScreen() {
     a[1].nickname.localeCompare(b[1].nickname, 'ko'),
   )
   const unclaimedCharacters = CHARACTERS.filter((c) => !players[c.id])
+  const missionFresh =
+    mission.missionIndex === 0 && mission.phase === 'propose' && mission.wardWins === 0 && mission.sinWins === 0
   const completedMissions = mission.missionResults
     .map((r, i) => ({ r, i }))
     .filter((m) => m.r !== null)
@@ -743,8 +746,13 @@ export function ProfileScreen() {
             <span className="profile__section-label">불가 전용 — 조사</span>
             <p className="profile__gm-note">
               조사 상태: <strong>{missionsOpen ? '열림' : '잠김'}</strong>
+              {!missionFresh && ` (진행 중 — ${mission.missionIndex + 1} 차, 선 ${mission.wardWins} : ${mission.sinWins} 악)`}
             </p>
-            {!missionsOpen && (
+            {missionsOpen ? (
+              <button className="profile__gm-preset" onClick={() => setMissionsOpen(false)}>
+                조사 닫기
+              </button>
+            ) : missionFresh ? (
               <>
                 <select value={firstPlayerId} onChange={(e) => setFirstPlayerId(e.target.value)}>
                   <option value="">첫 순서: 가나다순 자동</option>
@@ -761,6 +769,10 @@ export function ProfileScreen() {
                   조사 열기 (5 조사 · 3 선승)
                 </button>
               </>
+            ) : (
+              <button className="profile__gm-preset" onClick={() => setMissionsOpen(true)}>
+                조사 다시 열기 (이어서 진행)
+              </button>
             )}
             <p className="profile__gm-note">
               강당·구관의 문제 발동은 각 채팅 화면 안의 + 버튼에서 진행한다.
