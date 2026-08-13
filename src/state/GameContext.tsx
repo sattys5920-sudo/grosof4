@@ -133,10 +133,15 @@ function buildMinigameLog(kind: HallMinigameKind | undefined, label: string, out
   if (kind === 'poker') {
     return `${label} 앞에서 그것과 패를 나눴다....... 결과는 '${outcomeLabel}'.`
   }
-  if (kind === 'robo77') {
-    return `${label} 앞에서 그것과 로보 77 승부를 걸었다....... 결과는 '${outcomeLabel}'.`
-  }
   return `${label}에서 그것과 승부가 갈렸다....... 결과는 '${outcomeLabel}'.`
+}
+
+// 로보 77: 숫자 카드 세 장을 실제로 뽑아 합산한 뒤 77과 비교해 오버/언더를 가른다
+// (다른 미니게임과 달리 결과만 통보하지 않고 뽑힌 숫자를 그대로 로그에 남긴다).
+function rollRobo77(): { draws: number[]; sum: number; outcomeId: 'over' | 'under' } {
+  const draws = [1, 2, 3].map(() => 15 + Math.floor(Math.random() * 21))
+  const sum = draws.reduce((a, b) => a + b, 0)
+  return { draws, sum, outcomeId: sum > 77 ? 'over' : 'under' }
 }
 
 function applyItemEffect(
@@ -1177,8 +1182,16 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       const existing = heInner.objectResults[objectId]
       if (!existing || existing.minigamePending.length === 0) return {}
       const pendingIds = existing.minigamePending
-      const actualOutcome = options[Math.floor(Math.random() * options.length)]
-      const gameLog = buildMinigameLog(obj.minigameKind, obj.label, actualOutcome.label)
+      let actualOutcome: { id: string; label: string }
+      let gameLog: string
+      if (obj.minigameKind === 'robo77') {
+        const roll = rollRobo77()
+        actualOutcome = options.find((o) => o.id === roll.outcomeId)!
+        gameLog = `${obj.label} 앞에서 로보 77 승부를 걸었다....... 뽑힌 숫자는 ${roll.draws.join(', ')}, 합계 ${roll.sum}. 결과는 '${actualOutcome.label}'.`
+      } else {
+        actualOutcome = options[Math.floor(Math.random() * options.length)]
+        gameLog = buildMinigameLog(obj.minigameKind, obj.label, actualOutcome.label)
+      }
       const nextParticipants = { ...existing.minigameParticipants }
       const playerPatches: Record<string, Partial<PlayerDoc>> = {}
       pendingIds.forEach((id) => {
@@ -1755,6 +1768,55 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const myId = viewerId ?? 'admin'
   const feed: FeedPost[] = feedDocs.map((d) => feedPostToFeedPost(d.id, d, myId))
   const broadcast = session.broadcast && session.broadcast.id !== dismissedBroadcastId ? session.broadcast : null
+
+  // 방송실 게시판에 새 공지가 올라오면 상단바 + 백그라운드 알림을 띄운다 (작성자 본인은 제외).
+  const feedPostInitRef = useRef(false)
+  const lastFeedTopIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    const top = feed[0] ?? null
+    if (!feedPostInitRef.current) {
+      feedPostInitRef.current = true
+      lastFeedTopIdRef.current = top?.id ?? null
+      return
+    }
+    if (top && top.id !== lastFeedTopIdRef.current && !isAdminFlag) {
+      setTopAlert({ id: top.id, text: `[공지] ${top.title}` })
+      notifyBackground('새 공지', top.title, 'main')
+    }
+    lastFeedTopIdRef.current = top?.id ?? null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feed.map((p) => p.id).join(','), isAdminFlag])
+
+  // 공지 댓글에 새 댓글이 달리면 (나를 태그했으면 더 눈에 띄게) 상단바 + 백그라운드 알림을 띄운다.
+  const feedCommentInitRef = useRef(false)
+  const lastFeedCommentCountsRef = useRef<Record<string, number>>({})
+  useEffect(() => {
+    if (!feedCommentInitRef.current) {
+      feedCommentInitRef.current = true
+      for (const post of feed) lastFeedCommentCountsRef.current[post.id] = post.comments.length
+      return
+    }
+    for (const post of feed) {
+      const prevCount = lastFeedCommentCountsRef.current[post.id] ?? 0
+      if (post.comments.length > prevCount) {
+        const last = post.comments[post.comments.length - 1]
+        const myCommentId = isAdminFlag ? 'admin' : viewerId
+        if (last.authorId !== myCommentId) {
+          const senderName = displayName(last.authorId)
+          const myName = isAdminFlag ? displayName('admin') : viewerId ? displayName(viewerId) : null
+          const tagged = !!myName && last.text.includes(`@${myName}`)
+          setTopAlert({ id: last.id, text: `${tagged ? '[태그] ' : ''}${senderName}: ${last.text}` })
+          notifyBackground(
+            tagged ? `${senderName}이(가) 나를 태그했다` : `${post.title} · ${senderName}`,
+            last.text,
+            'main',
+          )
+        }
+      }
+      lastFeedCommentCountsRef.current[post.id] = post.comments.length
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feed, viewerId, isAdminFlag])
 
   const value = useMemo<GameState>(
     () => ({

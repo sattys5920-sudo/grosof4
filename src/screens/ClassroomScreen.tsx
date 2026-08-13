@@ -4,7 +4,7 @@ import { useGame } from '../state/GameContext'
 import { CHARACTERS } from '../data/characters'
 import { HALL_EVENTS, hallEventById } from '../data/hallEvents'
 import { hallPuzzleById } from '../data/hallPuzzles'
-import type { HallMinigameKind, HallObject } from '../data/types'
+import type { HallObject } from '../data/types'
 import { MINIGAME_OPTIONS } from '../data/hallMinigames'
 import { EventDispatchSheet, type DispatchSection } from '../components/EventDispatchSheet'
 import { ChatAvatar } from '../components/ChatAvatar'
@@ -13,17 +13,6 @@ import { TaggedText } from '../components/TaggedText'
 import { TagPicker } from '../components/TagPicker'
 
 const HALL_TIME_LIMIT_MS = 60 * 60 * 1000
-const KIND_LABEL: Record<HallObject['kind'], string> = {
-  hazard: '위험',
-  puzzle: '문제',
-  item: '아이템',
-  minigame: '미니게임',
-}
-const MINIGAME_LABEL: Record<HallMinigameKind, string> = {
-  oddeven: '홀짝',
-  poker: '포커',
-  robo77: '로보 77',
-}
 
 function formatRemaining(ms: number) {
   const total = Math.max(0, Math.ceil(ms / 1000))
@@ -119,9 +108,6 @@ export function ClassroomScreen() {
         <div key={obj.id} className="hallobj hallobj--minigame">
           <div className="hallobj__head">
             <span className="hallobj__label">{obj.label}</span>
-            <span className="hallobj__kind hallobj__kind--minigame">
-              {MINIGAME_LABEL[obj.minigameKind ?? 'oddeven']}
-            </span>
           </div>
           <p className="hallobj__note">{obj.minigameRule}</p>
           {canJoin && (
@@ -176,7 +162,6 @@ export function ClassroomScreen() {
       <div key={obj.id} className={`hallobj hallobj--${status}`}>
         <div className="hallobj__head">
           <span className="hallobj__label">{obj.label}</span>
-          <span className={`hallobj__kind hallobj__kind--${obj.kind}`}>{KIND_LABEL[obj.kind]}</span>
         </div>
 
         {status === 'idle' && !isAdmin && (
