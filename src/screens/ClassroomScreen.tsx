@@ -124,13 +124,16 @@ export function ClassroomScreen() {
           </div>
           <p className="hallobj__note">{obj.minigameRule}</p>
           {canJoin && (
-            <div className="hallobj__minigame-options">
-              {options.map((o) => (
-                <button key={o.id} className="hallobj__minigame-join" onClick={() => joinHallMinigame(obj.id, o.id)}>
-                  {o.label} 고르기
-                </button>
-              ))}
-            </div>
+            <>
+              <p className="hallobj__warn">한 명만 시도할 수 있으니 다른 학생들과 논의해 보자.</p>
+              <div className="hallobj__minigame-options">
+                {options.map((o) => (
+                  <button key={o.id} className="hallobj__minigame-join" onClick={() => joinHallMinigame(obj.id, o.id)}>
+                    {o.label} 고르기
+                  </button>
+                ))}
+              </div>
+            </>
           )}
           {myPending && myResult === undefined && (
             <p className="hallobj__minigame-waiting">
@@ -177,7 +180,7 @@ export function ClassroomScreen() {
 
         {status === 'idle' && !isAdmin && (
           <div className="hallobj__actions">
-            <p className="hallobj__warn">한 명만 선택할 수 있다.</p>
+            <p className="hallobj__warn">한 명만 시도할 수 있으니 다른 학생들과 논의해 보자.</p>
             <div className="hallobj__action-row">
               <button onClick={() => setPendingChoice({ objectId: obj.id, choice: 'open' })}>열어 본다</button>
               <button onClick={() => setPendingChoice({ objectId: obj.id, choice: 'leave' })}>그냥 둔다</button>
