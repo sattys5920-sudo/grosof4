@@ -70,7 +70,7 @@ body {
 }
 
 #root {
-  height: 100svh;
+  height: var(--app-height, 100svh);
   display: flex;
   justify-content: center;
   overflow: hidden;

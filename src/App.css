@@ -2,7 +2,7 @@
   position: relative;
   width: 100%;
   max-width: 430px;
-  height: 100svh;
+  height: var(--app-height, 100svh);
   display: flex;
   flex-direction: column;
   background: var(--void);
