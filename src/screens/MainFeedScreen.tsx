@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import './MainFeedScreen.css'
 import { useGame } from '../state/GameContext'
+import { CHARACTERS } from '../data/characters'
 import { ChatAvatar } from '../components/ChatAvatar'
+import { TaggedText } from '../components/TaggedText'
+import { TagPicker } from '../components/TagPicker'
 
 export function MainFeedScreen() {
   const {
@@ -30,6 +33,8 @@ export function MainFeedScreen() {
     setDraft('')
     setSecret(false)
   }
+
+  const tagNames = [...CHARACTERS.map((c) => displayName(c.id)), displayName('admin')]
 
   function submitNewPost() {
     createFeedPost(postTitle, postBody, postCommentsOn)
@@ -91,7 +96,7 @@ export function MainFeedScreen() {
                     {canSee ? (
                       <span>
                         {c.secret && '🔒 '}
-                        {c.text}
+                        <TaggedText text={c.text} names={tagNames} />
                       </span>
                     ) : (
                       <span className="feed__comment-hidden">🔒 비밀 댓글</span>
@@ -102,6 +107,7 @@ export function MainFeedScreen() {
             })}
           {openPost.commentsEnabled && (
             <div className="feed__comment-composer">
+              <TagPicker names={tagNames} onPick={(name) => setDraft((prev) => `${prev}@${name} `)} />
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}

@@ -10,6 +10,8 @@ import { EventDispatchSheet, type DispatchSection } from '../components/EventDis
 import { AbilityUseModal } from '../components/AbilityUseModal'
 import { ChatAvatar } from '../components/ChatAvatar'
 import { PixelArt } from '../components/PixelArt'
+import { TaggedText } from '../components/TaggedText'
+import { TagPicker } from '../components/TagPicker'
 
 function charOf(id: string) {
   return CHARACTERS.find((c) => c.id === id)!
@@ -71,6 +73,8 @@ export function RoomsScreen() {
   function revealedFor(c: ReturnType<typeof charOf>) {
     return viewer ? isRevealedTo(viewer, c, gmReveal) : gmReveal
   }
+
+  const tagNames = [...CHARACTERS.map((c) => displayName(c.id)), displayName('admin')]
 
   if (openRoom) {
     const room = ROOMS.find((r) => r.id === openRoom)!
@@ -257,7 +261,9 @@ export function RoomsScreen() {
                 {!isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />}
                 <div className={`rooms__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
                   <span className="rooms__msg-name">{name}</span>
-                  <p className="rooms__msg-text">{m.text}</p>
+                  <p className="rooms__msg-text">
+                    <TaggedText text={m.text} names={tagNames} />
+                  </p>
                 </div>
                 {isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />}
               </div>
@@ -267,6 +273,7 @@ export function RoomsScreen() {
 
         {iAmHere || isAdmin ? (
           <div className="rooms__composer">
+            <TagPicker names={tagNames} onPick={(name) => setDraft((prev) => `${prev}@${name} `)} />
             <input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}

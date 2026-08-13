@@ -598,6 +598,64 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     return () => clearInterval(t)
   }, [session.roomEvents])
 
+  // 강당 채팅에 새 메시지가 오면 (내가 보낸 게 아니면) 상단바 + 백그라운드 알림을 띄운다.
+  // 나를 태그(@닉네임)한 메시지는 더 눈에 띄게 표시한다.
+  const classroomMsgInitRef = useRef(false)
+  const lastClassroomCountRef = useRef(0)
+  useEffect(() => {
+    const msgs = session.classroomMessages
+    if (!classroomMsgInitRef.current) {
+      classroomMsgInitRef.current = true
+      lastClassroomCountRef.current = msgs.length
+      return
+    }
+    if (msgs.length > lastClassroomCountRef.current) {
+      const last = msgs[msgs.length - 1]
+      const isMine = isAdminFlag ? last.authorId === 'admin' : !!viewerId && last.authorId === viewerId
+      if (!isMine && (viewerId || isAdminFlag)) {
+        const senderName = displayName(last.authorId)
+        const myName = isAdminFlag ? displayName('admin') : viewerId ? displayName(viewerId) : null
+        const tagged = !!myName && last.text.includes(`@${myName}`)
+        setTopAlert({ id: last.id, text: `${tagged ? '[태그] ' : ''}${senderName}: ${last.text}` })
+        notifyBackground(tagged ? `${senderName}이(가) 나를 태그했다` : `강당 · ${senderName}`, last.text, 'classroom')
+      }
+    }
+    lastClassroomCountRef.current = msgs.length
+  }, [session.classroomMessages, viewerId, isAdminFlag])
+
+  // 구관 채팅도 마찬가지로 알려 준다 — 다만 내가 있는 방이거나 나를 태그한 경우에만
+  // 알림을 띄워, 들어가 있지 않은 방의 대화로 계속 알림이 오는 것을 막는다.
+  const roomMsgInitRef = useRef(false)
+  const lastRoomCountsRef = useRef<Record<string, number>>({})
+  useEffect(() => {
+    if (!roomMsgInitRef.current) {
+      roomMsgInitRef.current = true
+      for (const room of ROOMS) lastRoomCountsRef.current[room.id] = session.roomMessages[room.id]?.length ?? 0
+      return
+    }
+    for (const room of ROOMS) {
+      const msgs = session.roomMessages[room.id] ?? []
+      const prevCount = lastRoomCountsRef.current[room.id] ?? 0
+      if (msgs.length > prevCount) {
+        const last = msgs[msgs.length - 1]
+        const isMine = isAdminFlag ? last.authorId === 'admin' : !!viewerId && last.authorId === viewerId
+        const myName = isAdminFlag ? displayName('admin') : viewerId ? displayName(viewerId) : null
+        const tagged = !!myName && last.text.includes(`@${myName}`)
+        const iAmHere = !!viewerId && (session.roomOccupancy[room.id] ?? []).includes(viewerId)
+        if (!isMine && (isAdminFlag || iAmHere || tagged)) {
+          const senderName = displayName(last.authorId)
+          setTopAlert({ id: last.id, text: `${tagged ? '[태그] ' : ''}${senderName}: ${last.text}` })
+          notifyBackground(
+            tagged ? `${senderName}이(가) 나를 태그했다` : `${room.name} · ${senderName}`,
+            last.text,
+            'rooms',
+          )
+        }
+      }
+      lastRoomCountsRef.current[room.id] = msgs.length
+    }
+  }, [session.roomMessages, session.roomOccupancy, viewerId, isAdminFlag])
+
   // 로그아웃 후 다른 계정으로 다시 가입·로그인하면, 이전 계정에서 쌓인 추적 상태(ref)가
   // 새 계정으로 새어들어 오작동(예: 되돌리기 판정 오류)을 일으키지 않도록 초기화한다.
   const prevViewerIdRef = useRef(viewerId)

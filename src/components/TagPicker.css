@@ -1,0 +1,56 @@
+.tagpicker {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.tagpicker__toggle {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  font-family: var(--font-pixel);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--veil);
+  background: var(--void-3);
+  border: 1px solid var(--veil);
+  cursor: pointer;
+}
+
+.tagpicker__toggle:hover {
+  background: var(--veil-dim);
+}
+
+.tagpicker__menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  overflow-y: auto;
+  min-width: 140px;
+  background: var(--void-2);
+  border: 1px solid var(--veil);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.tagpicker__item {
+  padding: 9px 12px;
+  font-size: 13px;
+  text-align: left;
+  color: var(--bone);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.tagpicker__item:last-child {
+  border-bottom: none;
+}
+
+.tagpicker__item:hover {
+  background: var(--veil-dim);
+  color: var(--bone-bright);
+}

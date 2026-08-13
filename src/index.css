@@ -86,6 +86,11 @@ button:not(.classroom__pin-plus):not(.rooms__pin-plus):not(.feed__new-post-btn):
   min-height: 36px;
 }
 
+.mention-tag {
+  color: var(--veil);
+  font-weight: 700;
+}
+
 ::selection {
   background: var(--sin-dim);
   color: var(--bone-bright);

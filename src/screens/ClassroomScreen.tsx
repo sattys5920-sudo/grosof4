@@ -9,6 +9,8 @@ import { MINIGAME_OPTIONS } from '../data/hallMinigames'
 import { EventDispatchSheet, type DispatchSection } from '../components/EventDispatchSheet'
 import { ChatAvatar } from '../components/ChatAvatar'
 import { AbilityUseModal } from '../components/AbilityUseModal'
+import { TaggedText } from '../components/TaggedText'
+import { TagPicker } from '../components/TagPicker'
 
 const HALL_TIME_LIMIT_MS = 60 * 60 * 1000
 const KIND_LABEL: Record<HallObject['kind'], string> = {
@@ -84,6 +86,8 @@ export function ClassroomScreen() {
     sendClassroomMessage(draft)
     setDraft('')
   }
+
+  const tagNames = [...CHARACTERS.map((c) => displayName(c.id)), displayName('admin')]
 
   const sections: DispatchSection[] = [
     {
@@ -385,7 +389,9 @@ export function ClassroomScreen() {
                   <div className="classroom__msg-head">
                     <span className="classroom__msg-name">{name}</span>
                   </div>
-                  <p className={`classroom__msg-text${m.emphasize ? ' is-emphasis' : ''}`}>{m.text}</p>
+                  <p className={`classroom__msg-text${m.emphasize ? ' is-emphasis' : ''}`}>
+                    <TaggedText text={m.text} names={tagNames} />
+                  </p>
                 </div>
                 {isMe && (
                   <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />
@@ -398,6 +404,7 @@ export function ClassroomScreen() {
 
       {canChat && (
         <div className="classroom__composer">
+          <TagPicker names={tagNames} onPick={(name) => setDraft((prev) => `${prev}@${name} `)} />
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
