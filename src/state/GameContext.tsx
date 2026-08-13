@@ -23,7 +23,7 @@ import type {
   RoomEventState,
   RoomId,
 } from '../data/types'
-import { initialMissionState, missionReducer, type MissionState } from './missionEngine'
+import { initialMissionState, missionReducer, resolvedTeam, type MissionState } from './missionEngine'
 import { firebaseConfigured } from '../firebase'
 import {
   addClueSync,
@@ -1630,13 +1630,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     if (!viewerId) return null
     const viewer = CHARACTERS.find((c) => c.id === viewerId)!
     if (viewer.role !== '망각자') return null
-    if (session.mission.missionResults[2] === null) return null
-    let fails = 0
-    for (let i = 0; i < 3; i++) {
-      const team = session.mission.teamHistory[i]
-      if (team && team.includes(viewerId) && session.mission.missionResults[i] === 'fail') fails++
-    }
-    return fails >= 2 ? 'sin' : 'ward'
+    const team = resolvedTeam(session.mission, viewerId)
+    return team === 'veil' ? null : team
   })()
 
   const myId = viewerId ?? 'admin'

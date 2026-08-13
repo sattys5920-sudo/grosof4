@@ -5,7 +5,7 @@ import { CHARACTERS } from '../data/characters'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
 import { ChatAvatar } from '../components/ChatAvatar'
-import { MISSION_PHASE_MS, MISSION_SIZES, TWO_FAILS_REQUIRED } from '../state/missionEngine'
+import { MISSION_PHASE_MS, MISSION_SIZES, TWO_FAILS_REQUIRED, resolvedTeam } from '../state/missionEngine'
 
 function MissionPopup({ text, onClose }: { text: string; onClose: () => void }) {
   return (
@@ -503,7 +503,7 @@ export function MissionScreen() {
                 <button className="mission__vote mission__vote--yes" onClick={() => submitCard('success')}>
                   성공 카드 제출
                 </button>
-                {viewer.team === 'sin' && (
+                {viewerId && resolvedTeam(mission, viewerId) === 'sin' && (
                   <button className="mission__vote mission__vote--no" onClick={() => submitCard('fail')}>
                     실패 카드 제출
                   </button>

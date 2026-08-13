@@ -49,8 +49,19 @@ export type MissionAction =
 
 const DEFAULT_ORDER = CHARACTERS.map((c) => c.id)
 
-function charTeam(id: string) {
-  return CHARACTERS.find((c) => c.id === id)!.team
+// 망각자는 3 차 조사 결과가 확정되는 순간, 본인이 참가했던 1~3 차 조사 중
+// 실패로 끝난 조사가 2 회 이상이면 '괴이'로, 아니면 '학생'으로 진영이 확정된다.
+// 확정 전까지는 어느 쪽도 아닌 veil 로 취급한다.
+export function resolvedTeam(state: MissionState, viewerId: string): 'ward' | 'sin' | 'veil' {
+  const char = CHARACTERS.find((c) => c.id === viewerId)!
+  if (char.role !== '망각자') return char.team
+  if (state.missionResults[2] === null) return 'veil'
+  let fails = 0
+  for (let i = 0; i < 3; i++) {
+    const team = state.teamHistory[i]
+    if (team && team.includes(viewerId) && state.missionResults[i] === 'fail') fails++
+  }
+  return fails >= 2 ? 'sin' : 'ward'
 }
 
 export function initialMissionState(turnOrder: string[] = DEFAULT_ORDER): MissionState {
@@ -156,7 +167,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
       if (state.phase !== 'execute') return state
       if (!state.proposedTeam.includes(action.viewerId)) return state
       if (state.cards[action.viewerId] !== undefined) return state
-      if (action.card === 'fail' && charTeam(action.viewerId) !== 'sin') return state
+      if (action.card === 'fail' && resolvedTeam(state, action.viewerId) !== 'sin') return state
       return { ...state, cards: { ...state.cards, [action.viewerId]: action.card } }
     }
 
