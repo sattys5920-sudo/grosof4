@@ -221,6 +221,13 @@ export const ENDING_SCRIPTS: Record<EndingKey, string> = {
     '이 학교에서는 특별한 사건이 없었다. 열 명의 자리는 애초부터 존재하지 않았던 것처럼, 누구도 그들을 그리워하거나 찾지 않는다. 2027 년에도 괴담 동아리에 열한 번째 부원은 사라질 것이다. 또 십 년이 지나기를 기다리며.',
 }
 
+export const ENDING_LABELS: Record<EndingKey, string> = {
+  'ward-broken': '학생 승리, 괴이 단절 성공',
+  'ward-unbroken': '학생 승리, 괴이 단절 실패',
+  'sin-broken': '학생 패배, 괴이 단절 성공',
+  'sin-unbroken': '학생 패배, 괴이 단절 실패',
+}
+
 export const ROOMS: Room[] = [
   {
     id: 'library',

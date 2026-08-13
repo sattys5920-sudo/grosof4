@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
-import { CHARACTERS, DAY4_REVEAL_TEXT, ENDING_SCRIPTS, roleLabel } from '../data/characters'
+import { CHARACTERS, DAY4_REVEAL_TEXT, ENDING_LABELS, ENDING_SCRIPTS, roleLabel } from '../data/characters'
 import { HALL_EVENTS } from '../data/hallEvents'
 import { SHOP_ITEMS } from '../data/shop'
 import { Badge } from '../components/Badge'
@@ -412,6 +412,9 @@ export function ProfileScreen() {
               <span className="profile__section-label">엔딩</span>
               <p className={`profile__ending-text profile__ending-text--${endingKey}`}>
                 {ENDING_SCRIPTS[endingKey]}
+              </p>
+              <p className={`profile__ending-label profile__ending-label--${endingKey}`}>
+                {ENDING_LABELS[endingKey]}
               </p>
             </div>
           )}

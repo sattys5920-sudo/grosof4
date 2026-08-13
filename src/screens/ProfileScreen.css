@@ -201,6 +201,34 @@
   box-shadow: 0 0 12px rgba(168, 56, 47, 0.25);
 }
 
+.profile__ending-label {
+  margin: 0 !important;
+  font-family: var(--font-pixel) !important;
+  font-size: 10.5px !important;
+  letter-spacing: 0.5px;
+  background: var(--void) !important;
+}
+
+.profile__ending-label--ward-broken {
+  color: var(--ward) !important;
+  border-color: var(--ward) !important;
+}
+
+.profile__ending-label--ward-unbroken {
+  color: var(--veil) !important;
+  border-color: var(--veil) !important;
+}
+
+.profile__ending-label--sin-broken {
+  color: var(--veil) !important;
+  border-color: var(--veil-dim) !important;
+}
+
+.profile__ending-label--sin-unbroken {
+  color: var(--sin) !important;
+  border-color: var(--sin) !important;
+}
+
 .profile__role {
   font-family: var(--font-pixel);
   font-size: 11px;

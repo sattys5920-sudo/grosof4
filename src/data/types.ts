@@ -149,6 +149,7 @@ export interface Broadcast {
   title: string
   body: string
   variant?: string
+  footer?: string
 }
 
 export type EventCategory = '대결' | '공포연출'

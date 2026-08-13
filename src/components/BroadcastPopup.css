@@ -117,6 +117,32 @@
   color: var(--bone);
 }
 
+.bcpopup__footer {
+  margin: 4px 0 0;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  color: var(--bone-dim);
+}
+
+.bcpopup--variant-ward-broken .bcpopup__footer {
+  color: var(--ward);
+}
+
+.bcpopup--variant-ward-unbroken .bcpopup__footer {
+  color: var(--veil);
+}
+
+.bcpopup--variant-sin-broken .bcpopup__footer {
+  color: var(--veil);
+}
+
+.bcpopup--variant-sin-unbroken .bcpopup__footer {
+  color: var(--sin);
+}
+
 .bcpopup__dismiss {
   align-self: flex-end;
   margin-top: 6px;
