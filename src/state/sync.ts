@@ -100,6 +100,7 @@ export interface PlayerDoc {
   equippedArmorId: string | null
   inventory: Record<string, number>
   leakLog: LeakEntry[]
+  leakRevealShown: boolean
 }
 
 export interface FeedPostDoc {
@@ -317,6 +318,7 @@ export async function registerAccountSync(username: string, password: string): P
       equippedArmorId: null,
       inventory: {},
       leakLog: [],
+      leakRevealShown: false,
     })
     const account: AccountDoc = { passwordHash, characterId: assigned.id, createdAtMs: Date.now() }
     tx.set(aref, account)
@@ -371,6 +373,7 @@ export async function assignRoleManuallySync(characterId: string, nickname: stri
       equippedArmorId: null,
       inventory: {},
       leakLog: [],
+      leakRevealShown: false,
     })
   })
 }

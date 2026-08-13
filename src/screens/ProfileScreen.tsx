@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react'
 import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
-import { CHARACTERS, DAY4_REVEAL_TEXT, ENDING_LABELS, ENDING_SCRIPTS, roleLabel } from '../data/characters'
+import {
+  CHARACTERS,
+  DAY4_REVEAL_TEXT,
+  ENDING_LABELS,
+  ENDING_SCRIPTS,
+  LEAKER_ABILITY_DESCRIPTION,
+  LEAKER_ABILITY_NAME,
+  roleLabel,
+} from '../data/characters'
 import { HALL_EVENTS } from '../data/hallEvents'
 import { SHOP_ITEMS, shopItemById } from '../data/shop'
 import { Badge } from '../components/Badge'
@@ -361,8 +369,10 @@ export function ProfileScreen() {
           )}
 
           <div className="profile__ability">
-            <span className="profile__section-label">특수 능력 — {viewer.abilityName}</span>
-            <p>{viewer.abilityDescription}</p>
+            <span className="profile__section-label">
+              특수 능력 — {viewer.role === '망각자' && leakUnlocked ? LEAKER_ABILITY_NAME : viewer.abilityName}
+            </span>
+            <p>{viewer.role === '망각자' && leakUnlocked ? LEAKER_ABILITY_DESCRIPTION : viewer.abilityDescription}</p>
 
             {['기록자', '감찰자', '복수자', '보호자', '목격자', '괴이의 사도', '파괴자'].includes(viewer.role) && (
                 <>
@@ -425,7 +435,7 @@ export function ProfileScreen() {
               <>
                 <p className="profile__ability-locked">
                   {forgottenIdentity
-                    ? `《기억 회복》 발동 — 지금까지의 조사 결과로 볼 때, 너는 ${forgottenIdentity === 'ward' ? '학생' : '괴이'}이었다.`
+                    ? `기억이 돌아왔다 — 지금까지의 조사 결과로 볼 때, 너는 ${forgottenIdentity === 'ward' ? '학생' : '괴이'}이었다.`
                     : '3 차 조사가 끝나기 전까지는 자신의 정체를 알 수 없다.'}
                 </p>
                 {leakUnlocked && (

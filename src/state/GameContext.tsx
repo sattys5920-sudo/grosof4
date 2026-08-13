@@ -6,6 +6,7 @@ import {
   ENDING_LABELS,
   ENDING_SCRIPTS,
   ROOMS,
+  leakerRevealText,
 } from '../data/characters'
 import { creatureById } from '../data/creatures'
 import { shopItemById } from '../data/shop'
@@ -292,6 +293,8 @@ interface GameState {
   leakUnlocked: boolean
   investigateLeak: (targetId: string) => void
   publishLeak: (leakId: string) => void
+  leakRevealPending: boolean
+  dismissLeakReveal: () => void
   hp: number
   stamina: number
   coins: number
@@ -1892,6 +1895,21 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
   const leakUnlocked = session.mission.missionResults[2] !== null
 
+  const leakRevealPending =
+    !!viewerId &&
+    !!myPlayer &&
+    !myPlayer.leakRevealShown &&
+    forgottenIdentity !== null
+
+  function dismissLeakReveal() {
+    if (!viewerId || !forgottenIdentity) return
+    const text = leakerRevealText(forgottenIdentity === 'ward' ? '학생' : '괴이')
+    void patchPlayer(viewerId, {
+      leakRevealShown: true,
+      personalClues: [...(myPlayer?.personalClues ?? []), text],
+    })
+  }
+
   const myId = viewerId ?? 'admin'
   const feed: FeedPost[] = feedDocs.map((d) => feedPostToFeedPost(d.id, d, myId))
   const broadcast = session.broadcast && session.broadcast.id !== dismissedBroadcastId ? session.broadcast : null
@@ -2056,6 +2074,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       abilityMaxUses,
       personalClues,
       forgottenIdentity,
+      leakRevealPending,
+      dismissLeakReveal,
       useRecordBook,
       investigate,
       armShield,
