@@ -35,6 +35,7 @@ export interface ClueItem {
   text: string
   source: string
   icon?: string | null
+  emphasize?: boolean
 }
 
 export interface SessionDoc {

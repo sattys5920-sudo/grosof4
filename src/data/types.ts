@@ -45,6 +45,7 @@ export interface ChatMessage {
   authorId: string
   text: string
   time: string
+  emphasize?: boolean
 }
 
 export interface GroupEventSpec {
@@ -222,6 +223,7 @@ export interface HallEvent {
   logs: HallLogEntry[]
   objects: HallObject[]
   finalClue: string
+  finalClueEmphasis?: boolean
 }
 
 export type HallObjectStatus = 'idle' | 'opened' | 'left'

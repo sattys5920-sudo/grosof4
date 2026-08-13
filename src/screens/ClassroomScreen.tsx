@@ -382,7 +382,7 @@ export function ClassroomScreen() {
                   <div className="classroom__msg-head">
                     <span className="classroom__msg-name">{name}</span>
                   </div>
-                  <p className="classroom__msg-text">{m.text}</p>
+                  <p className={`classroom__msg-text${m.emphasize ? ' is-emphasis' : ''}`}>{m.text}</p>
                 </div>
                 {isMe && (
                   <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />

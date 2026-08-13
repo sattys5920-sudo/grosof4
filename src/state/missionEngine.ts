@@ -1,10 +1,10 @@
 import { CHARACTERS } from '../data/characters'
 
 // 표준 아발론 10인 규칙: 조사 인원 3-4-4-5-5, 4 차만 실패 카드 2 장 이상이어야 실패.
-// 먼저 3 승을 거두는 진영이 승리하므로, 4 차까지 2:2일 때만 5 차(최종) 조사까지 간다.
+// 도중에 먼저 3 승을 거둬도 조사를 멈추지 않고 5 차까지 전부 진행하며,
+// 최종 승패는 5 차가 끝난 뒤 승수가 더 많은 진영으로 결정한다.
 export const MISSION_SIZES = [3, 4, 4, 5, 5]
 export const TWO_FAILS_REQUIRED = [false, false, false, true, false]
-export const WINS_NEEDED = 3
 export const MAX_REJECTIONS = 5
 
 // 조사대 구성 / 찬반 투표 / 성공-실패 제출, 세 단계 모두 참여자 10 인이 각자 직접
@@ -212,11 +212,10 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
     }
 
     case 'CONTINUE': {
-      if (state.wardWins >= WINS_NEEDED) {
-        return { ...state, phase: 'gameover', winner: 'ward' }
-      }
-      if (state.sinWins >= WINS_NEEDED) {
-        return { ...state, phase: 'gameover', winner: 'sin' }
+      const isFinalMission = state.missionIndex >= MISSION_SIZES.length - 1
+      if (isFinalMission) {
+        const winner = state.wardWins > state.sinWins ? 'ward' : 'sin'
+        return { ...state, phase: 'gameover', winner }
       }
       const nextLeaderIdx = (state.leaderIdx + 1) % state.turnOrder.length
       return {

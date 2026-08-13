@@ -650,7 +650,9 @@ export function ProfileScreen() {
                     <span className="profile__clue-title">{clue.title}</span>
                     <span className="profile__clue-source">{clue.source}</span>
                   </button>
-                  {isOpen && <p className="profile__clue-text">{clue.text}</p>}
+                  {isOpen && (
+                    <p className={`profile__clue-text${clue.emphasize ? ' is-emphasis' : ''}`}>{clue.text}</p>
+                  )}
                 </div>
               )
             })}
@@ -762,7 +764,7 @@ export function ProfileScreen() {
                   className="profile__gm-preset"
                   onClick={() => openMissions(firstPlayerId || undefined)}
                 >
-                  조사 열기 (5 조사 · 3 선승)
+                  조사 열기 (5 조사 전체 진행)
                 </button>
               </>
             ) : (

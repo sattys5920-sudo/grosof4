@@ -303,13 +303,17 @@ function normalize(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, '')
 }
 
-function makeClue(data: { title: string; text: string; icon?: string | null }, source: string): ClueItem {
+function makeClue(
+  data: { title: string; text: string; icon?: string | null; emphasize?: boolean },
+  source: string,
+): ClueItem {
   return {
     id: `clue-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     title: data.title,
     text: data.text,
     source,
     icon: data.icon ?? null,
+    ...(data.emphasize ? { emphasize: true } : {}),
   }
 }
 
@@ -930,14 +934,23 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     if (!isAdminFlag) return
     const event = hallEventById(session.hallEvent.eventId ?? '')
     if (!event) return
+    const resolvedText = event.finalClue
+      .replaceAll('{{2018}}', displayName('seungwoo'))
+      .replaceAll('{{2026}}', displayName('ayoung'))
     const clueMsg: ChatMessage = {
       id: `cr-${Date.now()}-clue`,
       authorId: 'admin',
-      text: `【최종 단서】 ${event.finalClue}`,
+      text: `【최종 단서】 ${resolvedText}`,
       time: '지금',
+      ...(event.finalClueEmphasis ? { emphasize: true } : {}),
     }
     void sendClassroomMessageSync(clueMsg)
-    void addClueSync(makeClue({ title: `${event.roomName} 조사 결과`, text: event.finalClue }, '강당'))
+    void addClueSync(
+      makeClue(
+        { title: `${event.roomName} 조사 결과`, text: resolvedText, emphasize: event.finalClueEmphasis },
+        '강당',
+      ),
+    )
     const completedEventIds = session.hallEvent.completedEventIds.includes(event.id)
       ? session.hallEvent.completedEventIds
       : [...session.hallEvent.completedEventIds, event.id]

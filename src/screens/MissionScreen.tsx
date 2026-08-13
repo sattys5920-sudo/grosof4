@@ -5,7 +5,7 @@ import { CHARACTERS } from '../data/characters'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
 import { ChatAvatar } from '../components/ChatAvatar'
-import { MISSION_PHASE_MS, MISSION_SIZES, TWO_FAILS_REQUIRED, WINS_NEEDED } from '../state/missionEngine'
+import { MISSION_PHASE_MS, MISSION_SIZES, TWO_FAILS_REQUIRED } from '../state/missionEngine'
 
 function MissionPopup({ text, onClose }: { text: string; onClose: () => void }) {
   return (
@@ -529,9 +529,7 @@ export function MissionScreen() {
               </p>
             ))}
           <button className="mission__cta" onClick={continueMission}>
-            {mission.wardWins >= WINS_NEEDED || mission.sinWins >= WINS_NEEDED
-              ? '결과 확인'
-              : '다음 조사으로'}
+            {mission.missionIndex >= MISSION_SIZES.length - 1 ? '결과 확인' : '다음 조사으로'}
           </button>
         </div>
       )}

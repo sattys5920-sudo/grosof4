@@ -563,6 +563,14 @@
   color: var(--bone);
 }
 
+.profile__clue-text.is-emphasis {
+  font-family: var(--font-title);
+  font-size: 16px;
+  color: var(--sin);
+  text-shadow: 0 0 8px var(--sin-dim);
+  text-align: center;
+}
+
 .profile__inventory-item {
   display: flex;
   align-items: center;

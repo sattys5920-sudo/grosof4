@@ -278,6 +278,14 @@
   border-color: var(--ward);
 }
 
+.classroom__msg-text.is-emphasis {
+  font-family: var(--font-title);
+  font-size: 16px;
+  color: var(--sin);
+  text-shadow: 0 0 8px var(--sin-dim);
+  text-align: center;
+}
+
 .classroom__composer {
   display: flex;
   gap: 8px;
