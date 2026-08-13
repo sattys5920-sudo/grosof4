@@ -1601,26 +1601,35 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   }
 
   function revengerCheck(targetId: string) {
-    if (!viewerId) return
-    void runAbilityTransaction(viewerId, (sess, player) => {
-      if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('복수자')) return {}
-      const target = CHARACTERS.find((c) => c.id === targetId)!
-      const check = resolveTeamCheckPure(sess.disguiseArmed, targetId)
-      const trueRoleLabel =
-        check.team === target.team ? (target.role === '일반학생' ? '(???)' : target.role) : '(???)'
-      const resultText = `《투시》 ${displayName(targetId)}의 진짜 정체 — ${trueRoleLabel}.`
-      return {
-        session: {
-          ...(check.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: check.disguiseArmed } : {}),
-          abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '투시', resultText, [targetId])],
-        },
-        player: {
-          abilityUseCount: player.abilityUseCount + 1,
-          personalClues: [...player.personalClues, resultText],
-          gmDmMessages: [...player.gmDmMessages, makeGmDmMsg(resultText)],
-        },
-      }
-    })
+    if (!viewerId || targetId === viewerId) return
+    void runCombatTransaction(
+      viewerId,
+      () => targetId,
+      (sess, me, target) => {
+        if (!me.abilityUnlocked || me.abilityUseCount >= abilityMax('복수자')) return {}
+        if (!target) return {}
+        const targetChar = CHARACTERS.find((c) => c.id === targetId)!
+        const check = resolveTeamCheckPure(sess.disguiseArmed, targetId)
+        const trueRoleLabel =
+          check.team === targetChar.team ? (targetChar.role === '일반학생' ? '(???)' : targetChar.role) : '(???)'
+        const resultText = `《투시》 ${displayName(targetId)}의 진짜 정체 — ${trueRoleLabel}.`
+        const notifyText = '누군가 당신의 정체를 확인했다....... 누가 그랬는지는 알 수 없다.'
+        return {
+          session: {
+            ...(check.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: check.disguiseArmed } : {}),
+            abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '투시', resultText, [targetId])],
+          },
+          me: {
+            abilityUseCount: me.abilityUseCount + 1,
+            personalClues: [...me.personalClues, resultText],
+            gmDmMessages: [...me.gmDmMessages, makeGmDmMsg(resultText)],
+          },
+          target: {
+            gmDmMessages: [...target.gmDmMessages, makeGmDmMsg(notifyText)],
+          },
+        }
+      },
+    )
   }
 
   function armDisguise() {
