@@ -45,6 +45,7 @@ export interface ChatMessage {
   authorId: string
   text: string
   time: string
+  clueKind?: HallClueKind
 }
 
 export interface GroupEventSpec {
@@ -214,6 +215,18 @@ export interface HallLogEntry {
   choices?: HallLogChoice[]
 }
 
+export type HallClueKind =
+  | 'napolitan'
+  | 'idcard'
+  | 'book-wait'
+  | 'newspaper'
+  | 'photo-2018-07'
+  | 'chat-note'
+  | 'intro-2026'
+  | 'book-escape'
+  | 'photo-2018-08'
+  | 'escape-note'
+
 export interface HallEvent {
   id: string
   roomName: string
@@ -222,6 +235,7 @@ export interface HallEvent {
   logs: HallLogEntry[]
   objects: HallObject[]
   finalClue: string
+  finalClueKind: HallClueKind
 }
 
 export type HallObjectStatus = 'idle' | 'opened' | 'left'

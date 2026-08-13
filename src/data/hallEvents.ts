@@ -87,7 +87,8 @@ export const HALL_EVENTS: HallEvent[] = [
       { id: 'he01-o10', label: '탁상 달력', kind: 'item', itemCoins: 2 },
     ],
     finalClue:
-      '출석부 맨 뒷장, 아무도 적어 넣지 않은 듯한 메모가 있다....... "열 명이 아니라 열한 명이었다. 다들 그걸 잊기로 했을 뿐."',
+      '게시판에 올라온 목록 글이다....... 1 번부터 15 번까지 나열되어 있는데, 11 번 항목이 유독 눈에 띈다: "괴담연구회의 열한 번째 부원은 없습니다."',
+    finalClueKind: 'napolitan',
   },
   {
     id: 'he02',
@@ -155,7 +156,8 @@ export const HALL_EVENTS: HallEvent[] = [
       { id: 'he02-o10', label: '창고 안쪽 철제 캐비닛', kind: 'item', itemShopId: 'sh-food-1' },
     ],
     finalClue:
-      '캐비닛 안쪽, 오래된 단체 사진 한 장이 붙어 있다....... 사진 속 인원을 세어 보면 분명히 열한 명이다. 그런데 사진 아래엔 "괴담연구회 열 명"이라고 적혀 있다.',
+      '얼굴이 지워진 학생증을 발견했다....... 2016 년 3 월 입학, 이름은 유민서.',
+    finalClueKind: 'idcard',
   },
   {
     id: 'he03',
@@ -226,7 +228,8 @@ export const HALL_EVENTS: HallEvent[] = [
       { id: 'he03-o10', label: '구석 벽장', kind: 'item', itemShopId: 'sh-food-3' },
     ],
     finalClue:
-      '캔버스 뒷면에 연필로 눌러 쓴 글씨가 있다....... "얼굴을 그릴 수가 없다. 그릴수록 자꾸 다른 얼굴이 된다. 열한 번째……."',
+      '괴이에 관한 낡은 책 한 페이지....... 괴이를 완전히 끊어내려면 저주가 시작된 뒤로 정확히 10 년을 기다려야 한다고 적혀 있다.',
+    finalClueKind: 'book-wait',
   },
   {
     id: 'he04',
@@ -297,7 +300,8 @@ export const HALL_EVENTS: HallEvent[] = [
       { id: 'he04-o10', label: '방음 커튼 뒤 공간', kind: 'item', itemShopId: 'sh-food-2' },
     ],
     finalClue:
-      '녹음 부스 안, 낡은 카세트에서 희미한 노랫소리가 흘러나온다....... 한 명이 부르기 시작한 노래에, 어느 순간부터 열한 번째 목소리가 겹쳐 든다.',
+      '누렇게 바랜 신문 조각을 찾았다....... 흉가로 소문난 폐건물을 탐방하러 향하던 유 모 양이 뺑소니 사고를 당했다는 기사다.',
+    finalClueKind: 'newspaper',
   },
   {
     id: 'he05',
@@ -365,7 +369,8 @@ export const HALL_EVENTS: HallEvent[] = [
       { id: 'he05-o10', label: '운동장 창고 컨테이너', kind: 'item', itemShopId: 'sh-food-1' },
     ],
     finalClue:
-      '조회대 마이크 전원을 켜자 지지직거리는 잡음 사이로 낯선 목소리가 잠깐 흘러나온다....... "……열한 명 전교생 조회를 시작하겠습니다."',
+      '2018 년 7 월, 동아리 단체 사진을 찾았다....... 열한 명이 함께 찍혀 있고, 아래에는 이름과 함께 "영원하자!"라는 문구가 적혀 있다.',
+    finalClueKind: 'photo-2018-07',
   },
   {
     id: 'he06',
@@ -436,7 +441,8 @@ export const HALL_EVENTS: HallEvent[] = [
       { id: 'he06-o10', label: '낡은 의자 밑', kind: 'item', itemShopId: 'sh-food-3' },
     ],
     finalClue:
-      '순찰 일지 마지막 장, 같은 필체로 반복해서 적혀 있다....... "22시 순찰, 인원 이상 무. 22시 순찰, 인원 이상 무." 그런데 날짜가 전부 다른데도 시각은 매번 정확히 같다.',
+      '학생들이 주고받은 쪽지를 발견했다....... 학교에 귀신이 있다는 소문, 매년 죽은 학생이 나타난다는 이야기가 적혀 있다.',
+    finalClueKind: 'chat-note',
   },
   {
     id: 'he07',
@@ -507,7 +513,8 @@ export const HALL_EVENTS: HallEvent[] = [
       { id: 'he07-o10', label: '잔반통 옆 선반', kind: 'item', itemShopId: 'sh-food-2' },
     ],
     finalClue:
-      '식판 아래, 젖은 채로 접힌 메모 한 장이 깔려 있다....... "매점 11번째 식권은 항상 남는다. 아무도 안 가져가는데, 매번 새로 나온다."',
+      '2026 년에 가입한 부원의 자기소개 글을 찾았다....... 11 번째 부원이 되어 설렌다는 인사말이 담겨 있다.',
+    finalClueKind: 'intro-2026',
   },
   {
     id: 'he08',
@@ -578,7 +585,8 @@ export const HALL_EVENTS: HallEvent[] = [
       { id: 'he08-o10', label: '안쪽 철제 캐비닛', kind: 'item', itemShopId: 'sh-food-1' },
     ],
     finalClue:
-      '거울 조각 하나를 비춰 보니, 창고 안에 있는 인원보다 비친 그림자 수가 하나 더 많다....... 조각을 내려놓자 그림자도 함께 사라진다.',
+      '같은 책의 다른 페이지를 찾았다....... 이곳에서 벗어나려면 괴이를 낱낱이 조사해 완전히 타파해야 한다고 적혀 있다.',
+    finalClueKind: 'book-escape',
   },
   {
     id: 'he09',
@@ -649,7 +657,8 @@ export const HALL_EVENTS: HallEvent[] = [
       { id: 'he09-o10', label: '구석 실험 도구함', kind: 'item', itemShopId: 'sh-food-3' },
     ],
     finalClue:
-      '실험 노트 마지막 문장이 이렇게 끝난다....... "표본은 열 개가 맞다. 그런데 셀 때마다 자꾸 하나가 더 만져진다. 더 세지 않기로 했다."',
+      '2018 년 8 월, 같은 동아리 단체 사진을 찾았다....... 그런데 이번엔 열 명뿐이다. 한 사람의 실루엣이 통째로 비어 있다.',
+    finalClueKind: 'photo-2018-08',
   },
   {
     id: 'he10',
@@ -719,8 +728,8 @@ export const HALL_EVENTS: HallEvent[] = [
       { id: 'he10-o9', label: '낡은 카세트 플레이어', kind: 'puzzle', puzzleId: 'hp30' },
       { id: 'he10-o10', label: '커튼 뒤 공간', kind: 'item', itemShopId: 'sh-food-2' },
     ],
-    finalClue:
-      '카세트 플레이어를 끄는 순간, 거울 속 비치던 여분의 인원도 함께 사라진다....... 대신 거울 표면에 작은 손자국 하나가 남아, 서서히 옅어진다.',
+    finalClue: '벽에 급하게 휘갈겨 쓴 메모를 발견했다....... "이곳에서 탈출하고 괴이를 끊어라!"',
+    finalClueKind: 'escape-note',
   },
 ]
 

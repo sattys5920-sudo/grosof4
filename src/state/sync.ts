@@ -21,6 +21,7 @@ import type {
   EndingKey,
   FeedComment,
   FeedPost,
+  HallClueKind,
   HallEventState,
   RoomEventState,
   RoomId,
@@ -35,6 +36,7 @@ export interface ClueItem {
   text: string
   source: string
   icon?: string | null
+  clueKind?: HallClueKind
 }
 
 export interface SessionDoc {
