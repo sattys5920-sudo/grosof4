@@ -4,6 +4,7 @@
   gap: 14px;
   padding: 10px 14px 18px;
   flex: 1;
+  justify-content: space-evenly;
 }
 
 .profile__card {
