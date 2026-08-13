@@ -205,6 +205,10 @@ export function ProfileScreen() {
     revengerCheck,
     armDisguise,
     disguiseArmed,
+    leakLog,
+    leakUnlocked,
+    investigateLeak,
+    publishLeak,
     hp,
     stamina,
     coins,
@@ -418,11 +422,47 @@ export function ProfileScreen() {
             )}
 
             {viewer.role === '망각자' && (
-              <p className="profile__ability-locked">
-                {forgottenIdentity
-                  ? `《기억 회복》 발동 — 지금까지의 조사 결과로 볼 때, 너는 ${forgottenIdentity === 'ward' ? '학생' : '괴이'}이었다.`
-                  : '3 차 조사가 끝나기 전까지는 자신의 정체를 알 수 없다.'}
-              </p>
+              <>
+                <p className="profile__ability-locked">
+                  {forgottenIdentity
+                    ? `《기억 회복》 발동 — 지금까지의 조사 결과로 볼 때, 너는 ${forgottenIdentity === 'ward' ? '학생' : '괴이'}이었다.`
+                    : '3 차 조사가 끝나기 전까지는 자신의 정체를 알 수 없다.'}
+                </p>
+                {leakUnlocked && (
+                  <>
+                    {usesLeft <= 0 ? (
+                      <p className="profile__ability-locked">
+                        사용 완료 ({abilityUseCount}/{abilityMaxUses}) — 더는 유포할 수 없다.
+                      </p>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setTargetId('')
+                          setAbilityModalOpen(true)
+                        }}
+                      >
+                        유포자 능력 사용하기 (남은 횟수 {usesLeft}/{abilityMaxUses})
+                      </button>
+                    )}
+                    {leakLog.length > 0 && (
+                      <div className="profile__leak-log">
+                        {[...leakLog].reverse().map((entry) => (
+                          <div key={entry.id} className="profile__leak-entry">
+                            <p className="profile__leak-text">{entry.resultText}</p>
+                            {entry.published ? (
+                              <span className="profile__leak-published">유포됨</span>
+                            ) : (
+                              <button className="profile__leak-btn" onClick={() => publishLeak(entry.id)}>
+                                유포하기
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
             )}
           </div>
 
@@ -608,6 +648,29 @@ export function ProfileScreen() {
           }}
           onClose={() => setAbilityModalOpen(false)}
         />
+      )}
+
+      {viewer && abilityModalOpen && viewer.role === '망각자' && leakUnlocked && (
+        <AbilityUseModal
+          title="능력 사용 — 유포"
+          prompt="누가 누구에게 능력을 썼는지 알아볼까?"
+          confirmLabel="조사하기"
+          confirmDisabled={!targetId}
+          onConfirm={() => {
+            investigateLeak(targetId)
+            setAbilityModalOpen(false)
+          }}
+          onClose={() => setAbilityModalOpen(false)}
+        >
+          <select value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+            <option value="">대상 선택</option>
+            {otherCharacters.map((c) => (
+              <option key={c.id} value={c.id}>
+                {displayName(c.id)}
+              </option>
+            ))}
+          </select>
+        </AbilityUseModal>
       )}
 
       {!viewer && (

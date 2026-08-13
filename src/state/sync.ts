@@ -43,6 +43,16 @@ export interface AbilityLogEntry {
   characterId: string
   abilityName: string
   resultText: string
+  targetCharacterIds: string[]
+  atMs: number
+}
+
+export interface LeakEntry {
+  id: string
+  targetId: string
+  resultText: string
+  leakText: string
+  published: boolean
   atMs: number
 }
 
@@ -89,6 +99,7 @@ export interface PlayerDoc {
   equippedWeaponId: string | null
   equippedArmorId: string | null
   inventory: Record<string, number>
+  leakLog: LeakEntry[]
 }
 
 export interface FeedPostDoc {
@@ -305,6 +316,7 @@ export async function registerAccountSync(username: string, password: string): P
       equippedWeaponId: null,
       equippedArmorId: null,
       inventory: {},
+      leakLog: [],
     })
     const account: AccountDoc = { passwordHash, characterId: assigned.id, createdAtMs: Date.now() }
     tx.set(aref, account)
@@ -358,6 +370,7 @@ export async function assignRoleManuallySync(characterId: string, nickname: stri
       equippedWeaponId: null,
       equippedArmorId: null,
       inventory: {},
+      leakLog: [],
     })
   })
 }
@@ -741,6 +754,30 @@ export async function sendEndingSync(key: EndingKey): Promise<void> {
     batch.update(d.ref, { gmDmMessages: arrayUnion(msg) })
   }
   batch.update(sessionRef(), { endingKey: key })
+  await batch.commit()
+}
+
+/** 유출된 단서를(익명으로) 모든 플레이어의 개인 단서함에 한 번에 전달한다. */
+export async function publishLeakSync(myId: string, leakId: string): Promise<void> {
+  const database = requireDb()
+  const pref = playerRef(myId)
+  let leakText: string | null = null
+  await runTransaction(database, async (tx) => {
+    const snap = await tx.get(pref)
+    if (!snap.exists()) return
+    const player = snap.data() as PlayerDoc
+    const entry = (player.leakLog ?? []).find((e) => e.id === leakId)
+    if (!entry || entry.published) return
+    leakText = entry.leakText
+    const next = player.leakLog.map((e) => (e.id === leakId ? { ...e, published: true } : e))
+    tx.update(pref, { leakLog: next })
+  })
+  if (!leakText) return
+  const playersSnap = await getDocs(playersCol())
+  const batch = writeBatch(database)
+  for (const d of playersSnap.docs) {
+    batch.update(d.ref, { personalClues: arrayUnion(leakText) })
+  }
   await batch.commit()
 }
 

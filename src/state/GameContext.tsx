@@ -70,9 +70,11 @@ import {
   updateClassroomSync,
   updateMissionSync,
   updateRoomEventSync,
+  publishLeakSync,
   type AbilityLogEntry,
   type ClueItem,
   type FeedPostDoc,
+  type LeakEntry,
   type PlayerDoc,
   type SessionDoc,
 } from './sync'
@@ -286,6 +288,10 @@ interface GameState {
   revengerCheck: (targetId: string) => void
   armDisguise: () => void
   disguiseArmed: boolean
+  leakLog: LeakEntry[]
+  leakUnlocked: boolean
+  investigateLeak: (targetId: string) => void
+  publishLeak: (leakId: string) => void
   hp: number
   stamina: number
   coins: number
@@ -360,12 +366,18 @@ function makeGmDmMsg(text: string): ChatMessage {
   }
 }
 
-function makeAbilityLogEntry(characterId: string, abilityName: string, resultText: string): AbilityLogEntry {
+function makeAbilityLogEntry(
+  characterId: string,
+  abilityName: string,
+  resultText: string,
+  targetCharacterIds: string[] = [],
+): AbilityLogEntry {
   return {
     id: `al-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     characterId,
     abilityName,
     resultText,
+    targetCharacterIds,
     atMs: Date.now(),
   }
 }
@@ -1469,7 +1481,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       return {
         session: {
           ...(secondCheck.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: secondCheck.disguiseArmed } : {}),
-          abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '출석부', text)],
+          abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '출석부', text, [targetAId, targetBId])],
         },
         player: {
           abilityUseCount: player.abilityUseCount + 1,
@@ -1490,7 +1502,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       return {
         session: {
           ...(check.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: check.disguiseArmed } : {}),
-          abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '학생부 조사', resultText)],
+          abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '학생부 조사', resultText, [targetId])],
         },
         player: {
           abilityUseCount: player.abilityUseCount + 1,
@@ -1552,7 +1564,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         const targetChar = CHARACTERS.find((c) => c.id === targetId)!
         const text = `《분별》 ${displayName(targetId)}의 능력 — ${targetChar.abilityName}(${ABILITY_SUMMARY[targetChar.role]}), 지금까지 ${target.abilityUseCount} 회 발동.`
         return {
-          session: { abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '분별', text)] },
+          session: { abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '분별', text, [targetId])] },
           me: {
             abilityUseCount: me.abilityUseCount + 1,
             lastDiscernDate: today,
@@ -1597,7 +1609,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       return {
         session: {
           ...(check.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: check.disguiseArmed } : {}),
-          abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '투시', resultText)],
+          abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '투시', resultText, [targetId])],
         },
         player: {
           abilityUseCount: player.abilityUseCount + 1,
@@ -1626,6 +1638,50 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         },
       }
     })
+  }
+
+  function investigateLeak(targetId: string) {
+    if (!viewerId || targetId === viewerId) return
+    void runAbilityTransaction(viewerId, (sess, player) => {
+      if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('망각자')) return {}
+      if (sess.mission.missionResults[2] === null) return {}
+      const targetName = displayName(targetId)
+      const latest = [...(sess.abilityLog ?? [])]
+        .filter((e) => e.characterId === targetId)
+        .sort((a, b) => b.atMs - a.atMs)[0]
+      let resultText: string
+      let leakText: string
+      if (!latest) {
+        resultText = `${targetName}는 능력을 사용한 적이 없다.`
+        leakText = `누군가가 유출했다. ${targetName}는 능력을 쓴 적이 없다는데.......`
+      } else if (latest.targetCharacterIds.length === 0) {
+        resultText = `${targetName}가 능력을 사용했지만, 특정 인물을 대상으로 하지는 않았다.`
+        leakText = `누군가가 유출했다. ${targetName}가 능력을 썼다는데, 누구를 향한 건지는 알 수 없다는 것 같다.......`
+      } else {
+        const names = latest.targetCharacterIds.map((id) => displayName(id)).join(', ')
+        resultText = `${targetName}가 ${names}에게 능력을 사용했다.`
+        leakText = `누군가가 유출했다. ${targetName}가 ${names}에게 자신의 능력을 썼다는데.......`
+      }
+      const entry: LeakEntry = {
+        id: `lk-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        targetId,
+        resultText,
+        leakText,
+        published: false,
+        atMs: Date.now(),
+      }
+      return {
+        player: {
+          abilityUseCount: player.abilityUseCount + 1,
+          leakLog: [...(player.leakLog ?? []), entry],
+        },
+      }
+    })
+  }
+
+  function publishLeak(leakId: string) {
+    if (!viewerId) return
+    void publishLeakSync(viewerId, leakId)
   }
 
   function attackCreature(roomId: RoomId) {
@@ -1834,6 +1890,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     return team === 'veil' ? null : team
   })()
 
+  const leakUnlocked = session.mission.missionResults[2] !== null
+
   const myId = viewerId ?? 'admin'
   const feed: FeedPost[] = feedDocs.map((d) => feedPostToFeedPost(d.id, d, myId))
   const broadcast = session.broadcast && session.broadcast.id !== dismissedBroadcastId ? session.broadcast : null
@@ -2009,6 +2067,10 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       revengerCheck,
       armDisguise,
       disguiseArmed: session.disguiseArmed,
+      leakLog: myPlayer?.leakLog ?? [],
+      leakUnlocked,
+      investigateLeak,
+      publishLeak,
       hp,
       stamina,
       coins,
