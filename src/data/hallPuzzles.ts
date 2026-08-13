@@ -38,8 +38,7 @@ export const HALL_PUZZLES: HallPuzzle[] = [
     id: 'hp04',
     title: '자모를 흩어놓은 이름',
     category: '애너그램',
-    questionText:
-      '다음 다섯 글자의 자음과 모음을 모두 낱낱이 흩뜨린 뒤(획을 돌리거나 뒤집지 않고) 다시 조합하면 어떤 단어가 되는가? (한글로 답하시오)\n으 셀 다 비 에',
+    questionText: '다음 다섯 글자를 자음과 모음 단위로 흩어 다시 조합하면 어떤 단어가 되는가? (한글로 답하시오)\n으 셀 다 비 에',
     answer: '에델바이스',
     solution:
       '각 글자를 자음과 모음으로 분해하면 으=ㅇㅡ, 셀=ㅅㅔㄹ, 다=ㄷㅏ, 비=ㅂㅣ, 에=ㅇㅔ이다. 이 낱글자들을 다시 조합하면 에(ㅇㅔ)-델(ㄷㅔㄹ)-바(ㅂㅏ)-이(ㅇㅣ)-스(ㅅㅡ), 즉 에델바이스가 된다.',
@@ -58,7 +57,7 @@ export const HALL_PUZZLES: HallPuzzle[] = [
     title: '나무 속 쪽지',
     category: '단어',
     questionText:
-      '나무 속에 쪽지가 숨어 있다. 다음 아홉 단어를 순서대로 이어 붙인 뒤, 그 안에 섞여 들어간 TREE의 글자들을 지우고 남은 글자를 다시 이으면 하나의 문장이 나타난다. 그 문장은 무엇인가? (영문 대문자, 띄어쓰기 없이 답하시오)\nTIRE LET OVER EYE TO RUDE EAR LINT GREET',
+      '나무 속에 쪽지가 숨어 있다. 다음 아홉 단어를 순서대로 이어 붙이면 나타나는 문장을 찾아라. (영문 대문자, 띄어쓰기 없이 답하시오)\nTIRE LET OVER EYE TO RUDE EAR LINT GREET',
     answer: 'ILOVEYOUDARLING',
     solution:
       '아홉 단어를 순서대로 이어 붙이면 TIRELETOVEREYETORUDEEARLINTGREET이 된다. 이 안에 나무(TREE)를 이루는 글자들이 여러 겹 섞여 있는데, 이를 지우고 남은 글자를 다시 이으면 ILOVEYOUDARLING이 완성된다.',
@@ -85,8 +84,7 @@ export const HALL_PUZZLES: HallPuzzle[] = [
     id: 'hp09',
     title: '숫자 말의 꼬리잇기',
     category: '연쇄',
-    questionText:
-      '숫자를 영단어로 바꾸었을 때, 앞 단어의 끝 글자와 다음 단어의 첫 글자가 이어지는 고리 규칙이 있다.\n1 > 8 > 2 > 1\n13 > 9 > 11 > 99 > 8 > 13\n8 > 12 > 11 > ? > 8',
+    questionText: '1 > 8 > 2 > 1\n13 > 9 > 11 > 99 > 8 > 13\n8 > 12 > 11 > ? > 8',
     answer: '9',
     solution:
       '숫자를 영단어로 바꾸면 앞 단어의 마지막 글자가 다음 단어의 첫 글자와 같아지는 고리가 만들어진다(ONE-EIGHT-TWO-ONE, THIRTEEN-NINE-ELEVEN-NINETYNINE-EIGHT-THIRTEEN). EIGHT(T)-TWELVE(E)-ELEVEN(N) 다음에는 N으로 시작해 E로 끝나는 단어가 이어져야 다시 EIGHT(E)로 연결되므로, 정답은 NINE(9)이다.',
@@ -113,7 +111,7 @@ export const HALL_PUZZLES: HallPuzzle[] = [
     title: '네 방향의 획',
     category: '암호',
     questionText:
-      'WSES ESWN WSES\n위 네 방향(서 W · 남 S · 동 E · 북 N) 기호를 순서대로 한 획씩 그으면 알파벳 한 글자가 완성된다. 완성되는 단어는 무엇인가? (영문 대문자로 답하시오)',
+      '다음 기호에서 W·S·E·N은 각각 서·남·동·북을 뜻한다. 이 기호가 나타내는 단어는 무엇인가? (영문 대문자로 답하시오)\nWSES ESWN WSES',
     answer: 'SOS',
     solution:
       '네 글자로 묶인 기호 하나가 알파벳 한 글자를 나타낸다. 서(W)·남(S)·동(E)·북(N) 방향으로 순서대로 획을 그으면 그 모양이 알파벳이 되는데, 이 규칙을 세 묶음에 차례로 적용하면 S, O, S가 되어 SOS(국제 조난 신호)가 완성된다.',
@@ -131,8 +129,7 @@ export const HALL_PUZZLES: HallPuzzle[] = [
     id: 'hp14',
     title: '꼬인 자판의 메모',
     category: '암호',
-    questionText:
-      ':!;”(@446:“;‘-:’/?\n위 기호를 한글 자판으로 그대로 두드리면 완성되는 문장이 있다. 그 문장이 묻는 질문의 답을 쓰시오. (한글 두 글자로 답하시오)',
+    questionText: ':!;”(@446:“;‘-:’/?\n위 기호가 나타내는 문장이 묻는 질문에 답하시오. (한글 두 글자로 답하시오)',
     answer: '고운',
     solution:
       '키보드가 한/영 전환 없이 한글 입력 상태일 때 이 기호들을 그대로 두드리면 "우리 학교 이름은?"이라는 문장이 완성된다. 그 질문의 답은 고운(고등학교).',
@@ -193,8 +190,7 @@ export const HALL_PUZZLES: HallPuzzle[] = [
     id: 'hp21',
     title: '단어들의 가면',
     category: '알파벳',
-    questionText:
-      '다음 단어들 앞에 공통으로 한 글자를 붙이면 모두 새로운 단어가 된다. 그 글자는 무엇인가? (영문 소문자로 답하시오)\ntop  it  ing  have  truck',
+    questionText: '다음 단어들 앞에 공통으로 숨어 있는 한 글자를 찾으시오. (영문 소문자로 답하시오)\ntop  it  ing  have  truck',
     answer: 's',
     solution: '앞에 s를 붙이면 stop, sit, sing, shave, struck으로 모두 뜻이 통하는 단어가 된다.',
   },
