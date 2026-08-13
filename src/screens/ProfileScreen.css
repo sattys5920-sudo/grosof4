@@ -316,6 +316,10 @@
   color: var(--sin);
 }
 
+.profile__stat-equip {
+  opacity: 0.65;
+}
+
 
 .profile__me-tag {
   font-family: var(--font-pixel);

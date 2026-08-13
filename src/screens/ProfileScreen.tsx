@@ -3,7 +3,7 @@ import './ProfileScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS, DAY4_REVEAL_TEXT, ENDING_LABELS, ENDING_SCRIPTS, roleLabel } from '../data/characters'
 import { HALL_EVENTS } from '../data/hallEvents'
-import { SHOP_ITEMS } from '../data/shop'
+import { SHOP_ITEMS, shopItemById } from '../data/shop'
 import { Badge } from '../components/Badge'
 import { AbilityUseModal } from '../components/AbilityUseModal'
 import { PixelIcon } from '../components/PixelIcon'
@@ -178,6 +178,8 @@ export function ProfileScreen() {
     coins,
     atk,
     def,
+    equippedWeaponId,
+    equippedArmorId,
     incapacitated,
     inventory,
     useItem,
@@ -277,8 +279,18 @@ export function ProfileScreen() {
             <span className={`profile__stat ${hp <= 30 ? 'is-danger' : ''}`}>HP {hp}/100</span>
             <span className={`profile__stat ${stamina <= 30 ? 'is-danger' : ''}`}>스태미나 {stamina}/100</span>
             <span className="profile__stat">코인 {coins}</span>
-            <span className="profile__stat">공격력 {atk}</span>
-            <span className="profile__stat">방어력 {def}</span>
+            <span className="profile__stat">
+              공격력 {atk}
+              <span className="profile__stat-equip">
+                {equippedWeaponId ? ` (${shopItemById(equippedWeaponId)?.name ?? '?'})` : ' (미장착)'}
+              </span>
+            </span>
+            <span className="profile__stat">
+              방어력 {def}
+              <span className="profile__stat-equip">
+                {equippedArmorId ? ` (${shopItemById(equippedArmorId)?.name ?? '?'})` : ' (미장착)'}
+              </span>
+            </span>
           </div>
           {incapacitated && (
             <p className="profile__ability-locked">

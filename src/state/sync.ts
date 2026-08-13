@@ -77,6 +77,8 @@ export interface PlayerDoc {
   coins: number
   weaponAtkBonus: number
   armorDefBonus: number
+  equippedWeaponId: string | null
+  equippedArmorId: string | null
   inventory: Record<string, number>
 }
 
@@ -290,6 +292,8 @@ export async function registerAccountSync(username: string, password: string): P
       coins: 0,
       weaponAtkBonus: 0,
       armorDefBonus: 0,
+      equippedWeaponId: null,
+      equippedArmorId: null,
       inventory: {},
     })
     const account: AccountDoc = { passwordHash, characterId: assigned.id, createdAtMs: Date.now() }
@@ -341,6 +345,8 @@ export async function assignRoleManuallySync(characterId: string, nickname: stri
       coins: 0,
       weaponAtkBonus: 0,
       armorDefBonus: 0,
+      equippedWeaponId: null,
+      equippedArmorId: null,
       inventory: {},
     })
   })

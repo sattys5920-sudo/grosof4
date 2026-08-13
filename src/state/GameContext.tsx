@@ -160,6 +160,13 @@ function applyItemEffect(
   }
 }
 
+// 무기/방어구는 인벤토리를 거치지 않고 구매·선물 즉시 장착되어 기존 장비를 대체한다.
+function equipPatch(itemId: string, item: { kind: 'weapon' | 'armor' | 'food' | 'medicine'; amount: number }): Partial<PlayerDoc> | null {
+  if (item.kind === 'weapon') return { weaponAtkBonus: item.amount, equippedWeaponId: itemId }
+  if (item.kind === 'armor') return { armorDefBonus: item.amount, equippedArmorId: itemId }
+  return null
+}
+
 const ADMIN_CODE = '316316316'
 const LS = {
   viewerId: 'gwae_viewerId',
@@ -282,6 +289,8 @@ interface GameState {
   coins: number
   atk: number
   def: number
+  equippedWeaponId: string | null
+  equippedArmorId: string | null
   incapacitated: boolean
   attackCreature: (roomId: RoomId) => void
   defendInCombat: (roomId: RoomId) => void
@@ -487,6 +496,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const inventory = myPlayer?.inventory ?? {}
   const atk = BASE_ATK + (myPlayer?.weaponAtkBonus ?? 0)
   const def = myPlayer?.armorDefBonus ?? 0
+  const equippedWeaponId = myPlayer?.equippedWeaponId ?? null
+  const equippedArmorId = myPlayer?.equippedArmorId ?? null
   const incapacitated = hp <= 0 || stamina <= 0
 
   // 앱이 백그라운드(다른 탭/다른 앱)에 있을 때도 카카오톡처럼 브라우저 알림을 띄운다.
@@ -1713,6 +1724,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       () => null,
       (_sess, me) => {
         if (me.coins < item.price) return {}
+        const equip = equipPatch(itemId, item)
+        if (equip) return { me: { coins: me.coins - item.price, ...equip } }
         const inventory = { ...(me.inventory ?? {}) }
         inventory[itemId] = (inventory[itemId] ?? 0) + 1
         return { me: { coins: me.coins - item.price, inventory } }
@@ -1747,6 +1760,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       (_sess, me, target) => {
         if (!target) return {}
         if (me.coins < item.price) return {}
+        const equip = equipPatch(itemId, item)
+        if (equip) {
+          return {
+            me: { coins: me.coins - item.price },
+            target: equip,
+          }
+        }
         const inventory = { ...(target.inventory ?? {}) }
         inventory[itemId] = (inventory[itemId] ?? 0) + 1
         return {
@@ -1943,6 +1963,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       coins,
       atk,
       def,
+      equippedWeaponId,
+      equippedArmorId,
       incapacitated,
       attackCreature,
       defendInCombat,
@@ -1976,6 +1998,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       coins,
       atk,
       def,
+      equippedWeaponId,
+      equippedArmorId,
       incapacitated,
       inventory,
       players,
