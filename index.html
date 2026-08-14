@@ -12,23 +12,35 @@
     <meta name="apple-mobile-web-app-title" content="404not¿fo?nd" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content"
     />
     <title>404not¿fo?nd</title>
     <script>
       // iOS에서 홈 화면에 추가해 독립 실행형(PWA)으로 열면 100svh/100dvh 값이
       // 실제 화면보다 크게 잡혀 하단 탭바가 화면 밖으로 밀리는 경우가 있다.
       // window.innerHeight를 직접 측정해 CSS 변수로 넘겨 그 문제를 피한다.
+      //
+      // 다만 일부 안드로이드 브라우저는 화면 키보드가 올라올 때도 window.innerHeight가
+      // 줄어든다. 그때마다 앱 전체 높이를 따라 줄이면 화면이 눌리면서 댓글/채팅
+      // 입력창이 밀려 보인다. 그래서 높이가 "커질 때"(회전 등 실제 화면 변화)만
+      // 반영하고, 키보드처럼 "줄어드는" 변화는 무시한다. 화면 회전 시에는
+      // orientationchange에서 기준값을 다시 잡는다.
       ;(function () {
-        function setAppHeight() {
-          document.documentElement.style.setProperty('--app-height', window.innerHeight + 'px')
+        var maxHeight = window.innerHeight
+        function setAppHeight(h) {
+          document.documentElement.style.setProperty('--app-height', h + 'px')
         }
-        setAppHeight()
-        window.addEventListener('resize', setAppHeight)
-        window.addEventListener('orientationchange', setAppHeight)
-        if (window.visualViewport) {
-          window.visualViewport.addEventListener('resize', setAppHeight)
-        }
+        setAppHeight(maxHeight)
+        window.addEventListener('resize', function () {
+          if (window.innerHeight > maxHeight) {
+            maxHeight = window.innerHeight
+            setAppHeight(maxHeight)
+          }
+        })
+        window.addEventListener('orientationchange', function () {
+          maxHeight = window.innerHeight
+          setAppHeight(maxHeight)
+        })
       })()
     </script>
   </head>
