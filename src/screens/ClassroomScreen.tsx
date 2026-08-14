@@ -120,6 +120,11 @@ export function ClassroomScreen() {
             <span className="hallobj__label">{obj.label}</span>
           </div>
           <p className="hallobj__note">{obj.minigameRule}</p>
+          <p className="hallobj__game-rule">
+            {obj.minigameKind === 'numberbaseball'
+              ? '규칙: 서로 다른 숫자 3자리를 맞히면 된다....... 스트라이크는 숫자·자리가 모두 맞은 것, 볼은 숫자만 맞은 것이다.'
+              : '규칙: 왼쪽부터 오름차순으로 놓인 숫자 4개(0~11)를 자리마다 추리한다....... 틀리면 정답이 더 큰지 작은지 알려준다.'}
+          </p>
           {!game && !isAdmin && (
             <>
               <p className="hallobj__warn">한 명만 도전할 수 있으니 다른 학생들과 논의해 보자.</p>
@@ -151,7 +156,7 @@ export function ClassroomScreen() {
                     value={baseballDrafts[obj.id] ?? ''}
                     maxLength={3}
                     inputMode="numeric"
-                    placeholder="서로 다른 숫자 3자리"
+                    placeholder="예: 482"
                     onChange={(e) => setBaseballDrafts((prev) => ({ ...prev, [obj.id]: e.target.value.replace(/\D/g, '') }))}
                     onKeyDown={(e) => {
                       if (e.key !== 'Enter') return
