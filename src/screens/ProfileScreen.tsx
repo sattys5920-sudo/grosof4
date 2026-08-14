@@ -195,6 +195,8 @@ export function ProfileScreen() {
     enableAllNotifications,
     notifPermission,
     requestBrowserNotifications,
+    notifyPushEnabled,
+    toggleBrowserNotifications,
     missionsOpen,
     openMissions,
     setMissionsOpen,
@@ -731,12 +733,14 @@ export function ProfileScreen() {
           </button>
           {notifPermission !== 'unsupported' && (
             <button
-              className={`profile__gm-preset ${notifPermission === 'granted' ? 'is-active' : ''}`}
-              onClick={requestBrowserNotifications}
+              className={`profile__gm-preset ${notifPermission === 'granted' && notifyPushEnabled ? 'is-active' : ''}`}
+              onClick={notifPermission === 'granted' ? toggleBrowserNotifications : requestBrowserNotifications}
               disabled={notifPermission === 'denied'}
             >
               {notifPermission === 'granted'
-                ? '다른 화면에서도 알림 받는 중'
+                ? notifyPushEnabled
+                  ? '다른 화면에서도 알림 받는 중'
+                  : '다른 화면 알림 꺼짐'
                 : notifPermission === 'denied'
                   ? '브라우저 알림 차단됨 (설정에서 허용 필요)'
                   : '다른 화면에서도 알림 받기'}
@@ -745,8 +749,9 @@ export function ProfileScreen() {
         </div>
         {notifPermission === 'granted' && (
           <p className="profile__gm-note">
-            이 창을 열어 둔 채로 다른 화면을 보고 있어도 새 소식이 오면 알림이 뜬다. 다만 앱을 완전히
-            종료하면 알림도 오지 않는다.
+            {notifyPushEnabled
+              ? '이 창을 열어 둔 채로 다른 화면을 보고 있어도 새 소식이 오면 알림이 뜬다. 다만 앱을 완전히 종료하면 알림도 오지 않는다.'
+              : '지금은 꺼둔 상태라 다른 화면에 있어도 알림이 뜨지 않는다. 버튼을 다시 누르면 켤 수 있다.'}
           </p>
         )}
       </div>

@@ -198,6 +198,7 @@ const LS = {
   cachedNickname: 'gwae_cachedNickname',
   notifyRoomEvents: 'gwae_notifyRoomEvents',
   notifyGeneralBroadcasts: 'gwae_notifyGeneralBroadcasts',
+  notifyPushEnabled: 'gwae_notifyPushEnabled',
   lastSeenDmCount: 'gwae_lastSeenDmCount',
   gmDmSeenCounts: 'gwae_gmDmSeenCounts',
   accountUsername: 'gwae_accountUsername',
@@ -277,6 +278,8 @@ interface GameState {
   enableAllNotifications: () => void
   notifPermission: NotificationPermission | 'unsupported'
   requestBrowserNotifications: () => void
+  notifyPushEnabled: boolean
+  toggleBrowserNotifications: () => void
   topAlert: { id: string; text: string } | null
   dismissTopAlert: () => void
   hasUnreadDm: boolean
@@ -464,6 +467,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const [notifyGeneralBroadcasts, setNotifyGeneralBroadcastsLocal] = useState<boolean>(
     () => localStorage.getItem(LS.notifyGeneralBroadcasts) !== 'false',
   )
+  const [notifyPushEnabled, setNotifyPushEnabledLocal] = useState<boolean>(
+    () => localStorage.getItem(LS.notifyPushEnabled) !== 'false',
+  )
   const [lastSeenDmCount, setLastSeenDmCountLocal] = useState<number>(
     () => Number(localStorage.getItem(LS.lastSeenDmCount) ?? '0'),
   )
@@ -570,11 +576,29 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
   function requestBrowserNotifications() {
     if (typeof Notification === 'undefined') return
-    void Notification.requestPermission().then((perm) => setNotifPermission(perm))
+    void Notification.requestPermission().then((perm) => {
+      setNotifPermission(perm)
+      if (perm === 'granted') {
+        setNotifyPushEnabledLocal(true)
+        localStorage.setItem(LS.notifyPushEnabled, 'true')
+      }
+    })
+  }
+
+  // 브라우저 알림 권한 자체는 JS로 되돌릴 수 없어서(허용은 요청할 수 있어도 취소는 브라우저
+  // 설정에서만 가능), 앱 안에서 껐다 켰다 할 수 있도록 별도의 로컬 스위치를 둔다. 권한은 이미
+  // 허용된 채로 두고, 이 스위치가 꺼져 있으면 notifyBackground가 알림을 그냥 띄우지 않는다.
+  function toggleBrowserNotifications() {
+    setNotifyPushEnabledLocal((prev) => {
+      const next = !prev
+      localStorage.setItem(LS.notifyPushEnabled, String(next))
+      return next
+    })
   }
 
   function notifyBackground(title: string, body: string, tab: TabId) {
     if (notifPermission !== 'granted') return
+    if (!notifyPushEnabled) return
     if (typeof document !== 'undefined' && !document.hidden) return
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
     void navigator.serviceWorker.ready.then((reg) => {
@@ -2139,6 +2163,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       enableAllNotifications,
       notifPermission,
       requestBrowserNotifications,
+      notifyPushEnabled,
+      toggleBrowserNotifications,
       topAlert,
       dismissTopAlert,
       hasUnreadDm,
@@ -2226,6 +2252,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       notifyRoomEvents,
       notifyGeneralBroadcasts,
       notifPermission,
+      notifyPushEnabled,
       topAlert,
       hasUnreadDm,
       lastSeenDmCount,
