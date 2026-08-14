@@ -6,6 +6,7 @@ import {
   ENDING_LABELS,
   ENDING_SCRIPTS,
   ROOMS,
+  TEAM_LABEL,
   leakerRevealText,
 } from '../data/characters'
 import { creatureById } from '../data/creatures'
@@ -1678,7 +1679,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         const targetChar = CHARACTERS.find((c) => c.id === targetId)!
         const check = resolveTeamCheckPure(sess.disguiseArmed, targetId)
         const trueRoleLabel =
-          check.team === targetChar.team ? (targetChar.role === '일반학생' ? '(???)' : targetChar.role) : '(???)'
+          check.team === targetChar.team
+            ? targetChar.role === '일반학생'
+              ? '(???)'
+              : `${TEAM_LABEL[targetChar.team]} · ${targetChar.role}`
+            : '(???)'
         const resultText = `《투시》 ${displayName(targetId)}의 진짜 정체 — ${trueRoleLabel}.`
         const notifyText = '누군가 당신의 정체를 확인했다....... 누가 그랬는지는 알 수 없다.'
         return {
@@ -1760,7 +1765,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
   function publishLeak(leakId: string) {
     if (!viewerId) return
-    void publishLeakSync(viewerId, leakId)
+    void publishLeakSync(viewerId, leakId).then((leakText) => {
+      if (leakText) sendBroadcast('notice', '익명의 유출', leakText)
+    })
   }
 
   function attackCreature(roomId: RoomId) {

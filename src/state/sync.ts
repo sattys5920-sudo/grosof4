@@ -775,7 +775,7 @@ export async function sendEndingSync(key: EndingKey): Promise<void> {
 }
 
 /** 유출된 단서를(익명으로) 모든 플레이어의 개인 단서함에 한 번에 전달한다. */
-export async function publishLeakSync(myId: string, leakId: string): Promise<void> {
+export async function publishLeakSync(myId: string, leakId: string): Promise<string | null> {
   const database = requireDb()
   const pref = playerRef(myId)
   let leakText: string | null = null
@@ -789,13 +789,14 @@ export async function publishLeakSync(myId: string, leakId: string): Promise<voi
     const next = player.leakLog.map((e) => (e.id === leakId ? { ...e, published: true } : e))
     tx.update(pref, { leakLog: next })
   })
-  if (!leakText) return
+  if (!leakText) return null
   const playersSnap = await getDocs(playersCol())
   const batch = writeBatch(database)
   for (const d of playersSnap.docs) {
     batch.update(d.ref, { personalClues: arrayUnion(leakText) })
   }
   await batch.commit()
+  return leakText
 }
 
 export function feedPostToFeedPost(id: string, doc: FeedPostDoc, myId: string): FeedPost {

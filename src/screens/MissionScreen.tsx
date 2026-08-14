@@ -263,7 +263,7 @@ export function MissionScreen() {
             {mission.missionIndex + 1} 차 조사 · 불가 관전
           </span>
           <span className="mission__score">
-            선 {mission.wardWins} : {mission.sinWins} 악
+            일반 학생 {mission.wardWins} : {mission.sinWins} 괴이 학생
           </span>
         </div>
         <MissionTrack />
@@ -361,7 +361,7 @@ export function MissionScreen() {
           {TWO_FAILS_REQUIRED[mission.missionIndex] && ' (실패 카드 2 장부터 실패)'}
         </span>
         <span className="mission__score">
-          선 {mission.wardWins} : {mission.sinWins} 악
+          일반 학생 {mission.wardWins} : {mission.sinWins} 괴이 학생
         </span>
       </div>
 
@@ -534,9 +534,13 @@ export function MissionScreen() {
                 성공 {mission.cardTally.success} · 실패 {mission.cardTally.fail}
               </p>
             ))}
-          <button className="mission__cta" onClick={continueMission}>
-            {mission.missionIndex >= MISSION_SIZES.length - 1 ? '결과 확인' : '다음 조사으로'}
-          </button>
+          {isAdmin ? (
+            <button className="mission__cta" onClick={continueMission}>
+              {mission.missionIndex >= MISSION_SIZES.length - 1 ? '결과 확인' : '다음 조사로'}
+            </button>
+          ) : (
+            <p className="mission__waiting">불가가 다음 조사로 넘겨줄 때까지 기다리는 중이다.</p>
+          )}
         </div>
       )}
 

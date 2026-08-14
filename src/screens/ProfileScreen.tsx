@@ -873,7 +873,8 @@ export function ProfileScreen() {
             <span className="profile__section-label">불가 전용 — 조사</span>
             <p className="profile__gm-note">
               조사 상태: <strong>{missionsOpen ? '열림' : '잠김'}</strong>
-              {!missionFresh && ` (진행 중 — ${mission.missionIndex + 1} 차, 선 ${mission.wardWins} : ${mission.sinWins} 악)`}
+              {!missionFresh &&
+                ` (진행 중 — ${mission.missionIndex + 1} 차, 일반 학생 ${mission.wardWins} : ${mission.sinWins} 괴이 학생)`}
             </p>
             {missionsOpen ? (
               <button className="profile__gm-preset" onClick={() => setMissionsOpen(false)}>
