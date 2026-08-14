@@ -72,7 +72,9 @@ export function RoomsScreen() {
   const [now, setNow] = useState(Date.now())
   const viewer = viewerId ? charOf(viewerId) : null
   const investigationLogsRef = useRef<HTMLDivElement | null>(null)
+  const chatLogRef = useRef<HTMLDivElement | null>(null)
   const currentInvestigationLogIndex = openRoom ? (roomEvents[openRoom]?.investigation?.logIndex ?? 0) : 0
+  const currentRoomMsgCount = openRoom ? (roomMessages[openRoom]?.length ?? 0) : 0
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
@@ -84,6 +86,12 @@ export function RoomsScreen() {
     if (el) el.scrollTop = el.scrollHeight
   }, [openRoom, currentInvestigationLogIndex])
 
+  // 방에 들어오거나 새 메시지가 오면 항상 가장 최근 대화가 보이게 한다.
+  useEffect(() => {
+    const el = chatLogRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [openRoom, currentRoomMsgCount])
+
   useEffect(() => {
     if (openRoom) markRoomRead(openRoom)
   }, [openRoom, roomMessages[openRoom as RoomId]?.length, markRoomRead])
@@ -92,7 +100,7 @@ export function RoomsScreen() {
     return viewer ? isRevealedTo(viewer, c, gmReveal) : gmReveal
   }
 
-  const tagNames = [...CHARACTERS.map((c) => displayName(c.id)), displayName('admin')]
+  const tagNames = ['전원', ...CHARACTERS.map((c) => displayName(c.id)), displayName('admin')]
 
   if (openRoom) {
     const room = ROOMS.find((r) => r.id === openRoom)!
@@ -129,6 +137,7 @@ export function RoomsScreen() {
           <button className="rooms__back" onClick={() => setOpenRoom(null)}>
             ← 구관 목록
           </button>
+          <div className="rooms__pin-scroll">
           <div className="rooms__pin-head">
             <span className="rooms__pin-title">{room.name}</span>
             {gmReveal && (
@@ -328,11 +337,12 @@ export function RoomsScreen() {
               )}
             </div>
           )}
+          </div>
         </div>
 
         {iAmHere || isAdmin ? (
           <>
-            <div className="rooms__log">
+            <div className="rooms__log" ref={chatLogRef}>
               {roomMessages[openRoom].map((m) => {
                 const isMe = m.authorId === viewerId
                 const isGm = m.authorId === 'admin'

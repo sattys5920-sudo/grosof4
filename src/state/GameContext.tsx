@@ -297,6 +297,7 @@ interface GameState {
   openMissions: (firstPlayerId?: string) => void
   setMissionsOpen: (open: boolean) => void
   mission: MissionState
+  setDraftPreview: (team: string[]) => void
   confirmProposal: (team: string[]) => void
   castVote: (approve: boolean) => void
   closeVote: () => void
@@ -320,6 +321,7 @@ interface GameState {
   revengerCheck: (targetId: string) => void
   armDisguise: () => void
   disguiseArmed: boolean
+  disguiseArmedUntilMs: number | null
   leakLog: LeakEntry[]
   leakUnlocked: boolean
   investigateLeak: (targetId: string) => void
@@ -420,15 +422,15 @@ function makeAbilityLogEntry(
   }
 }
 
-function resolveTeamCheckPure(
-  disguiseArmedIn: boolean,
-  targetId: string,
-): { team: 'ward' | 'sin'; disguiseArmed: boolean } {
+const DISGUISE_DURATION_MS = 6 * 60 * 60 * 1000
+
+function resolveTeamCheckPure(disguiseArmedUntilMs: number | null, targetId: string): { team: 'ward' | 'sin' } {
   const target = CHARACTERS.find((c) => c.id === targetId)!
-  if (target.role === '잠입자' && disguiseArmedIn) {
-    return { team: 'ward', disguiseArmed: false }
+  const disguised = !!disguiseArmedUntilMs && Date.now() < disguiseArmedUntilMs
+  if (target.role === '잠입자' && disguised) {
+    return { team: 'ward' }
   }
-  return { team: target.team === 'ward' ? 'ward' : 'sin', disguiseArmed: disguiseArmedIn }
+  return { team: target.team === 'ward' ? 'ward' : 'sin' }
 }
 
 function FirebaseSetupNotice() {
@@ -1537,6 +1539,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void patchSession({ missionsOpen: open })
   }
 
+  function setDraftPreview(team: string[]) {
+    void updateMissionSync((m) => missionReducer(m, { type: 'SET_DRAFT_PREVIEW', team }))
+  }
   function confirmProposal(team: string[]) {
     const leaderName = displayName(session.mission.turnOrder[session.mission.leaderIdx])
     void updateMissionSync((m) => missionReducer(m, { type: 'CONFIRM_PROPOSAL', team, leaderName }))
@@ -1632,16 +1637,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       if (!a || !b) return {}
       const lieOnA = Math.random() < 0.5
       const teamLabel = (team: 'ward' | 'sin') => (team === 'ward' ? '학생' : '괴이')
-      const firstCheck = resolveTeamCheckPure(sess.disguiseArmed, a.id)
-      const secondCheck = resolveTeamCheckPure(firstCheck.disguiseArmed, b.id)
-      const trueA = firstCheck.team
-      const trueB = secondCheck.team
+      const trueA = resolveTeamCheckPure(sess.disguiseArmedUntilMs, a.id).team
+      const trueB = resolveTeamCheckPure(sess.disguiseArmedUntilMs, b.id).team
       const shownA = lieOnA ? (trueA === 'ward' ? 'sin' : 'ward') : trueA
       const shownB = !lieOnA ? (trueB === 'ward' ? 'sin' : 'ward') : trueB
       const text = `《출석부》 ${displayName(a.id)} = ${teamLabel(shownA)}, ${displayName(b.id)} = ${teamLabel(shownB)} — 둘 중 하나는 거짓이다.`
       return {
         session: {
-          ...(secondCheck.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: secondCheck.disguiseArmed } : {}),
           abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '출석부', text, [targetAId, targetBId])],
         },
         player: {
@@ -1658,11 +1660,10 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
       if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('감찰자')) return {}
-      const check = resolveTeamCheckPure(sess.disguiseArmed, targetId)
+      const check = resolveTeamCheckPure(sess.disguiseArmedUntilMs, targetId)
       const resultText = `《학생부 조사》 ${displayName(targetId)} — 실패 카드를 ${check.team === 'sin' ? '낼 수 있다' : '낼 수 없다'}.`
       return {
         session: {
-          ...(check.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: check.disguiseArmed } : {}),
           abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '학생부 조사', resultText, [targetId])],
         },
         player: {
@@ -1767,7 +1768,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         if (!me.abilityUnlocked || me.abilityUseCount >= abilityMax('복수자')) return {}
         if (!target) return {}
         const targetChar = CHARACTERS.find((c) => c.id === targetId)!
-        const check = resolveTeamCheckPure(sess.disguiseArmed, targetId)
+        const check = resolveTeamCheckPure(sess.disguiseArmedUntilMs, targetId)
         const trueRoleLabel =
           check.team === targetChar.team
             ? targetChar.role === '일반학생'
@@ -1778,7 +1779,6 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         const notifyText = '누군가 당신의 정체를 확인했다....... 누가 그랬는지는 알 수 없다.'
         return {
           session: {
-            ...(check.disguiseArmed !== sess.disguiseArmed ? { disguiseArmed: check.disguiseArmed } : {}),
             abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '투시', resultText, [targetId])],
           },
           me: {
@@ -1798,11 +1798,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
       if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('잠입자')) return {}
-      if (sess.disguiseArmed) return {}
-      const text = '《위장》을 걸었다 — 다음번 정체 확인을 한 번 무효화한다.'
+      if (sess.disguiseArmedUntilMs && Date.now() < sess.disguiseArmedUntilMs) return {}
+      const text = '《위장》을 걸었다 — 6시간 동안 정체 확인 결과가 무조건 학생으로 나온다.'
       return {
         session: {
-          disguiseArmed: true,
+          disguiseArmedUntilMs: Date.now() + DISGUISE_DURATION_MS,
           abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '위장', text)],
         },
         player: {
@@ -2249,6 +2249,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       openMissions,
       setMissionsOpen,
       mission: session.mission,
+      setDraftPreview,
       confirmProposal,
       castVote,
       closeVote,
@@ -2273,7 +2274,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       forgeResult,
       revengerCheck,
       armDisguise,
-      disguiseArmed: session.disguiseArmed,
+      disguiseArmed: !!session.disguiseArmedUntilMs && Date.now() < session.disguiseArmedUntilMs,
+      disguiseArmedUntilMs: session.disguiseArmedUntilMs,
       leakLog: myPlayer?.leakLog ?? [],
       leakUnlocked,
       investigateLeak,

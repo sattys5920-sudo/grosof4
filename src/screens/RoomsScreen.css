@@ -146,6 +146,16 @@
   flex-shrink: 0;
 }
 
+/* 조사/전투 정보가 길어져도 이 영역 안에서만 스크롤되게 해서, 아래 채팅창이
+   화면 밖으로 밀려나거나 눌리지 않도록 한다. */
+.rooms__pin-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 42vh;
+  overflow-y: auto;
+}
+
 .rooms__pin.is-cleared {
   background: var(--ward-dim);
   border-bottom-color: var(--ward);

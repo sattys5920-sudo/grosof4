@@ -5,6 +5,8 @@ import { CHARACTERS } from '../data/characters'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
 import { ChatAvatar } from '../components/ChatAvatar'
+import { TaggedText } from '../components/TaggedText'
+import { TagPicker } from '../components/TagPicker'
 import {
   MAX_REJECTIONS,
   MISSION_PHASE_MS,
@@ -70,6 +72,7 @@ function MissionDiscussionPanel() {
   } = useGame()
   const [draft, setDraft] = useState('')
   const [now, setNow] = useState(Date.now())
+  const chatLogRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!discussionOpen) return
@@ -77,8 +80,14 @@ function MissionDiscussionPanel() {
     return () => clearInterval(t)
   }, [discussionOpen])
 
+  useEffect(() => {
+    const el = chatLogRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [missionMessages.length])
+
   const canChat = !!viewerId || isAdmin
   const remainingMs = discussionOpenedAt ? Math.max(0, discussionOpenedAt + DISCUSSION_MS - now) : 0
+  const tagNames = ['전원', ...CHARACTERS.map((c) => displayName(c.id)), displayName('admin')]
 
   function submit() {
     sendMissionMessage(draft)
@@ -103,7 +112,7 @@ function MissionDiscussionPanel() {
 
       {discussionOpen ? (
         <>
-          <div className="mdisc__log">
+          <div className="mdisc__log" ref={chatLogRef}>
             {missionMessages.length === 0 && (
               <p className="mdisc__empty">아직 아무도 말하지 않았다.</p>
             )}
@@ -116,7 +125,9 @@ function MissionDiscussionPanel() {
                   {!isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />}
                   <div className={`mdisc__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
                     <span className="mdisc__msg-name">{name}</span>
-                    <p className="mdisc__msg-text">{m.text}</p>
+                    <p className="mdisc__msg-text">
+                      <TaggedText text={m.text} names={tagNames} />
+                    </p>
                   </div>
                   {isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />}
                 </div>
@@ -125,6 +136,7 @@ function MissionDiscussionPanel() {
           </div>
           {canChat && (
             <div className="mdisc__composer">
+              <TagPicker names={tagNames} onPick={(name) => setDraft((prev) => `${prev}@${name} `)} />
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -170,6 +182,7 @@ export function MissionScreen() {
     gmReveal,
     missionsOpen,
     mission,
+    setDraftPreview,
     confirmProposal,
     castVote,
     closeVote,
@@ -236,9 +249,9 @@ export function MissionScreen() {
 
   function toggleDraft(id: string) {
     setDraftTeam((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id)
-      if (prev.length >= teamSize) return prev
-      return [...prev, id]
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : prev.length >= teamSize ? prev : [...prev, id]
+      if (next !== prev) setDraftPreview(next)
+      return next
     })
   }
 
@@ -273,7 +286,7 @@ export function MissionScreen() {
         {mission.phase === 'propose' && (
           <div className="mission__panel">
             <p className="mission__leader">
-              조사대장 <strong>{displayName(leader.id)}</strong>이(가) 조사대를 고르는 중이다.
+              조사대장 <strong>{displayName(leader.id)}</strong>이(가) 조사대를 고르는 중이다. ({mission.draftPreview.length}/{teamSize} 명)
               {phaseRemainingMs !== null && (
                 <span className="mission__timer">
                   {' '}
@@ -281,6 +294,17 @@ export function MissionScreen() {
                 </span>
               )}
             </p>
+            <div className="mission__vote-roster">
+              {mission.draftPreview.length === 0 && (
+                <p className="mission__waiting">아직 아무도 고르지 않았다.</p>
+              )}
+              {mission.draftPreview.map((id) => (
+                <div key={id} className="mission__voter is-yes">
+                  <ChatAvatar authorId={id} name={displayName(id)} photo={players[id]?.photo} />
+                  <span className="mission__voter-name">{displayName(id)}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -329,6 +353,12 @@ export function MissionScreen() {
                 </span>
               )}
             </p>
+            {submittedCount < teamSize && (
+              <p className="mission__note">
+                아직 카드를 안 낸 사람이 있다. 지금 마감하면 이 조사는 무산되어 처음부터(조사대
+                구성부터) 다시 시작된다.
+              </p>
+            )}
             <button className="mission__cta" onClick={closeExecute}>
               조사 마감
             </button>

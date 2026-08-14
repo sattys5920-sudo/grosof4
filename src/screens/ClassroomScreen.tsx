@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './ClassroomScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS } from '../data/characters'
@@ -50,12 +50,25 @@ export function ClassroomScreen() {
   const [pendingChoice, setPendingChoice] = useState<{ objectId: string; choice: 'open' | 'leave' } | null>(null)
   const [puzzleDrafts, setPuzzleDrafts] = useState<Record<string, string>>({})
   const [now, setNow] = useState(Date.now())
+  const chatLogRef = useRef<HTMLDivElement | null>(null)
+  const hallEventLogsRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!hallEvent.startedAtMs) return
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [hallEvent.startedAtMs])
+
+  // 화면에 들어올 때(그리고 새 메시지가 올 때)는 항상 가장 최근 대화가 보이게 한다.
+  useEffect(() => {
+    const el = chatLogRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [classroomMessages.length])
+
+  useEffect(() => {
+    const el = hallEventLogsRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [hallEvent.logIndex])
 
   const canChat = (!!viewerId && classroomOpen) || isAdmin
   const activeEvent = hallEvent.eventId ? hallEventById(hallEvent.eventId) : null
@@ -73,7 +86,7 @@ export function ClassroomScreen() {
     setDraft('')
   }
 
-  const tagNames = [...CHARACTERS.map((c) => displayName(c.id)), displayName('admin')]
+  const tagNames = ['전원', ...CHARACTERS.map((c) => displayName(c.id)), displayName('admin')]
 
   const sections: DispatchSection[] = [
     {
@@ -277,7 +290,7 @@ export function ClassroomScreen() {
               )}
             </div>
 
-            <div className="hallevent__logs">
+            <div className="hallevent__logs" ref={hallEventLogsRef}>
               {activeEvent.logs.slice(0, hallEvent.logIndex).map((entry, i) => {
                 const resolvedChoiceId = hallEvent.logResolutions[String(i)]
                 const resolvedChoice = entry.choices?.find((c) => c.id === resolvedChoiceId)
@@ -354,7 +367,7 @@ export function ClassroomScreen() {
       )}
 
       {(classroomOpen || gmReveal) && (
-        <div className="classroom__log">
+        <div className="classroom__log" ref={chatLogRef}>
           {classroomMessages.map((m) => {
             const author = CHARACTERS.find((c) => c.id === m.authorId)
             const isMe = m.authorId === viewerId

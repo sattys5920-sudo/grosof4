@@ -46,6 +46,15 @@ function formatLogTime(ms: number): string {
   return `${hh}:${mm}`
 }
 
+function formatDisguiseRemaining(untilMs: number): string {
+  const remainingMin = Math.max(0, Math.ceil((untilMs - Date.now()) / 60000))
+  const h = Math.floor(remainingMin / 60)
+  const m = remainingMin % 60
+  if (h <= 0) return `${m}분`
+  if (m === 0) return `${h}시간`
+  return `${h}시간 ${m}분`
+}
+
 function AdminAbilityLogPanel() {
   const { abilityLog, displayName } = useGame()
   const sorted = [...abilityLog].sort((a, b) => b.atMs - a.atMs)
@@ -215,6 +224,7 @@ export function ProfileScreen() {
     revengerCheck,
     armDisguise,
     disguiseArmed,
+    disguiseArmedUntilMs,
     leakLog,
     leakUnlocked,
     investigateLeak,
@@ -428,9 +438,9 @@ export function ProfileScreen() {
 
             {viewer.role === '잠입자' && (
               <>
-                {disguiseArmed ? (
+                {disguiseArmed && disguiseArmedUntilMs ? (
                   <p className="profile__ability-locked">
-                    지금 위장이 걸려 있다....... 다음 정체 확인 한 번은 무효화된다.
+                    지금 위장이 걸려 있다....... {formatDisguiseRemaining(disguiseArmedUntilMs)} 후 풀린다.
                   </p>
                 ) : usesLeft <= 0 ? (
                   <p className="profile__ability-locked">

@@ -73,7 +73,7 @@ export function MainFeedScreen() {
     setOpenPostId(null)
   }
 
-  const tagNames = [...CHARACTERS.map((c) => displayName(c.id)), displayName('admin')]
+  const tagNames = ['전원', ...CHARACTERS.map((c) => displayName(c.id)), displayName('admin')]
 
   function submitNewPost() {
     createFeedPost(postTitle, postBody, postCommentsOn)

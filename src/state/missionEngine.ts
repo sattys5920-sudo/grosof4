@@ -21,6 +21,8 @@ export interface MissionState {
   leaderIdx: number
   phase: MissionPhase
   proposedTeam: string[]
+  /** propose 단계에서 조사대장이 아직 확정 전에 고르고 있는 조사대 — 불가가 실시간으로 지켜볼 수 있다. */
+  draftPreview: string[]
   rejectionCount: number
   voteTally: { approve: number; reject: number } | null
   cardTally: { success: number; fail: number } | null
@@ -38,6 +40,7 @@ export interface MissionState {
 }
 
 export type MissionAction =
+  | { type: 'SET_DRAFT_PREVIEW'; team: string[] }
   | { type: 'CONFIRM_PROPOSAL'; team: string[]; leaderName: string }
   | { type: 'CAST_VOTE'; viewerId: string; approve: boolean }
   | { type: 'CLOSE_VOTE' }
@@ -71,6 +74,7 @@ export function initialMissionState(turnOrder: string[] = DEFAULT_ORDER): Missio
     leaderIdx: 0,
     phase: 'propose',
     proposedTeam: [],
+    draftPreview: [],
     rejectionCount: 0,
     voteTally: null,
     cardTally: null,
@@ -90,11 +94,17 @@ export function initialMissionState(turnOrder: string[] = DEFAULT_ORDER): Missio
 
 export function missionReducer(state: MissionState, action: MissionAction): MissionState {
   switch (action.type) {
+    case 'SET_DRAFT_PREVIEW': {
+      if (state.phase !== 'propose') return state
+      return { ...state, draftPreview: action.team }
+    }
+
     case 'CONFIRM_PROPOSAL': {
       if (state.phase !== 'propose') return state
       return {
         ...state,
         proposedTeam: action.team,
+        draftPreview: [],
         phase: 'vote',
         voteTally: null,
         votes: {},
@@ -157,6 +167,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         leaderIdx: nextLeaderIdx,
         phase: 'propose',
         proposedTeam: [],
+        draftPreview: [],
         votes: {},
         phaseStartedAtMs: Date.now(),
         lastNote: `찬성 ${tally.approve} · 반대 ${tally.reject} — 부결되었다. (${nextRejections}/${MAX_REJECTIONS})`,
@@ -173,11 +184,29 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
 
     case 'CLOSE_EXECUTE': {
       if (state.phase !== 'execute') return state
+      const allSubmitted = state.proposedTeam.every((id) => state.cards[id] !== undefined)
+      if (!allSubmitted) {
+        const nextLeaderIdx = (state.leaderIdx + 1) % state.turnOrder.length
+        return {
+          ...state,
+          leaderIdx: nextLeaderIdx,
+          phase: 'propose',
+          proposedTeam: [],
+          draftPreview: [],
+          rejectionCount: 0,
+          voteTally: null,
+          cardTally: null,
+          votes: {},
+          cards: {},
+          phaseStartedAtMs: Date.now(),
+          lastNote: '카드를 제출하지 않은 사람이 있어 조사가 무산되었다. 다시 조사대를 구성한다.',
+        }
+      }
       const required = TWO_FAILS_REQUIRED[state.missionIndex] ? 2 : 1
       let success = 0
       let rawFail = 0
       for (const id of state.proposedTeam) {
-        const card = state.cards[id] ?? 'success'
+        const card = state.cards[id]!
         if (card === 'fail') rawFail++
         else success++
       }
@@ -235,6 +264,7 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         leaderIdx: nextLeaderIdx,
         phase: 'propose',
         proposedTeam: [],
+        draftPreview: [],
         rejectionCount: 0,
         voteTally: null,
         cardTally: null,

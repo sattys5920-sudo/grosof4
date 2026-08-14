@@ -67,7 +67,8 @@ export interface SessionDoc {
   broadcast: Broadcast | null
   missionsOpen: boolean
   mission: MissionState
-  disguiseArmed: boolean
+  /** null이면 위장이 꺼진 상태. 값이 있으면 그 시각(ms)까지 위장이 유지된다. */
+  disguiseArmedUntilMs: number | null
   collectedClues: ClueItem[]
   missionMessages: ChatMessage[]
   discussionOpen: boolean
@@ -157,7 +158,7 @@ export function defaultSessionState(): SessionDoc {
     broadcast: null,
     missionsOpen: false,
     mission: initialMissionState(),
-    disguiseArmed: false,
+    disguiseArmedUntilMs: null,
     shopOpen: false,
     classroomOpen: true,
     hallEvent: {
