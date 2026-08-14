@@ -1550,14 +1550,14 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       if (existing?.game) return {}
       const game: HallGameState =
         obj.minigameKind === 'numberbaseball'
-          ? { kind: 'numberbaseball', actorId: viewerId, outcome: 'pending', secret: generateBaseballSecret(), guesses: [], attemptsLeft: 7 }
+          ? { kind: 'numberbaseball', actorId: viewerId, outcome: 'pending', secret: generateBaseballSecret(), guesses: [], attemptsLeft: 5 }
           : {
               kind: 'davinci',
               actorId: viewerId,
               outcome: 'pending',
               tiles: generateDavinciTiles(),
               revealed: [false, false, false, false],
-              missesLeft: 4,
+              attemptsLeft: 5,
               attempts: [],
             }
       const nextResult: HallObjectResult = {
@@ -1638,8 +1638,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     const correct = gameNow.tiles[position] === guessValue
     const nextRevealed = gameNow.revealed.map((r, i) => (i === position && correct ? true : r))
     const win = correct && nextRevealed.every(Boolean)
-    const missesLeftAfter = correct ? gameNow.missesLeft : gameNow.missesLeft - 1
-    const outcome: 'pending' | 'win' | 'lose' = win ? 'win' : !correct && missesLeftAfter <= 0 ? 'lose' : 'pending'
+    const attemptsLeftAfter = gameNow.attemptsLeft - 1
+    const outcome: 'pending' | 'win' | 'lose' = win ? 'win' : attemptsLeftAfter <= 0 ? 'lose' : 'pending'
     void runAbilityTransaction(viewerId, (sess, player) => {
       const he = sess.hallEvent
       const existing = he.objectResults[objectId]
@@ -1649,13 +1649,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       const isCorrect = game.tiles[position] === guessValue
       const revealed = game.revealed.map((r, i) => (i === position && isCorrect ? true : r))
       const nextWin = isCorrect && revealed.every(Boolean)
-      const nextMissesLeft = isCorrect ? game.missesLeft : game.missesLeft - 1
-      const nextOutcome: 'pending' | 'win' | 'lose' = nextWin ? 'win' : !isCorrect && nextMissesLeft <= 0 ? 'lose' : 'pending'
+      const nextAttemptsLeft = game.attemptsLeft - 1
+      const nextOutcome: 'pending' | 'win' | 'lose' = nextWin ? 'win' : nextAttemptsLeft <= 0 ? 'lose' : 'pending'
       const attemptResult: 'hit' | 'high' | 'low' = isCorrect ? 'hit' : guessValue < game.tiles[position] ? 'low' : 'high'
       const nextGame: DavinciGameState = {
         ...game,
         revealed,
-        missesLeft: nextMissesLeft,
+        attemptsLeft: nextAttemptsLeft,
         outcome: nextOutcome,
         attempts: [...game.attempts, { position, guess: guessValue, result: attemptResult }],
       }

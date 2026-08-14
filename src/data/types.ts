@@ -265,7 +265,7 @@ export interface DavinciGameState {
   outcome: 'pending' | 'win' | 'lose'
   tiles: number[]
   revealed: boolean[]
-  missesLeft: number
+  attemptsLeft: number
   attempts: { position: number; guess: number; result: 'hit' | 'high' | 'low' }[]
 }
 

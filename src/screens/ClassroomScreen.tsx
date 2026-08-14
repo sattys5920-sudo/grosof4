@@ -189,8 +189,11 @@ export function ClassroomScreen() {
             <div className="hallobj__game">
               {!isMine && (
                 <p className="hallobj__minigame-waiting">
-                  {displayName(game.actorId)}이(가) 도전 중이다....... (남은 기회 {game.missesLeft})
+                  {displayName(game.actorId)}이(가) 도전 중이다....... (남은 기회 {game.attemptsLeft})
                 </p>
+              )}
+              {isMine && game.outcome === 'pending' && (
+                <span className="hallobj__game-attempts">남은 기회 {game.attemptsLeft}</span>
               )}
               <div className="hallobj__davinci-tiles">
                 {game.tiles.map((value, i) => (
