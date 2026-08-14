@@ -13,7 +13,7 @@
   background: var(--void-2);
   border-bottom: 2px solid var(--line);
   flex-shrink: 0;
-  max-height: 46vh;
+  max-height: 30vh;
   overflow-y: auto;
 }
 
@@ -398,7 +398,7 @@
   padding: 10px 12px;
   background: var(--void);
   border: 1px dashed var(--line);
-  max-height: 160px;
+  max-height: 110px;
   overflow-y: auto;
 }
 
