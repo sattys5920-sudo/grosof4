@@ -44,7 +44,9 @@ import {
   createFeedPostSync,
   defaultSessionState,
   deleteCommentSync,
+  deleteFeedPostSync,
   editCommentSync,
+  editFeedPostSync,
   ensureSessionInitialized,
   feedPostToFeedPost,
   forceCloseRoomSync,
@@ -336,6 +338,8 @@ interface GameState {
   giftItem: (itemId: string, targetId: string) => void
   inventory: Record<string, number>
   createFeedPost: (title: string, body: string, commentsEnabled: boolean) => void
+  editFeedPost: (postId: string, title: string, body: string) => void
+  deleteFeedPost: (postId: string) => void
   toggleCommentsEnabled: (postId: string) => void
   addComment: (postId: string, text: string, secret: boolean) => void
   editComment: (postId: string, commentId: string, text: string) => void
@@ -1430,6 +1434,16 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     })
   }
 
+  function editFeedPost(postId: string, title: string, body: string) {
+    if (!isAdminFlag || !title.trim() || !body.trim()) return
+    void editFeedPostSync(postId, title.trim(), body.trim())
+  }
+
+  function deleteFeedPost(postId: string) {
+    if (!isAdminFlag) return
+    void deleteFeedPostSync(postId)
+  }
+
   // 브로드캐스트(공지/괴이 출현/이벤트)는 팝업·상단바로만 전달되고, 메인 피드에는 절대 자동으로
   // 올라가지 않는다. 피드에는 GM이 메인 화면의 + 버튼으로 직접 작성한 글만 올라간다.
   function sendBroadcast(
@@ -2159,6 +2173,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       deleteComment,
       toggleCommentsEnabled,
       createFeedPost,
+      editFeedPost,
+      deleteFeedPost,
       players,
       gmDmMessages: myPlayer?.gmDmMessages ?? [],
       sendGmDm,

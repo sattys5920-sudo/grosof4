@@ -2,6 +2,7 @@ import {
   addDoc,
   arrayUnion,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -660,6 +661,14 @@ export async function createFeedPostSync(post: Omit<FeedPostDoc, 'createdAtMs' |
     createdAtMs: Date.now(),
     createdAt: serverTimestamp(),
   })
+}
+
+export async function editFeedPostSync(postId: string, title: string, body: string) {
+  await updateDoc(doc(feedCol(), postId), { title, body })
+}
+
+export async function deleteFeedPostSync(postId: string) {
+  await deleteDoc(doc(feedCol(), postId))
 }
 
 export async function toggleHeartSync(postId: string, myId: string) {

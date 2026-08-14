@@ -18,6 +18,8 @@ export function MainFeedScreen() {
     gmReveal,
     toggleCommentsEnabled,
     createFeedPost,
+    editFeedPost,
+    deleteFeedPost,
     players,
   } = useGame()
   const [openPostId, setOpenPostId] = useState<string | null>(null)
@@ -29,6 +31,9 @@ export function MainFeedScreen() {
   const [postCommentsOn, setPostCommentsOn] = useState(false)
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState('')
+  const [editingPost, setEditingPost] = useState(false)
+  const [editPostTitle, setEditPostTitle] = useState('')
+  const [editPostBody, setEditPostBody] = useState('')
 
   const openPost = feed.find((p) => p.id === openPostId) ?? null
   const myCommentId = gmReveal ? 'admin' : viewerId
@@ -49,6 +54,23 @@ export function MainFeedScreen() {
     addComment(postId, draft, secret)
     setDraft('')
     setSecret(false)
+  }
+
+  function startEditPost(title: string, body: string) {
+    setEditingPost(true)
+    setEditPostTitle(title)
+    setEditPostBody(body)
+  }
+
+  function saveEditPost(postId: string) {
+    editFeedPost(postId, editPostTitle, editPostBody)
+    setEditingPost(false)
+  }
+
+  function removePost(postId: string) {
+    deleteFeedPost(postId)
+    setEditingPost(false)
+    setOpenPostId(null)
   }
 
   const tagNames = [...CHARACTERS.map((c) => displayName(c.id)), displayName('admin')]
@@ -76,8 +98,27 @@ export function MainFeedScreen() {
             <span className="feed__author">{openPost.authorLabel}</span>
             <span className="feed__time">{openPost.time}</span>
           </div>
-          <h2 className="feed__detail-title">{openPost.title}</h2>
-          <p className="feed__detail-body">{openPost.body}</p>
+          {editingPost ? (
+            <div className="feed__post-edit">
+              <input value={editPostTitle} onChange={(e) => setEditPostTitle(e.target.value)} placeholder="게시글 제목" />
+              <textarea value={editPostBody} onChange={(e) => setEditPostBody(e.target.value)} placeholder="게시글 내용" rows={3} />
+              <div className="feed__composer-row">
+                <button onClick={() => setEditingPost(false)}>취소</button>
+                <button
+                  className="feed__composer-submit"
+                  disabled={!editPostTitle.trim() || !editPostBody.trim()}
+                  onClick={() => saveEditPost(openPost.id)}
+                >
+                  저장
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h2 className="feed__detail-title">{openPost.title}</h2>
+              <p className="feed__detail-body">{openPost.body}</p>
+            </>
+          )}
           <div className="feed__actions">
             <button
               className={`feed__heart ${openPost.heartedByViewer ? 'is-active' : ''}`}
@@ -85,13 +126,21 @@ export function MainFeedScreen() {
             >
               ♥ {openPost.hearts}
             </button>
-            {gmReveal && (
-              <button
-                className="feed__admin-toggle"
-                onClick={() => toggleCommentsEnabled(openPost.id)}
-              >
-                {openPost.commentsEnabled ? '[불가] 댓글 닫기' : '[불가] 댓글 열기'}
-              </button>
+            {gmReveal && !editingPost && (
+              <>
+                <button
+                  className="feed__admin-toggle"
+                  onClick={() => toggleCommentsEnabled(openPost.id)}
+                >
+                  {openPost.commentsEnabled ? '[불가] 댓글 닫기' : '[불가] 댓글 열기'}
+                </button>
+                <button className="feed__admin-toggle" onClick={() => startEditPost(openPost.title, openPost.body)}>
+                  [불가] 수정
+                </button>
+                <button className="feed__admin-toggle" onClick={() => removePost(openPost.id)}>
+                  [불가] 삭제
+                </button>
+              </>
             )}
           </div>
         </article>

@@ -353,6 +353,39 @@
   cursor: pointer;
 }
 
+.feed__post-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feed__post-edit input,
+.feed__post-edit textarea {
+  background: var(--void-3);
+  border: 1px solid var(--line);
+  padding: 9px 10px;
+  color: var(--bone-bright);
+  font-size: 13.5px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.feed__post-edit input:focus,
+.feed__post-edit textarea:focus {
+  outline: none;
+  border-color: var(--veil);
+}
+
+.feed__post-edit .feed__composer-row button:first-child {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--bone-dim);
+  padding: 7px 14px;
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  cursor: pointer;
+}
+
 .feed__comment-hidden {
   color: var(--bone-dim);
   font-style: italic;
