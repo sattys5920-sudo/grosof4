@@ -335,6 +335,14 @@ export function MissionScreen() {
           </div>
         )}
 
+        {mission.phase === 'result' && (
+          <div className="mission__panel">
+            <button className="mission__cta" onClick={continueMission}>
+              {mission.missionIndex >= MISSION_SIZES.length - 1 ? '결과 확인' : '다음 조사로'}
+            </button>
+          </div>
+        )}
+
         <MissionDiscussionPanel />
       </div>
     )
@@ -534,13 +542,7 @@ export function MissionScreen() {
                 성공 {mission.cardTally.success} · 실패 {mission.cardTally.fail}
               </p>
             ))}
-          {isAdmin ? (
-            <button className="mission__cta" onClick={continueMission}>
-              {mission.missionIndex >= MISSION_SIZES.length - 1 ? '결과 확인' : '다음 조사로'}
-            </button>
-          ) : (
-            <p className="mission__waiting">불가가 다음 조사로 넘겨줄 때까지 기다리는 중이다.</p>
-          )}
+          <p className="mission__waiting">불가가 다음 조사로 넘겨줄 때까지 기다리는 중이다.</p>
         </div>
       )}
 
