@@ -98,11 +98,10 @@ export function MainFeedScreen() {
 
         <div className="feed__comments feed__comments--detail">
           <span className="feed__comments-label">댓글 {openPost.comments.length}</span>
-          {!openPost.commentsEnabled && (
+          {!openPost.commentsEnabled && openPost.comments.length === 0 && (
             <p className="feed__comment-disabled">이 게시글은 댓글이 비활성화되어 있다.</p>
           )}
-          {openPost.commentsEnabled &&
-            openPost.comments.map((c) => {
+          {openPost.comments.map((c) => {
               const canSee = !c.secret || c.authorId === viewerId || gmReveal
               const name = displayName(c.authorId)
               const isMine = c.authorId === myCommentId
@@ -141,7 +140,7 @@ export function MainFeedScreen() {
                 </div>
               )
             })}
-          {openPost.commentsEnabled && (
+          {openPost.commentsEnabled ? (
             <div className="feed__comment-composer">
               <TagPicker names={tagNames} onPick={(name) => setDraft((prev) => `${prev}@${name} `)} />
               <input
@@ -160,6 +159,10 @@ export function MainFeedScreen() {
               </label>
               <button onClick={() => submitComment(openPost.id)}>등록</button>
             </div>
+          ) : (
+            openPost.comments.length > 0 && (
+              <p className="feed__comment-disabled">댓글이 잠겨 있어 더 이상 남길 수 없다.</p>
+            )
           )}
         </div>
       </div>
