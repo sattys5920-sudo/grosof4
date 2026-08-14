@@ -46,6 +46,7 @@ export function RoomsScreen() {
     roomOccupancy,
     joinRoom,
     leaveRoom,
+    kickFromRoom,
     roomMessages,
     sendRoomMessage,
     hasUnreadRoom,
@@ -172,7 +173,21 @@ export function RoomsScreen() {
             </span>
             {occupants.map((id) => {
               const c = charOf(id)
-              return <Badge key={id} team={c.team} size={18} revealed={revealedFor(c)} />
+              return (
+                <span key={id} className="rooms__pin-occupant">
+                  <Badge team={c.team} size={18} revealed={revealedFor(c)} />
+                  {isAdmin && (
+                    <button
+                      className="rooms__pin-kick"
+                      onClick={() => kickFromRoom(openRoom!, id)}
+                      aria-label={`${displayName(id)} 쫓아내기`}
+                      title={`${displayName(id)} 쫓아내기`}
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              )
             })}
             {!isAdmin &&
               (iAmHere ? (

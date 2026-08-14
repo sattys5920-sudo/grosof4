@@ -593,7 +593,7 @@ export async function runHallMinigameTransaction(
   fn: (
     session: SessionDoc,
     participants: Record<string, PlayerDoc>,
-  ) => { session?: Partial<SessionDoc>; playerPatches?: Record<string, Partial<PlayerDoc>> },
+  ) => { session?: Partial<SessionDoc>; playerPatches?: Record<string, Partial<PlayerDoc>>; classroomMessage?: ChatMessage },
 ) {
   const sref = sessionRef()
   await runTransaction(requireDb(), async (tx) => {
@@ -606,9 +606,16 @@ export async function runHallMinigameTransaction(
     playerSnaps.forEach((snap, i) => {
       if (snap.exists()) participants[pendingIds[i]] = snap.data() as PlayerDoc
     })
-    const { session: sessionPatch, playerPatches } = fn(session, participants)
-    if (sessionPatch) {
+    const { session: sessionPatch, playerPatches, classroomMessage } = fn(session, participants)
+    if (sessionPatch && classroomMessage) {
+      tx.update(sref, {
+        ...(sessionPatch.mission ? { ...sessionPatch, mission: serializeMission(sessionPatch.mission) } : sessionPatch),
+        classroomMessages: arrayUnion(classroomMessage),
+      })
+    } else if (sessionPatch) {
       tx.update(sref, sessionPatch.mission ? { ...sessionPatch, mission: serializeMission(sessionPatch.mission) } : sessionPatch)
+    } else if (classroomMessage) {
+      tx.update(sref, { classroomMessages: arrayUnion(classroomMessage) })
     }
     if (playerPatches) {
       for (const [id, patch] of Object.entries(playerPatches)) {

@@ -422,6 +422,47 @@ export const CREATURES: Creature[] = [
     icon: 'warning',
     art: mkArt('tall', BOSS.body, BOSS.accent),
   },
+
+  // 구관 추가 크리쳐 — 3 종
+  {
+    id: 'cr31',
+    name: '보일러실 손자국',
+    category: '크리쳐',
+    difficulty: 'easy',
+    intro: '지하 보일러실 철문에 작은 손자국이 하나둘 늘어난다....... 안쪽에서 두드리는 소리가 점점 커진다.',
+    hp: 24,
+    atk: 5,
+    def: 1,
+    coinReward: 16,
+    icon: 'ghost',
+    art: mkArt('object', EASY.body, EASY.accent),
+  },
+  {
+    id: 'cr32',
+    name: '시청각실 필름귀',
+    category: '귀신',
+    difficulty: 'medium',
+    intro: '꺼진 줄 알았던 영사기가 저절로 돌아가고, 스크린 속 낡은 필름 속 얼굴 하나가 이쪽을 향해 걸어 나온다.......',
+    hp: 40,
+    atk: 8,
+    def: 2,
+    coinReward: 26,
+    icon: 'mask',
+    art: mkArt('clock', MEDIUM.body, MEDIUM.accent),
+  },
+  {
+    id: 'cr33',
+    name: '벽 속에 갇힌 것',
+    category: '크리쳐',
+    difficulty: 'hard',
+    intro: '구관 지하 벽 한쪽이 숨 쉬듯 부풀었다 가라앉는다....... 벽 너머에서 손톱으로 긁는 소리가 멈추지 않는다.',
+    hp: 66,
+    atk: 14,
+    def: 5,
+    coinReward: 48,
+    icon: 'warning',
+    art: mkArt('shadow', HARD.body, HARD.accent),
+  },
 ]
 
 export function creatureById(id: string): Creature | undefined {

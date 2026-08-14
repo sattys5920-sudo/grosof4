@@ -234,6 +234,27 @@
   margin-right: 2px;
 }
 
+.rooms__pin-occupant {
+  position: relative;
+  display: inline-flex;
+}
+
+.rooms__pin-kick {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 14px;
+  height: 14px;
+  line-height: 12px;
+  padding: 0;
+  border: 1px solid var(--sin);
+  border-radius: 50%;
+  background: var(--void-3);
+  color: var(--sin);
+  font-size: 10px;
+  cursor: pointer;
+}
+
 .rooms__pin-locked {
   margin-left: auto;
   font-family: var(--font-pixel);

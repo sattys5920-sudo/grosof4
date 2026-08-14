@@ -235,6 +235,7 @@ interface GameState {
   roomOccupancy: Record<RoomId, string[]>
   joinRoom: (roomId: RoomId) => void
   leaveRoom: (roomId: RoomId) => void
+  kickFromRoom: (roomId: RoomId, targetId: string) => void
   roomMessages: Record<RoomId, ChatMessage[]>
   sendRoomMessage: (roomId: RoomId, text: string) => void
   hasUnreadRoom: (roomId: RoomId) => boolean
@@ -918,6 +919,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void leaveRoomSync(viewerId, roomId)
   }
 
+  function kickFromRoom(roomId: RoomId, targetId: string) {
+    if (!isAdminFlag) return
+    void leaveRoomSync(targetId, roomId)
+  }
+
   function sendRoomMessage(roomId: RoomId, text: string) {
     const authorId = viewerId ?? (isAdminFlag ? 'admin' : null)
     if (!text.trim() || !authorId) return
@@ -1151,7 +1157,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       logResolutions: {},
       extraTimeMs: 0,
     }
-    void patchSession({ hallEvent: nextHallEvent, classroomMessages: [] })
+    void patchSession({ hallEvent: nextHallEvent })
+    void sendClassroomMessageSync({
+      id: `he-${Date.now()}-start`,
+      authorId: 'admin',
+      text: `【조사 시작】 ${event.roomName} — ${event.creatureName}`,
+      time: '지금',
+    })
     sendBroadcast('event', `${event.roomName}이(가) 열렸다`, `${event.creatureName} — 지금 강당으로 모이자.......`)
   }
 
@@ -1174,6 +1186,15 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     }
     const nextLogIndex = Math.min(he.logIndex + 1, event.logs.length)
     void patchSession({ hallEvent: { ...he, logIndex: nextLogIndex, logVotes: {} } })
+    const revealedEntry = event.logs[he.logIndex]
+    if (revealedEntry) {
+      void sendClassroomMessageSync({
+        id: `he-${Date.now()}-log${he.logIndex}`,
+        authorId: 'admin',
+        text: revealedEntry.text,
+        time: '지금',
+      })
+    }
   }
 
   function voteHallLogChoice(choiceId: string) {
@@ -1210,6 +1231,12 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     const winner = topChoices[Math.floor(Math.random() * topChoices.length)]
     void patchSession({
       hallEvent: { ...he, logResolutions: { ...he.logResolutions, [String(idx)]: winner.id }, logVotes: {} },
+    })
+    void sendClassroomMessageSync({
+      id: `he-${Date.now()}-vote${idx}`,
+      authorId: 'admin',
+      text: winner.resultText,
+      time: '지금',
     })
   }
 
@@ -1262,6 +1289,10 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
   function resolveHallObject(objectId: string, choice: 'open' | 'leave') {
     if (!viewerId) return
+    const heNow = session.hallEvent
+    const eventNow = heNow.eventId ? hallEventById(heNow.eventId) : null
+    const objNow = eventNow?.objects.find((o) => o.id === objectId)
+    const alreadyResolved = heNow.objectResults[objectId] && heNow.objectResults[objectId].status !== 'idle'
     void runAbilityTransaction(viewerId, (sess, player) => {
       const he = sess.hallEvent
       if (!he.eventId) return {}
@@ -1303,10 +1334,35 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         player: playerPatch,
       }
     })
+    if (objNow && !alreadyResolved) {
+      const actorName = displayName(viewerId)
+      let text: string | null = null
+      if (choice === 'leave') {
+        text = `${actorName}이(가) '${objNow.label}'을(를) 그냥 두기로 했다.`
+      } else if (objNow.kind === 'hazard') {
+        text = `${actorName}이(가) '${objNow.label}'을(를) 열어 보았다....... ${objNow.hazardText}`
+      } else if (objNow.kind === 'item') {
+        text = `${actorName}이(가) '${objNow.label}'을(를) 열어 보고 ${objNow.itemCoins ? `코인 ${objNow.itemCoins}개를` : '아이템을'} 손에 넣었다.`
+      } else if (objNow.kind === 'puzzle') {
+        text = `${actorName}이(가) '${objNow.label}'을(를) 열어 보니 문제가 나타났다.`
+      }
+      if (text) {
+        void sendClassroomMessageSync({
+          id: `he-${Date.now()}-obj-${objectId}`,
+          authorId: 'admin',
+          text,
+          time: '지금',
+        })
+      }
+    }
   }
 
   function submitHallPuzzleAnswer(objectId: string, text: string) {
     if (!viewerId || !text.trim()) return
+    const heNow = session.hallEvent
+    const eventNow = heNow.eventId ? hallEventById(heNow.eventId) : null
+    const objNow = eventNow?.objects.find((o) => o.id === objectId)
+    const puzzleNow = objNow?.puzzleId ? hallPuzzleById(objNow.puzzleId) : null
     void runAbilityTransaction(viewerId, (sess) => {
       const he = sess.hallEvent
       if (!he.eventId) return {}
@@ -1329,6 +1385,14 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         session: { hallEvent: { ...he, objectResults: { ...he.objectResults, [objectId]: nextResult } } },
       }
     })
+    if (objNow && puzzleNow && normalize(text) === normalize(puzzleNow.answer)) {
+      void sendClassroomMessageSync({
+        id: `he-${Date.now()}-puzzle-${objectId}`,
+        authorId: 'admin',
+        text: `${displayName(viewerId)}이(가) '${objNow.label}'의 문제를 풀었다....... 정답: ${puzzleNow.answer}`,
+        time: '지금',
+      })
+    }
   }
 
   function joinHallMinigame(objectId: string, choiceId: string) {
@@ -1407,9 +1471,18 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         minigameParticipants: nextParticipants,
         minigameLog: [...existing.minigameLog, gameLog],
       }
+      const resultSummary = pendingIds
+        .map((id) => `${displayName(id)}(${nextParticipants[id] ? '승' : '패'})`)
+        .join(', ')
       return {
         session: { hallEvent: { ...heInner, objectResults: { ...heInner.objectResults, [objectId]: nextResult } } },
         playerPatches,
+        classroomMessage: {
+          id: `he-${Date.now()}-minigame-${objectId}`,
+          authorId: 'admin',
+          text: `${gameLog} — ${resultSummary}`,
+          time: '지금',
+        },
       }
     })
   }
@@ -2163,6 +2236,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       roomOccupancy: session.roomOccupancy,
       joinRoom,
       leaveRoom,
+      kickFromRoom,
       roomMessages: session.roomMessages,
       sendRoomMessage,
       hasUnreadRoom,
