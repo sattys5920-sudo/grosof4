@@ -205,6 +205,7 @@ const LS = {
   notifyPushEnabled: 'gwae_notifyPushEnabled',
   lastSeenDmCount: 'gwae_lastSeenDmCount',
   gmDmSeenCounts: 'gwae_gmDmSeenCounts',
+  roomMsgSeenCounts: 'gwae_roomMsgSeenCounts',
   accountUsername: 'gwae_accountUsername',
 } as const
 
@@ -236,6 +237,9 @@ interface GameState {
   leaveRoom: (roomId: RoomId) => void
   roomMessages: Record<RoomId, ChatMessage[]>
   sendRoomMessage: (roomId: RoomId, text: string) => void
+  hasUnreadRoom: (roomId: RoomId) => boolean
+  hasUnreadAnyRoom: boolean
+  markRoomRead: (roomId: RoomId) => void
   roomEvents: Record<RoomId, RoomEventState>
   closeRoomInvestigation: (roomId: RoomId) => void
   setRoomOpen: (roomId: RoomId, open: boolean) => void
@@ -484,6 +488,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const [gmDmSeenCounts, setGmDmSeenCountsLocal] = useState<Record<string, number>>(() => {
     try {
       return JSON.parse(localStorage.getItem(LS.gmDmSeenCounts) ?? '{}')
+    } catch {
+      return {}
+    }
+  })
+  const [roomMsgSeenCounts, setRoomMsgSeenCountsLocal] = useState<Record<string, number>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(LS.roomMsgSeenCounts) ?? '{}')
     } catch {
       return {}
     }
@@ -795,6 +806,20 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     const next = { ...gmDmSeenCounts, [characterId]: count }
     localStorage.setItem(LS.gmDmSeenCounts, JSON.stringify(next))
     setGmDmSeenCountsLocal(next)
+  }
+
+  function hasUnreadRoom(roomId: RoomId) {
+    const count = session.roomMessages[roomId]?.length ?? 0
+    return count > (roomMsgSeenCounts[roomId] ?? 0)
+  }
+
+  const hasUnreadAnyRoom = (Object.keys(session.roomMessages) as RoomId[]).some(hasUnreadRoom)
+
+  function markRoomRead(roomId: RoomId) {
+    const count = session.roomMessages[roomId]?.length ?? 0
+    const next = { ...roomMsgSeenCounts, [roomId]: count }
+    localStorage.setItem(LS.roomMsgSeenCounts, JSON.stringify(next))
+    setRoomMsgSeenCountsLocal(next)
   }
 
   function displayName(id: string) {
@@ -2140,6 +2165,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       leaveRoom,
       roomMessages: session.roomMessages,
       sendRoomMessage,
+      hasUnreadRoom,
+      hasUnreadAnyRoom,
+      markRoomRead,
       roomEvents: session.roomEvents,
       closeRoomInvestigation,
       setRoomOpen,

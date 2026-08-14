@@ -11,7 +11,7 @@ const TABS: { id: TabId; label: string; icon: string }[] = [
 ]
 
 export function TabBar() {
-  const { activeTab, setActiveTab, classroom, hasUnreadDm } = useGame()
+  const { activeTab, setActiveTab, classroom, hasUnreadDm, hasUnreadAnyRoom } = useGame()
   return (
     <nav className="tabbar">
       {TABS.map((tab) => (
@@ -26,6 +26,7 @@ export function TabBar() {
               <span className="tabbar__ping" />
             )}
             {tab.id === 'profile' && hasUnreadDm && <span className="tabbar__ping" />}
+            {tab.id === 'rooms' && hasUnreadAnyRoom && <span className="tabbar__ping" />}
           </span>
           <span className="tabbar__label">{tab.label}</span>
         </button>

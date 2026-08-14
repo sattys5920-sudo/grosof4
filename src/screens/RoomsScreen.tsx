@@ -48,6 +48,8 @@ export function RoomsScreen() {
     leaveRoom,
     roomMessages,
     sendRoomMessage,
+    hasUnreadRoom,
+    markRoomRead,
     roomEvents,
     dispatchCreature,
     closeRoomInvestigation,
@@ -81,6 +83,10 @@ export function RoomsScreen() {
     const el = investigationLogsRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [openRoom, currentInvestigationLogIndex])
+
+  useEffect(() => {
+    if (openRoom) markRoomRead(openRoom)
+  }, [openRoom, roomMessages[openRoom as RoomId]?.length, markRoomRead])
 
   function revealedFor(c: ReturnType<typeof charOf>) {
     return viewer ? isRevealedTo(viewer, c, gmReveal) : gmReveal
@@ -392,6 +398,7 @@ export function RoomsScreen() {
               <div className="rooms__card-top">
                 <span className="rooms__card-name">
                   {room.name}
+                  {hasUnreadRoom(room.id) && <span className="rooms__card-ping" />}
                   {!open && <span className="rooms__card-locked-tag">잠김</span>}
                   {cleared && <span className="rooms__card-clue-tag">단서 발견</span>}
                   {investigating && <span className="rooms__card-active-tag">조사 중</span>}
