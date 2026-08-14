@@ -6,6 +6,7 @@ import { TabBar } from './components/TabBar'
 import { BroadcastPopup } from './components/BroadcastPopup'
 import { LeakerRevealPopup } from './components/LeakerRevealPopup'
 import { TopBarAlert } from './components/TopBarAlert'
+import { BackgroundMusic, startBackgroundMusic } from './components/BackgroundMusic'
 import { StoryIntroScreen } from './screens/StoryIntroScreen'
 import { AuthScreen } from './screens/AuthScreen'
 import { SignupScreen } from './screens/SignupScreen'
@@ -75,7 +76,15 @@ function Shell() {
 function Gate() {
   const { viewerId, isAdmin, profileComplete, roleRevealed } = useGame()
   const [introSeen, setIntroSeen] = useState(false)
-  if (!introSeen) return <StoryIntroScreen onEnter={() => setIntroSeen(true)} />
+  if (!introSeen)
+    return (
+      <StoryIntroScreen
+        onEnter={() => {
+          startBackgroundMusic()
+          setIntroSeen(true)
+        }}
+      />
+    )
   if (!isAdmin && !viewerId) return <AuthScreen />
   if (!isAdmin && !profileComplete) return <SignupScreen />
   if (!roleRevealed) return <RoleRevealScreen />
@@ -85,6 +94,7 @@ function Gate() {
 function App() {
   return (
     <ErrorBoundary>
+      <BackgroundMusic />
       <GameProvider>
         <Gate />
       </GameProvider>
