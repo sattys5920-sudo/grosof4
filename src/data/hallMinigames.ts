@@ -15,4 +15,8 @@ export const MINIGAME_OPTIONS: Record<HallMinigameKind, { id: string; label: str
     { id: 'over', label: '오버 (합계 77 초과)' },
     { id: 'under', label: '언더 (합계 77 이하)' },
   ],
+  // 숫자 야구/다빈치코드는 진영을 고르고 대기하는 방식이 아니라 여러 턴에 걸쳐 직접
+  // 진행하는 게임이라 선택지가 없다.
+  numberbaseball: [],
+  davinci: [],
 }

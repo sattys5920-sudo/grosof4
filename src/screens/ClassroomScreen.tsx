@@ -44,11 +44,16 @@ export function ClassroomScreen() {
     submitHallPuzzleAnswer,
     joinHallMinigame,
     resolveHallMinigame,
+    startHallGame,
+    submitBaseballGuess,
+    submitDavinciGuess,
   } = useGame()
   const [draft, setDraft] = useState('')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [pendingChoice, setPendingChoice] = useState<{ objectId: string; choice: 'open' | 'leave' } | null>(null)
   const [puzzleDrafts, setPuzzleDrafts] = useState<Record<string, string>>({})
+  const [baseballDrafts, setBaseballDrafts] = useState<Record<string, string>>({})
+  const [davinciDrafts, setDavinciDrafts] = useState<Record<string, string>>({})
   const [now, setNow] = useState(Date.now())
   const chatLogRef = useRef<HTMLDivElement | null>(null)
   const hallEventLogsRef = useRef<HTMLDivElement | null>(null)
@@ -106,6 +111,135 @@ export function ClassroomScreen() {
     const status = result?.status ?? 'idle'
     const actorName = result?.actorId ? displayName(result.actorId) : null
 
+    if (obj.kind === 'minigame' && (obj.minigameKind === 'numberbaseball' || obj.minigameKind === 'davinci')) {
+      const game = result?.game
+      const isMine = !!viewerId && game?.actorId === viewerId
+      return (
+        <div key={obj.id} className="hallobj hallobj--minigame">
+          <div className="hallobj__head">
+            <span className="hallobj__label">{obj.label}</span>
+          </div>
+          <p className="hallobj__note">{obj.minigameRule}</p>
+          {!game && !isAdmin && (
+            <>
+              <p className="hallobj__warn">한 명만 도전할 수 있으니 다른 학생들과 논의해 보자.</p>
+              <button className="hallobj__minigame-join" onClick={() => startHallGame(obj.id)}>
+                도전하기
+              </button>
+            </>
+          )}
+          {!game && isAdmin && <p className="hallobj__note">아직 아무도 도전하지 않았다.</p>}
+          {game && game.kind === 'numberbaseball' && (
+            <div className="hallobj__game">
+              {!isMine && (
+                <p className="hallobj__minigame-waiting">
+                  {displayName(game.actorId)}이(가) 도전 중이다....... (남은 기회 {game.attemptsLeft})
+                </p>
+              )}
+              {game.guesses.length > 0 && (
+                <div className="hallobj__game-history">
+                  {game.guesses.map((g, i) => (
+                    <span key={i} className="hallobj__game-history-line">
+                      {g.guess} → {g.strikes} 스트라이크 {g.balls} 볼
+                    </span>
+                  ))}
+                </div>
+              )}
+              {isMine && game.outcome === 'pending' && (
+                <div className="hallobj__game-input">
+                  <input
+                    value={baseballDrafts[obj.id] ?? ''}
+                    maxLength={3}
+                    inputMode="numeric"
+                    placeholder="서로 다른 숫자 3자리"
+                    onChange={(e) => setBaseballDrafts((prev) => ({ ...prev, [obj.id]: e.target.value.replace(/\D/g, '') }))}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter') return
+                      submitBaseballGuess(obj.id, baseballDrafts[obj.id] ?? '')
+                      setBaseballDrafts((prev) => ({ ...prev, [obj.id]: '' }))
+                    }}
+                  />
+                  <button
+                    disabled={!/^\d{3}$/.test(baseballDrafts[obj.id] ?? '') || new Set(baseballDrafts[obj.id] ?? '').size !== 3}
+                    onClick={() => {
+                      submitBaseballGuess(obj.id, baseballDrafts[obj.id] ?? '')
+                      setBaseballDrafts((prev) => ({ ...prev, [obj.id]: '' }))
+                    }}
+                  >
+                    제출
+                  </button>
+                  <span className="hallobj__game-attempts">남은 기회 {game.attemptsLeft}</span>
+                </div>
+              )}
+              {game.outcome !== 'pending' && (
+                <p className={`hallobj__minigame-mine ${game.outcome === 'win' ? 'is-win' : 'is-lose'}`}>
+                  {game.outcome === 'win'
+                    ? `승리! 정답은 ${game.secret}. 코인 ${obj.minigameWinCoins ?? 3}개를 얻었다.`
+                    : `패배....... 정답은 ${game.secret}이었다.`}
+                </p>
+              )}
+            </div>
+          )}
+          {game && game.kind === 'davinci' && (
+            <div className="hallobj__game">
+              {!isMine && (
+                <p className="hallobj__minigame-waiting">
+                  {displayName(game.actorId)}이(가) 도전 중이다....... (남은 기회 {game.missesLeft})
+                </p>
+              )}
+              <div className="hallobj__davinci-tiles">
+                {game.tiles.map((value, i) => (
+                  <div key={i} className={`hallobj__davinci-tile ${game.revealed[i] ? 'is-revealed' : ''}`}>
+                    <span className="hallobj__davinci-tile-value">{game.revealed[i] ? value : '?'}</span>
+                    {isMine && !game.revealed[i] && game.outcome === 'pending' && (
+                      <div className="hallobj__davinci-tile-guess">
+                        <select
+                          value={davinciDrafts[`${obj.id}-${i}`] ?? ''}
+                          onChange={(e) =>
+                            setDavinciDrafts((prev) => ({ ...prev, [`${obj.id}-${i}`]: e.target.value }))
+                          }
+                        >
+                          <option value="">?</option>
+                          {Array.from({ length: 12 }, (_, n) => n).map((n) => (
+                            <option key={n} value={n}>
+                              {n}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          disabled={!davinciDrafts[`${obj.id}-${i}`]}
+                          onClick={() => submitDavinciGuess(obj.id, i, Number(davinciDrafts[`${obj.id}-${i}`]))}
+                        >
+                          추측
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {game.attempts.length > 0 && (
+                <div className="hallobj__game-history">
+                  {game.attempts.map((a, i) => (
+                    <span key={i} className="hallobj__game-history-line">
+                      {a.position + 1}번째 자리 · {a.guess} →{' '}
+                      {a.result === 'hit' ? '적중' : a.result === 'low' ? '정답이 더 크다' : '정답이 더 작다'}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {game.outcome !== 'pending' && (
+                <p className={`hallobj__minigame-mine ${game.outcome === 'win' ? 'is-win' : 'is-lose'}`}>
+                  {game.outcome === 'win'
+                    ? `승리! 숫자 배열은 ${game.tiles.join(', ')}. 코인 ${obj.minigameWinCoins ?? 3}개를 얻었다.`
+                    : `패배....... 숫자 배열은 ${game.tiles.join(', ')}이었다.`}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )
+    }
+
     if (obj.kind === 'minigame') {
       const pending = result?.minigamePending ?? []
       const choices = result?.minigameChoices ?? {}
@@ -114,7 +248,7 @@ export function ClassroomScreen() {
       const myPending = viewerId ? pending.includes(viewerId) : false
       const myResult = viewerId ? participants[viewerId] : undefined
       const myChoice = viewerId ? choices[viewerId] : undefined
-      const canJoin = !isAdmin && myResult === undefined && !myPending
+      const canJoin = !isAdmin && myResult === undefined && !myPending && pending.length === 0 && entries.length === 0
       const options = MINIGAME_OPTIONS[obj.minigameKind ?? 'oddeven']
       const latestLog = result?.minigameLog?.[result.minigameLog.length - 1]
       return (

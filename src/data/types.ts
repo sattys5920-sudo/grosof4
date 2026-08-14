@@ -209,7 +209,7 @@ export interface HallPuzzle {
 
 export type HallObjectKind = 'hazard' | 'puzzle' | 'item' | 'minigame'
 
-export type HallMinigameKind = 'oddeven' | 'poker' | 'robo77'
+export type HallMinigameKind = 'oddeven' | 'poker' | 'robo77' | 'numberbaseball' | 'davinci'
 
 export interface HallObject {
   id: string
@@ -250,6 +250,27 @@ export interface HallEvent {
 
 export type HallObjectStatus = 'idle' | 'opened' | 'left'
 
+export interface BaseballGameState {
+  kind: 'numberbaseball'
+  actorId: string
+  outcome: 'pending' | 'win' | 'lose'
+  secret: string
+  guesses: { guess: string; strikes: number; balls: number }[]
+  attemptsLeft: number
+}
+
+export interface DavinciGameState {
+  kind: 'davinci'
+  actorId: string
+  outcome: 'pending' | 'win' | 'lose'
+  tiles: number[]
+  revealed: boolean[]
+  missesLeft: number
+  attempts: { position: number; guess: number; result: 'hit' | 'high' | 'low' }[]
+}
+
+export type HallGameState = BaseballGameState | DavinciGameState
+
 export interface HallObjectResult {
   status: HallObjectStatus
   actorId: string | null
@@ -259,6 +280,7 @@ export interface HallObjectResult {
   minigameChoices: Record<string, string>
   minigameParticipants: Record<string, boolean>
   minigameLog: string[]
+  game?: HallGameState
 }
 
 export interface HallEventState {

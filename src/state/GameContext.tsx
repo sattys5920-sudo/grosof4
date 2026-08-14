@@ -16,6 +16,7 @@ import { hallwayInvestigationByRoom } from '../data/hallwayInvestigations'
 import { hallPuzzleById } from '../data/hallPuzzles'
 import { MINIGAME_OPTIONS } from '../data/hallMinigames'
 import type {
+  BaseballGameState,
   Broadcast,
   BroadcastKind,
   ChatMessage,
@@ -23,11 +24,13 @@ import type {
   ClassroomState,
   CombatLogEntry,
   Creature,
+  DavinciGameState,
   EndingKey,
   EventLibraryItem,
   FeedComment,
   FeedPost,
   HallEventState,
+  HallGameState,
   HallMinigameKind,
   HallObjectResult,
   RoomEventState,
@@ -169,6 +172,42 @@ function rollRobo77(): { draws: number[]; sum: number; outcomeId: 'over' | 'unde
   return { draws, sum, outcomeId: sum > 77 ? 'over' : 'under' }
 }
 
+// 숫자 야구: 서로 다른 숫자 3 개로 이루어진 정답을 그것이 정해 두면, 플레이어가 직접 여러 번에
+// 걸쳐 추리해 맞혀야 한다(스트라이크/볼로 힌트를 준다).
+function generateBaseballSecret(): string {
+  const pool = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+  let secret = ''
+  for (let i = 0; i < 3; i++) {
+    const idx = Math.floor(Math.random() * pool.length)
+    secret += pool[idx]
+    pool.splice(idx, 1)
+  }
+  return secret
+}
+
+function scoreBaseball(secret: string, guess: string): { strikes: number; balls: number } {
+  let strikes = 0
+  let balls = 0
+  for (let i = 0; i < 3; i++) {
+    if (guess[i] === secret[i]) strikes++
+    else if (secret.includes(guess[i])) balls++
+  }
+  return { strikes, balls }
+}
+
+// 다빈치코드: 그것이 0~11 중 서로 다른 숫자 4 개를 오름차순으로 늘어놓는다.
+// 플레이어는 자리마다 숫자를 추리해 맞혀야 하며, 틀리면 그 숫자가 정답보다 큰지 작은지 알려준다.
+function generateDavinciTiles(): number[] {
+  const pool = Array.from({ length: 12 }, (_, i) => i)
+  const picked: number[] = []
+  for (let i = 0; i < 4; i++) {
+    const idx = Math.floor(Math.random() * pool.length)
+    picked.push(pool[idx])
+    pool.splice(idx, 1)
+  }
+  return picked.sort((a, b) => a - b)
+}
+
 function applyItemEffect(
   item: { kind: 'weapon' | 'armor' | 'food' | 'medicine'; amount: number },
   target: PlayerDoc,
@@ -267,6 +306,9 @@ interface GameState {
   submitHallPuzzleAnswer: (objectId: string, text: string) => void
   joinHallMinigame: (objectId: string, choiceId: string) => void
   resolveHallMinigame: (objectId: string) => void
+  startHallGame: (objectId: string) => void
+  submitBaseballGuess: (objectId: string, guess: string) => void
+  submitDavinciGuess: (objectId: string, position: number, guessValue: number) => void
   feed: FeedPost[]
   toggleHeart: (postId: string) => void
   gmReveal: boolean
@@ -1404,12 +1446,17 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       if (!event) return {}
       const obj = event.objects.find((o) => o.id === objectId)
       if (!obj || obj.kind !== 'minigame') return {}
+      if (obj.minigameKind === 'numberbaseball' || obj.minigameKind === 'davinci') return {}
       const options = MINIGAME_OPTIONS[obj.minigameKind ?? 'oddeven']
       if (!options.some((o) => o.id === choiceId)) return {}
       const existing = he.objectResults[objectId]
       const alreadyIn =
         existing && (existing.minigamePending.includes(viewerId) || existing.minigameParticipants[viewerId] !== undefined)
       if (alreadyIn) return {}
+      // 미니게임은 선착순 한 명만 도전할 수 있다 — 이미 누군가 대기 중이거나 결과가 나와 있으면 더 이상 받지 않는다.
+      const soloLocked =
+        existing && (existing.minigamePending.length > 0 || Object.keys(existing.minigameParticipants).length > 0)
+      if (soloLocked) return {}
       const nextResult: HallObjectResult = {
         status: 'opened',
         actorId: existing?.actorId ?? null,
@@ -1485,6 +1532,154 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         },
       }
     })
+  }
+
+  // 숫자 야구/다빈치코드: 선착순 한 명만 도전할 수 있고, 그 사람이 여러 턴에 걸쳐 직접
+  // 그것과 겨룬다(단발성 결과 통보가 아니라 실제 진행형 게임).
+  function startHallGame(objectId: string) {
+    if (!viewerId) return
+    void runAbilityTransaction(viewerId, (sess) => {
+      const he = sess.hallEvent
+      if (!he.eventId) return {}
+      const event = hallEventById(he.eventId)
+      if (!event) return {}
+      const obj = event.objects.find((o) => o.id === objectId)
+      if (!obj || obj.kind !== 'minigame') return {}
+      if (obj.minigameKind !== 'numberbaseball' && obj.minigameKind !== 'davinci') return {}
+      const existing = he.objectResults[objectId]
+      if (existing?.game) return {}
+      const game: HallGameState =
+        obj.minigameKind === 'numberbaseball'
+          ? { kind: 'numberbaseball', actorId: viewerId, outcome: 'pending', secret: generateBaseballSecret(), guesses: [], attemptsLeft: 7 }
+          : {
+              kind: 'davinci',
+              actorId: viewerId,
+              outcome: 'pending',
+              tiles: generateDavinciTiles(),
+              revealed: [false, false, false, false],
+              missesLeft: 4,
+              attempts: [],
+            }
+      const nextResult: HallObjectResult = {
+        status: 'opened',
+        actorId: viewerId,
+        puzzleSolved: false,
+        puzzleAttempts: 0,
+        minigamePending: [],
+        minigameChoices: {},
+        minigameParticipants: {},
+        minigameLog: existing?.minigameLog ?? [],
+        game,
+      }
+      return {
+        session: { hallEvent: { ...he, objectResults: { ...he.objectResults, [objectId]: nextResult } } },
+      }
+    })
+  }
+
+  function submitBaseballGuess(objectId: string, guess: string) {
+    if (!viewerId) return
+    if (!/^\d{3}$/.test(guess) || new Set(guess).size !== 3) return
+    const heNow = session.hallEvent
+    const gameNow = heNow.objectResults[objectId]?.game
+    if (!gameNow || gameNow.kind !== 'numberbaseball' || gameNow.actorId !== viewerId || gameNow.outcome !== 'pending') return
+    const eventNow = heNow.eventId ? hallEventById(heNow.eventId) : null
+    const objNow = eventNow?.objects.find((o) => o.id === objectId)
+    const { strikes } = scoreBaseball(gameNow.secret, guess)
+    const win = strikes === 3
+    const attemptsLeftAfter = gameNow.attemptsLeft - 1
+    const outcome: 'pending' | 'win' | 'lose' = win ? 'win' : attemptsLeftAfter <= 0 ? 'lose' : 'pending'
+    void runAbilityTransaction(viewerId, (sess, player) => {
+      const he = sess.hallEvent
+      const existing = he.objectResults[objectId]
+      const game = existing?.game
+      if (!game || game.kind !== 'numberbaseball' || game.actorId !== viewerId || game.outcome !== 'pending') return {}
+      const scored = scoreBaseball(game.secret, guess)
+      const nextWin = scored.strikes === 3
+      const nextAttemptsLeft = game.attemptsLeft - 1
+      const nextOutcome: 'pending' | 'win' | 'lose' = nextWin ? 'win' : nextAttemptsLeft <= 0 ? 'lose' : 'pending'
+      const nextGame: BaseballGameState = {
+        ...game,
+        guesses: [...game.guesses, { guess, strikes: scored.strikes, balls: scored.balls }],
+        attemptsLeft: nextAttemptsLeft,
+        outcome: nextOutcome,
+      }
+      const nextResult: HallObjectResult = { ...existing, game: nextGame }
+      let playerPatch: Partial<PlayerDoc> | undefined
+      if (nextOutcome === 'win' && objNow) {
+        playerPatch = { coins: player.coins + (objNow.minigameWinCoins ?? 3) }
+      } else if (nextOutcome === 'lose' && objNow) {
+        playerPatch = {}
+        if (objNow.hpDamage) playerPatch.hp = Math.max(0, player.hp - objNow.hpDamage)
+        if (objNow.staminaDamage) playerPatch.stamina = Math.max(0, player.stamina - objNow.staminaDamage)
+      }
+      return {
+        session: { hallEvent: { ...he, objectResults: { ...he.objectResults, [objectId]: nextResult } } },
+        player: playerPatch,
+      }
+    })
+    if (outcome !== 'pending' && objNow) {
+      const text =
+        outcome === 'win'
+          ? `${displayName(viewerId)}이(가) '${objNow.label}' 숫자 야구에서 승리했다....... 정답은 ${gameNow.secret}. 코인 ${objNow.minigameWinCoins ?? 3}개를 얻었다.`
+          : `${displayName(viewerId)}이(가) '${objNow.label}' 숫자 야구에서 패배했다....... 정답은 ${gameNow.secret}이었다.`
+      void sendClassroomMessageSync({ id: `he-${Date.now()}-baseball-${objectId}`, authorId: 'admin', text, time: '지금' })
+    }
+  }
+
+  function submitDavinciGuess(objectId: string, position: number, guessValue: number) {
+    if (!viewerId) return
+    const heNow = session.hallEvent
+    const gameNow = heNow.objectResults[objectId]?.game
+    if (!gameNow || gameNow.kind !== 'davinci' || gameNow.actorId !== viewerId || gameNow.outcome !== 'pending') return
+    if (gameNow.revealed[position]) return
+    const eventNow = heNow.eventId ? hallEventById(heNow.eventId) : null
+    const objNow = eventNow?.objects.find((o) => o.id === objectId)
+    const correct = gameNow.tiles[position] === guessValue
+    const nextRevealed = gameNow.revealed.map((r, i) => (i === position && correct ? true : r))
+    const win = correct && nextRevealed.every(Boolean)
+    const missesLeftAfter = correct ? gameNow.missesLeft : gameNow.missesLeft - 1
+    const outcome: 'pending' | 'win' | 'lose' = win ? 'win' : !correct && missesLeftAfter <= 0 ? 'lose' : 'pending'
+    void runAbilityTransaction(viewerId, (sess, player) => {
+      const he = sess.hallEvent
+      const existing = he.objectResults[objectId]
+      const game = existing?.game
+      if (!game || game.kind !== 'davinci' || game.actorId !== viewerId || game.outcome !== 'pending') return {}
+      if (game.revealed[position]) return {}
+      const isCorrect = game.tiles[position] === guessValue
+      const revealed = game.revealed.map((r, i) => (i === position && isCorrect ? true : r))
+      const nextWin = isCorrect && revealed.every(Boolean)
+      const nextMissesLeft = isCorrect ? game.missesLeft : game.missesLeft - 1
+      const nextOutcome: 'pending' | 'win' | 'lose' = nextWin ? 'win' : !isCorrect && nextMissesLeft <= 0 ? 'lose' : 'pending'
+      const attemptResult: 'hit' | 'high' | 'low' = isCorrect ? 'hit' : guessValue < game.tiles[position] ? 'low' : 'high'
+      const nextGame: DavinciGameState = {
+        ...game,
+        revealed,
+        missesLeft: nextMissesLeft,
+        outcome: nextOutcome,
+        attempts: [...game.attempts, { position, guess: guessValue, result: attemptResult }],
+      }
+      const nextResult: HallObjectResult = { ...existing, game: nextGame }
+      let playerPatch: Partial<PlayerDoc> | undefined
+      if (nextOutcome === 'win' && objNow) {
+        playerPatch = { coins: player.coins + (objNow.minigameWinCoins ?? 3) }
+      } else if (nextOutcome === 'lose' && objNow) {
+        playerPatch = {}
+        if (objNow.hpDamage) playerPatch.hp = Math.max(0, player.hp - objNow.hpDamage)
+        if (objNow.staminaDamage) playerPatch.stamina = Math.max(0, player.stamina - objNow.staminaDamage)
+      }
+      return {
+        session: { hallEvent: { ...he, objectResults: { ...he.objectResults, [objectId]: nextResult } } },
+        player: playerPatch,
+      }
+    })
+    if (outcome !== 'pending' && objNow) {
+      const text =
+        outcome === 'win'
+          ? `${displayName(viewerId)}이(가) '${objNow.label}' 다빈치코드에서 승리했다....... 숫자 배열은 ${gameNow.tiles.join(', ')}. 코인 ${objNow.minigameWinCoins ?? 3}개를 얻었다.`
+          : `${displayName(viewerId)}이(가) '${objNow.label}' 다빈치코드에서 패배했다....... 숫자 배열은 ${gameNow.tiles.join(', ')}이었다.`
+      void sendClassroomMessageSync({ id: `he-${Date.now()}-davinci-${objectId}`, authorId: 'admin', text, time: '지금' })
+    }
   }
 
   function toggleHeart(postId: string) {
@@ -2268,6 +2463,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       submitHallPuzzleAnswer,
       joinHallMinigame,
       resolveHallMinigame,
+      startHallGame,
+      submitBaseballGuess,
+      submitDavinciGuess,
       feed,
       toggleHeart,
       addComment,
