@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './RoomsScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS, ROOMS } from '../data/characters'
@@ -69,11 +69,18 @@ export function RoomsScreen() {
   const [blockedModalOpen, setBlockedModalOpen] = useState(false)
   const [now, setNow] = useState(Date.now())
   const viewer = viewerId ? charOf(viewerId) : null
+  const investigationLogsRef = useRef<HTMLDivElement | null>(null)
+  const currentInvestigationLogIndex = openRoom ? (roomEvents[openRoom]?.investigation?.logIndex ?? 0) : 0
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
   }, [])
+
+  useEffect(() => {
+    const el = investigationLogsRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [openRoom, currentInvestigationLogIndex])
 
   function revealedFor(c: ReturnType<typeof charOf>) {
     return viewer ? isRevealedTo(viewer, c, gmReveal) : gmReveal
@@ -184,7 +191,7 @@ export function RoomsScreen() {
           {investigation && roomEvent.investigation.started && (
             <div className="rooms__investigation">
               <span className="rooms__investigation-creature">{investigation.creatureName}</span>
-              <div className="rooms__investigation-logs">
+              <div className="rooms__investigation-logs" ref={investigationLogsRef}>
                 {investigation.logs.slice(0, roomEvent.investigation.logIndex).map((line, i) => (
                   <p key={i} className="rooms__investigation-log-line">
                     {line}
