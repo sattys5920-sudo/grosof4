@@ -11,6 +11,8 @@ export function MainFeedScreen() {
     feed,
     toggleHeart,
     addComment,
+    editComment,
+    deleteComment,
     displayName,
     viewerId,
     gmReveal,
@@ -25,8 +27,23 @@ export function MainFeedScreen() {
   const [postTitle, setPostTitle] = useState('')
   const [postBody, setPostBody] = useState('')
   const [postCommentsOn, setPostCommentsOn] = useState(false)
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState('')
 
   const openPost = feed.find((p) => p.id === openPostId) ?? null
+  const myCommentId = gmReveal ? 'admin' : viewerId
+
+  function startEditComment(commentId: string, currentText: string) {
+    setEditingCommentId(commentId)
+    setEditDraft(currentText)
+  }
+
+  function saveEditComment(postId: string) {
+    if (!editingCommentId) return
+    editComment(postId, editingCommentId, editDraft)
+    setEditingCommentId(null)
+    setEditDraft('')
+  }
 
   function submitComment(postId: string) {
     addComment(postId, draft, secret)
@@ -88,18 +105,37 @@ export function MainFeedScreen() {
             openPost.comments.map((c) => {
               const canSee = !c.secret || c.authorId === viewerId || gmReveal
               const name = displayName(c.authorId)
+              const isMine = c.authorId === myCommentId
+              const isEditing = editingCommentId === c.id
               return (
                 <div key={c.id} className="feed__comment">
                   <ChatAvatar authorId={c.authorId} name={name} photo={players[c.authorId]?.photo} />
                   <div className="feed__comment-body">
                     <span className="feed__comment-author">{name}</span>
-                    {canSee ? (
+                    {isEditing ? (
+                      <div className="feed__comment-edit">
+                        <input
+                          value={editDraft}
+                          onChange={(e) => setEditDraft(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && saveEditComment(openPost.id)}
+                          autoFocus
+                        />
+                        <button onClick={() => saveEditComment(openPost.id)}>저장</button>
+                        <button onClick={() => setEditingCommentId(null)}>취소</button>
+                      </div>
+                    ) : canSee ? (
                       <span>
                         {c.secret && '🔒 '}
                         <TaggedText text={c.text} names={tagNames} />
                       </span>
                     ) : (
                       <span className="feed__comment-hidden">🔒 비밀 댓글</span>
+                    )}
+                    {isMine && !isEditing && (
+                      <div className="feed__comment-owner-actions">
+                        <button onClick={() => startEditComment(c.id, c.text)}>수정</button>
+                        <button onClick={() => deleteComment(openPost.id, c.id)}>삭제</button>
+                      </div>
                     )}
                   </div>
                 </div>

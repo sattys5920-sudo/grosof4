@@ -684,6 +684,30 @@ export async function addCommentSync(postId: string, comment: FeedComment) {
   })
 }
 
+export async function editCommentSync(postId: string, commentId: string, authorId: string, text: string) {
+  const pref = doc(feedCol(), postId)
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(pref)
+    if (!snap.exists()) return
+    const data = snap.data() as FeedPostDoc
+    tx.update(pref, {
+      comments: data.comments.map((c) => (c.id === commentId && c.authorId === authorId ? { ...c, text } : c)),
+    })
+  })
+}
+
+export async function deleteCommentSync(postId: string, commentId: string, authorId: string) {
+  const pref = doc(feedCol(), postId)
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(pref)
+    if (!snap.exists()) return
+    const data = snap.data() as FeedPostDoc
+    tx.update(pref, {
+      comments: data.comments.filter((c) => !(c.id === commentId && c.authorId === authorId)),
+    })
+  })
+}
+
 export async function toggleCommentsEnabledSync(postId: string) {
   const pref = doc(feedCol(), postId)
   await runTransaction(requireDb(), async (tx) => {

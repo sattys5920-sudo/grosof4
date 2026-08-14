@@ -43,6 +43,8 @@ import {
   registerAccountSync,
   createFeedPostSync,
   defaultSessionState,
+  deleteCommentSync,
+  editCommentSync,
   ensureSessionInitialized,
   feedPostToFeedPost,
   forceCloseRoomSync,
@@ -336,6 +338,8 @@ interface GameState {
   createFeedPost: (title: string, body: string, commentsEnabled: boolean) => void
   toggleCommentsEnabled: (postId: string) => void
   addComment: (postId: string, text: string, secret: boolean) => void
+  editComment: (postId: string, commentId: string, text: string) => void
+  deleteComment: (postId: string, commentId: string) => void
   players: Record<string, PlayerDoc>
   gmDmMessages: ChatMessage[]
   sendGmDm: (text: string) => void
@@ -1401,6 +1405,19 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void toggleCommentsEnabledSync(postId)
   }
 
+  function editComment(postId: string, commentId: string, text: string) {
+    if (!text.trim()) return
+    const myId = isAdminFlag ? 'admin' : viewerId
+    if (!myId) return
+    void editCommentSync(postId, commentId, myId, text.trim())
+  }
+
+  function deleteComment(postId: string, commentId: string) {
+    const myId = isAdminFlag ? 'admin' : viewerId
+    if (!myId) return
+    void deleteCommentSync(postId, commentId, myId)
+  }
+
   function createFeedPost(title: string, body: string, commentsEnabled: boolean) {
     if (!title.trim() || !body.trim()) return
     void createFeedPostSync({
@@ -2138,6 +2155,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       feed,
       toggleHeart,
       addComment,
+      editComment,
+      deleteComment,
       toggleCommentsEnabled,
       createFeedPost,
       players,
