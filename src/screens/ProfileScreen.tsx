@@ -242,6 +242,14 @@ export function ProfileScreen() {
     sendEnding,
   } = useGame()
   const viewer = viewerId ? CHARACTERS.find((c) => c.id === viewerId)! : null
+  // 서버에서 되돌아오는 값을 곧바로 입력창에 반영하면, Firestore 왕복 시간 동안
+  // 타자가 빨라졌을 때 방금 입력한 글자가 지워지거나 깨지는 문제가 있었다.
+  // 그래서 입력 중에는 이 로컬 드래프트만 신뢰하고, 신원(viewerId)이 바뀔 때만 다시 동기화한다.
+  const [nicknameDraft, setNicknameDraft] = useState(nickname)
+  useEffect(() => {
+    setNicknameDraft(nickname)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewerId])
   const [kind, setKind] = useState<BroadcastKind>('event')
   const [title, setTitle] = useState(PRESETS[0].title)
   const [body, setBody] = useState(PRESETS[0].body)
@@ -311,9 +319,12 @@ export function ProfileScreen() {
             <div className="profile__name-block">
               <input
                 className="profile__name-input"
-                value={nickname}
+                value={nicknameDraft}
                 maxLength={12}
-                onChange={(e) => setNickname(e.target.value)}
+                onChange={(e) => {
+                  setNicknameDraft(e.target.value)
+                  setNickname(e.target.value)
+                }}
                 placeholder="닉네임을 입력하세요"
               />
               <span className={`profile__role profile__role--${viewer.team}`}>
