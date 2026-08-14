@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './MainFeedScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS } from '../data/characters'
@@ -37,6 +37,15 @@ export function MainFeedScreen() {
 
   const openPost = feed.find((p) => p.id === openPostId) ?? null
   const myCommentId = gmReveal ? 'admin' : viewerId
+
+  // 게시글을 열거나 새 댓글이 달리면 카톡/밴드처럼 항상 가장 최근 댓글이 보이는
+  // 맨 아래로 스크롤한다. 이 화면은 전용 스크롤 영역이 없이 앱 전체 스크롤
+  // 컨테이너(.shell__body)를 그대로 쓰기 때문에 그쪽을 직접 스크롤한다.
+  useEffect(() => {
+    if (!openPost) return
+    const container = document.querySelector('.shell__body')
+    if (container) container.scrollTop = container.scrollHeight
+  }, [openPostId, openPost?.comments.length])
 
   function startEditComment(commentId: string, currentText: string) {
     setEditingCommentId(commentId)
