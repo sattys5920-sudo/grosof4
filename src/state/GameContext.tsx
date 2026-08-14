@@ -483,18 +483,26 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const [topAlert, setTopAlert] = useState<{ id: string; text: string } | null>(null)
   const [activeTab, setActiveTab] = useState<TabId>('main')
   const [session, setSession] = useState<SessionDoc>(defaultSessionState)
+  const [sessionLoaded, setSessionLoaded] = useState(false)
   const [players, setPlayers] = useState<Record<string, PlayerDoc>>({})
   const [playersLoaded, setPlayersLoaded] = useState(false)
   const [feedDocs, setFeedDocs] = useState<(FeedPostDoc & { id: string })[]>([])
+  const [feedLoaded, setFeedLoaded] = useState(false)
 
   useEffect(() => {
     ensureSessionInitialized().catch(() => {})
-    const unsubSession = subscribeSession((data) => setSession(normalizeSession({ ...defaultSessionState(), ...data })))
+    const unsubSession = subscribeSession((data) => {
+      setSession(normalizeSession({ ...defaultSessionState(), ...data }))
+      setSessionLoaded(true)
+    })
     const unsubPlayers = subscribeAllPlayers((p) => {
       setPlayers(p)
       setPlayersLoaded(true)
     })
-    const unsubFeed = subscribeFeed(setFeedDocs)
+    const unsubFeed = subscribeFeed((docs) => {
+      setFeedDocs(docs)
+      setFeedLoaded(true)
+    })
     return () => {
       unsubSession()
       unsubPlayers()
@@ -623,7 +631,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const dmInitRef = useRef(false)
   const lastDmCountRef = useRef(0)
   useEffect(() => {
-    if (!viewerId || isAdminFlag) return
+    if (!viewerId || isAdminFlag || !playersLoaded) return
     const msgs = myPlayer?.gmDmMessages ?? []
     if (!dmInitRef.current) {
       dmInitRef.current = true
@@ -638,13 +646,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       }
     }
     lastDmCountRef.current = msgs.length
-  }, [myPlayer?.gmDmMessages, viewerId, isAdminFlag])
+  }, [myPlayer?.gmDmMessages, viewerId, isAdminFlag, playersLoaded])
 
   // 불가 화면에서는 누구든 새로 보낸 쪽지가 오면 상단바에 알려 준다.
   const gmDmInitRef = useRef(false)
   const lastGmInboxTotalRef = useRef(0)
   useEffect(() => {
-    if (!isAdminFlag) return
+    if (!isAdminFlag || !playersLoaded) return
     let total = 0
     let latestFrom: string | null = null
     let latestMsg: ChatMessage | null = null
@@ -668,7 +676,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       notifyBackground(senderName, latestMsg.text, 'profile')
     }
     lastGmInboxTotalRef.current = total
-  }, [players, isAdminFlag])
+  }, [players, isAdminFlag, playersLoaded])
 
   // 구관에서 크리처를 쓰러뜨린 뒤 유예 시간(ROOM_DEFEAT_EVICT_MS)이 지나면, 누군가의 화면이든
   // 켜져 있는 클라이언트가 대신 방을 비우고 조사 상태를 초기화한다(멱등적이라 여러 클라이언트가
@@ -691,6 +699,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const classroomMsgInitRef = useRef(false)
   const lastClassroomCountRef = useRef(0)
   useEffect(() => {
+    if (!sessionLoaded) return
     const msgs = session.classroomMessages
     if (!classroomMsgInitRef.current) {
       classroomMsgInitRef.current = true
@@ -709,13 +718,14 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       }
     }
     lastClassroomCountRef.current = msgs.length
-  }, [session.classroomMessages, viewerId, isAdminFlag])
+  }, [session.classroomMessages, viewerId, isAdminFlag, sessionLoaded])
 
   // 구관 채팅도 마찬가지로 알려 준다 — 다만 내가 있는 방이거나 나를 태그한 경우에만
   // 알림을 띄워, 들어가 있지 않은 방의 대화로 계속 알림이 오는 것을 막는다.
   const roomMsgInitRef = useRef(false)
   const lastRoomCountsRef = useRef<Record<string, number>>({})
   useEffect(() => {
+    if (!sessionLoaded) return
     if (!roomMsgInitRef.current) {
       roomMsgInitRef.current = true
       for (const room of ROOMS) lastRoomCountsRef.current[room.id] = session.roomMessages[room.id]?.length ?? 0
@@ -742,7 +752,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       }
       lastRoomCountsRef.current[room.id] = msgs.length
     }
-  }, [session.roomMessages, session.roomOccupancy, viewerId, isAdminFlag])
+  }, [session.roomMessages, session.roomOccupancy, viewerId, isAdminFlag, sessionLoaded])
 
   // 로그아웃 후 다른 계정으로 다시 가입·로그인하면, 이전 계정에서 쌓인 추적 상태(ref)가
   // 새 계정으로 새어들어 오작동(예: 되돌리기 판정 오류)을 일으키지 않도록 초기화한다.
@@ -2025,6 +2035,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const feedPostInitRef = useRef(false)
   const lastFeedTopIdRef = useRef<string | null>(null)
   useEffect(() => {
+    if (!feedLoaded) return
     const top = feed[0] ?? null
     if (!feedPostInitRef.current) {
       feedPostInitRef.current = true
@@ -2037,12 +2048,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     }
     lastFeedTopIdRef.current = top?.id ?? null
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feed.map((p) => p.id).join(','), isAdminFlag])
+  }, [feed.map((p) => p.id).join(','), isAdminFlag, feedLoaded])
 
   // 공지 댓글에 새 댓글이 달리면 (나를 태그했으면 더 눈에 띄게) 상단바 + 백그라운드 알림을 띄운다.
   const feedCommentInitRef = useRef(false)
   const lastFeedCommentCountsRef = useRef<Record<string, number>>({})
   useEffect(() => {
+    if (!feedLoaded) return
     if (!feedCommentInitRef.current) {
       feedCommentInitRef.current = true
       for (const post of feed) lastFeedCommentCountsRef.current[post.id] = post.comments.length
@@ -2068,7 +2080,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       lastFeedCommentCountsRef.current[post.id] = post.comments.length
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feed, viewerId, isAdminFlag])
+  }, [feed, viewerId, isAdminFlag, feedLoaded])
 
   const value = useMemo<GameState>(
     () => ({
