@@ -376,7 +376,7 @@ export function ClassroomScreen() {
             return (
               <div key={m.id} className={`classroom__msg-row ${isMe ? 'is-me' : ''}`}>
                 {!isMe && (
-                  <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />
+                  <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} size={26} />
                 )}
                 <div className={`classroom__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
                   <div className="classroom__msg-head">
@@ -387,7 +387,7 @@ export function ClassroomScreen() {
                   </p>
                 </div>
                 {isMe && (
-                  <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />
+                  <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} size={26} />
                 )}
               </div>
             )

@@ -364,14 +364,14 @@ export function RoomsScreen() {
                 const name = displayName(m.authorId)
                 return (
                   <div key={m.id} className={`rooms__msg-row ${isMe ? 'is-me' : ''}`}>
-                    {!isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />}
+                    {!isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} size={26} />}
                     <div className={`rooms__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
                       <span className="rooms__msg-name">{name}</span>
                       <p className="rooms__msg-text">
                         <TaggedText text={m.text} names={tagNames} />
                       </p>
                     </div>
-                    {isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} />}
+                    {isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} size={26} />}
                   </div>
                 )
               })}
