@@ -71,7 +71,11 @@ export function MainFeedScreen() {
     if (!draft.trim() || commentSending) return
     setCommentSending(true)
     setCommentError(false)
-    const ok = await addComment(postId, draft, secret)
+    // 현장 네트워크가 불안정하면 요청이 응답 없이 오래 걸릴 수 있는데, 그때도
+    // 버튼이 "등록 중......"에서 영원히 멈춰 있지 않도록 일정 시간 뒤에는
+    // 실패로 간주하고 다시 시도할 수 있게 한다.
+    const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 8000))
+    const ok = await Promise.race([addComment(postId, draft, secret), timeout])
     setCommentSending(false)
     if (ok) {
       setDraft('')
