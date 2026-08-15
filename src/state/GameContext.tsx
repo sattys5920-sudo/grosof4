@@ -62,6 +62,7 @@ import {
   ensureSessionInitialized,
   feedPostToFeedPost,
   endCardTurnSync,
+  diagnoseSessionSizeSync,
   forceCloseRoomSync,
   fixCctvMissionRecordSync,
   grantCoinsSync,
@@ -456,6 +457,7 @@ interface GameState {
   grantCoins: (characterId: string, amount: number) => void
   grantItem: (characterId: string, itemId: string) => void
   fixCctvMissionRecord: (missionIndex: number, correctCount: number) => void
+  diagnoseSessionSize: () => Promise<{ totalBytes: number; fields: { key: string; bytes: number }[] }>
   resetAllData: () => void
   shopOpen: boolean
   setShopOpen: (open: boolean) => void
@@ -2107,6 +2109,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void fixCctvMissionRecordSync(missionIndex, correctCount)
   }
 
+  function diagnoseSessionSize() {
+    if (!isAdminFlag) return Promise.resolve({ totalBytes: 0, fields: [] })
+    return diagnoseSessionSizeSync()
+  }
+
   function resetAllData() {
     if (!isAdminFlag) return
     void resetAllDataSync()
@@ -2760,6 +2767,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       grantCoins,
       grantItem,
       fixCctvMissionRecord,
+      diagnoseSessionSize,
       resetAllData,
       shopOpen: session.shopOpen,
       setShopOpen,

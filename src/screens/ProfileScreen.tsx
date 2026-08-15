@@ -254,6 +254,7 @@ export function ProfileScreen() {
     grantCoins,
     grantItem,
     fixCctvMissionRecord,
+    diagnoseSessionSize,
     resetAllData,
     storyDay,
     revealStoryDay,
@@ -291,6 +292,10 @@ export function ProfileScreen() {
   const [abilityModalOpen, setAbilityModalOpen] = useState(false)
   const [masterListOpen, setMasterListOpen] = useState(false)
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
+  const [sizeReport, setSizeReport] = useState<{ totalBytes: number; fields: { key: string; bytes: number }[] } | null>(
+    null,
+  )
+  const [sizeReportLoading, setSizeReportLoading] = useState(false)
   const [endingWinner, setEndingWinner] = useState<'ward' | 'sin'>('ward')
   const [endingBroken, setEndingBroken] = useState(true)
   const usesLeft = abilityMaxUses - abilityUseCount
@@ -1193,6 +1198,45 @@ export function ProfileScreen() {
             >
               {endingKey ? '엔딩 발송 완료' : '이 엔딩으로 확정해 발송하기'}
             </button>
+          </div>
+
+          <div className="profile__gm">
+            <span className="profile__section-label">불가 전용 — 저장 용량 진단</span>
+            <p className="profile__gm-note">
+              게임 데이터 전체가 문서 하나(최대 1 MB)에 들어가는 구조라, 오래 쓰면 한도에 가까워져
+              저장이 계속 느려지거나 실패할 수 있다. 지금 어떤 항목이 얼마나 큰지 확인한다.
+            </p>
+            <button
+              className="profile__gm-send"
+              disabled={sizeReportLoading}
+              onClick={async () => {
+                setSizeReportLoading(true)
+                try {
+                  const report = await diagnoseSessionSize()
+                  setSizeReport(report)
+                } finally {
+                  setSizeReportLoading(false)
+                }
+              }}
+            >
+              {sizeReportLoading ? '측정 중......' : '용량 측정하기'}
+            </button>
+            {sizeReport && (
+              <div className="profile__ability-log">
+                <p className="profile__dm-empty">
+                  전체 {(sizeReport.totalBytes / 1024).toFixed(1)} KB / 1024 KB
+                  {sizeReport.totalBytes > 900 * 1024 ? ' — 한도에 매우 근접!' : ''}
+                </p>
+                {sizeReport.fields.slice(0, 8).map((f) => (
+                  <div key={f.key} className="profile__ability-log-row">
+                    <div className="profile__ability-log-head">
+                      <span className="profile__ability-log-name">{f.key}</span>
+                      <span className="profile__ability-log-time">{(f.bytes / 1024).toFixed(1)} KB</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="profile__gm">

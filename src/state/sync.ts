@@ -262,6 +262,24 @@ function playerRef(characterId: string) {
   return doc(playersCol(), characterId)
 }
 
+/**
+ * 불가 전용 진단 도구. Firestore 문서 하나(1 MiB)에 세션 전체가 들어 있다 보니 채팅·로그가
+ * 오래 쌓이면 한도에 가까워질 수 있는데, 그럴 경우 트랜잭션 쓰기가 계속 실패한다. 어떤
+ * 필드가 얼마나 큰지 바로 확인할 수 있게 필드별 크기를 재서 돌려준다.
+ */
+export async function diagnoseSessionSizeSync(): Promise<{
+  totalBytes: number
+  fields: { key: string; bytes: number }[]
+}> {
+  const snap = await getDoc(sessionRef())
+  const data = snap.data() ?? {}
+  const fields = Object.entries(data)
+    .map(([key, value]) => ({ key, bytes: new TextEncoder().encode(JSON.stringify(value ?? null)).length }))
+    .sort((a, b) => b.bytes - a.bytes)
+  const totalBytes = fields.reduce((sum, f) => sum + f.bytes, 0)
+  return { totalBytes, fields }
+}
+
 function feedCol() {
   return collection(requireDb(), 'sessions', SESSION_ID, 'feedPosts')
 }
