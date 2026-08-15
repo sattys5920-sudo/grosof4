@@ -53,7 +53,7 @@ import {
   HALLI_ROOM_MIN_PLAYERS,
   buildHalliDeck,
   findMatchingColor,
-  nextAliveHalliIndex,
+  settleHalliTurn,
 } from '../data/halliGame'
 import { initialMissionState, type MissionState } from './missionEngine'
 import { shopItemById } from '../data/shop'
@@ -801,12 +801,13 @@ export async function flipHalliCardSync(myId: string, roomId: HalliRoomId) {
         const deck = game.decks[myId] ?? []
         if (deck.length === 0) return
         const [card, ...rest] = deck
+        const nextDecks = { ...game.decks, [myId]: rest }
         const nextGame: HalliGameState = {
           ...game,
-          decks: { ...game.decks, [myId]: rest },
+          decks: nextDecks,
           revealed: { ...game.revealed, [myId]: card },
           roundCards: [...game.roundCards, { playerId: myId, card }],
-          turnIndex: nextAliveHalliIndex(game.playerIds, game.eliminated, game.turnIndex),
+          turnIndex: settleHalliTurn(game.playerIds, game.eliminated, nextDecks, (game.turnIndex + 1) % game.playerIds.length),
           log: [
             ...game.log,
             { id: `hg-${Date.now()}-flip-${myId}`, kind: 'flip', actorId: myId, card, atMs: Date.now() },
@@ -908,9 +909,11 @@ export async function pressHalliBellSync(myId: string, roomId: HalliRoomId) {
           log: [...game.log, { id: `hg-${Date.now()}-miss-${myId}`, kind: 'miss', actorId: myId, atMs: Date.now() }],
         }
         nextGame = halliEliminate(nextGame)
-        // 지금 뒤집기 차례였던 사람이 방금 카드를 다 반납해 탈락해 버렸다면, 다음 차례로 넘긴다.
-        if (nextGame.eliminated.includes(nextGame.playerIds[nextGame.turnIndex])) {
-          nextGame = { ...nextGame, turnIndex: nextAliveHalliIndex(nextGame.playerIds, nextGame.eliminated, nextGame.turnIndex) }
+        // 지금 뒤집기 차례였던 사람이 방금 카드를 반납해 덱이 0장이 됐거나(탈락 여부와
+        // 무관하게 더는 뒤집을 수 없다) 아예 탈락해 버렸다면, 낼 수 있는 다음 사람에게 넘긴다.
+        {
+          const settled = settleHalliTurn(nextGame.playerIds, nextGame.eliminated, nextGame.decks, nextGame.turnIndex)
+          if (settled !== nextGame.turnIndex) nextGame = { ...nextGame, turnIndex: settled }
         }
         tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: nextGame } })
       },

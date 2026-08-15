@@ -38,14 +38,22 @@ export function buildHalliDeck(): HalliCard[] {
 }
 
 /**
- * playerIds 순서(=시계 방향 자리 순서)를 기준으로, fromIndex 다음 자리부터 한 바퀴 돌며
- * 탈락하지 않은 사람의 인덱스를 찾는다. 전원 탈락 등 예외 상황이면 fromIndex를 그대로 돌려준다.
+ * playerIds 순서(=시계 방향 자리 순서)를 기준으로, fromIndex부터(그 자리 포함) 한 바퀴 돌며
+ * 지금 뒤집을 수 있는 사람(탈락하지 않았고 덱에 카드가 남은 사람)의 인덱스를 찾는다. 덱이
+ * 0장이 된 사람은 아직 탈락 처리 전이라도 자기 차례를 건너뛴다. 아무도 없으면(전원 탈락 등
+ * 예외 상황) fromIndex를 그대로 돌려준다.
  */
-export function nextAliveHalliIndex(playerIds: string[], eliminated: string[], fromIndex: number): number {
+export function settleHalliTurn(
+  playerIds: string[],
+  eliminated: string[],
+  decks: Record<string, HalliCard[]>,
+  fromIndex: number,
+): number {
   const n = playerIds.length
-  for (let step = 1; step <= n; step++) {
+  for (let step = 0; step < n; step++) {
     const idx = (fromIndex + step) % n
-    if (!eliminated.includes(playerIds[idx])) return idx
+    const id = playerIds[idx]
+    if (!eliminated.includes(id) && (decks[id]?.length ?? 0) > 0) return idx
   }
   return fromIndex
 }
