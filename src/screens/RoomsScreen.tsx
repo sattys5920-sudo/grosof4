@@ -867,6 +867,7 @@ export function RoomsScreen() {
     const myDeckCount = viewerId && game ? (game.decks[viewerId] ?? []).length : 0
     const allBetsIn = !!game && game.playerIds.every((id) => game.bets[id] !== undefined)
     const betAmount = Number(halliBetDraft)
+    const useCenterBell = !!game && (game.playerIds.length === 4 || game.playerIds.length === 5)
 
     function submitHalliChat() {
       sendRoomMessage(openHalliRoom!, draft)
@@ -972,21 +973,6 @@ export function RoomsScreen() {
               <p className="rooms__pin-ambient">게임이 진행 중이라 지금은 입장할 수 없다.</p>
             )}
 
-            <div className="cardgame__rule">
-              <p className="cardgame__rule-line">
-                참여 인원 {HALLI_ROOM_MIN_PLAYERS}~{room.capacity}명. 시작·종료는 모두 불가의 권한이다.
-              </p>
-              <p className="cardgame__rule-line">빨강·파랑·초록·노랑 4색, 숫자 1~5로 이뤄진 카드를 똑같이 나눠 갖는다.</p>
-              <p className="cardgame__rule-line">자기 카드는 볼 수 없고, 남은 장수만 알 수 있다.</p>
-              <p className="cardgame__rule-line">'뒤집기'를 누르면 내 덱 맨 위 카드가 내 자리에 공개된다(다시 누르면 덮어쓴다).</p>
-              <p className="cardgame__rule-line">지금 공개된 카드를 색깔별로 더해 정확히 5가 되면 '누르기'를 눌러야 한다.</p>
-              <p className="cardgame__rule-line">
-                가장 먼저 누른 사람이 그 판의 카드(반납된 벌칙 카드 포함)를 전부 자기 덱 맨 뒤로 가져간다.
-              </p>
-              <p className="cardgame__rule-line">5가 아닐 때 눌렀다면 내 덱 맨 위 카드 한 장을 반납한다(그 판의 승자에게 돌아간다).</p>
-              <p className="cardgame__rule-line">덱이 바닥나면 탈락하고, 마지막까지 남은 한 명이 배팅된 코인을 전부 가져간다.</p>
-            </div>
-
             {!game && (roomEvent.open || isAdmin || iAmHere) && (
               <p className="rooms__pin-ambient">
                 {occupants.length < HALLI_ROOM_MIN_PLAYERS
@@ -1055,6 +1041,11 @@ export function RoomsScreen() {
                       </div>
                     )
                   })}
+                  {useCenterBell && game.status === 'playing' && iAmParticipant && !iAmEliminated && (
+                    <button className="halli-bell-center" onClick={() => pressHalliBell(openHalliRoom!)}>
+                      누르기!
+                    </button>
+                  )}
                 </div>
 
                 {game.status === 'playing' && (
@@ -1064,7 +1055,7 @@ export function RoomsScreen() {
                         뒤집기
                       </button>
                     )}
-                    {iAmParticipant && !iAmEliminated && (
+                    {!useCenterBell && iAmParticipant && !iAmEliminated && (
                       <button className="halliactions__bell" onClick={() => pressHalliBell(openHalliRoom!)}>
                         누르기!
                       </button>

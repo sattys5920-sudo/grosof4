@@ -875,6 +875,10 @@ export async function pressHalliBellSync(myId: string, roomId: HalliRoomId) {
           return
         }
 
+        // 이미 그 판이 끝나(누군가 가져가서) 지금은 공개된 카드가 하나도 없는 상태라면,
+        // 방금 판을 놓친 사람이 뒤늦게 누른 것일 뿐 진짜 오답이 아니므로 반납시키지 않는다.
+        if (game.roundCards.length === 0) return
+
         // 잘못 눌렀다 — 자기 덱 맨 위 카드 한 장을 반납한다(있을 때만).
         const myDeck = game.decks[myId] ?? []
         if (myDeck.length === 0) return
