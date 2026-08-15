@@ -478,9 +478,11 @@ export async function joinRoomSync(myId: string, roomId: RoomId) {
     const occ = data.roomOccupancy
     const capacity = ROOMS.find((r) => r.id === roomId)!.capacity
     if ((occ[roomId] ?? []).length >= capacity) return
+    // 구관은 어느 방이든(조사실이든 카드게임방이든) 한 사람이 한 번에 한 곳에만
+    // 있을 수 있다 — 새 방에 들어가면 다른 모든 구관 방에서 자동으로 빠진다.
     const next: Record<RoomId, string[]> = { ...occ }
-    for (const room of ROOMS) {
-      if (room.id !== roomId) next[room.id] = (next[room.id] ?? []).filter((id) => id !== myId)
+    for (const id of [...ROOMS.map((r) => r.id), ...CARD_ROOM_IDS]) {
+      if (id !== roomId) next[id] = (next[id] ?? []).filter((pid) => pid !== myId)
     }
     next[roomId] = [...(next[roomId] ?? []).filter((id) => id !== myId), myId]
     tx.update(sref, { roomOccupancy: next })
@@ -509,8 +511,10 @@ export async function joinCardRoomSync(myId: string, roomId: CardRoomId) {
     const occ = data.roomOccupancy
     if ((occ[roomId] ?? []).includes(myId)) return
     if ((occ[roomId] ?? []).length >= CARD_ROOM_CAPACITY) return
+    // 구관은 어느 방이든(조사실이든 카드게임방이든) 한 사람이 한 번에 한 곳에만
+    // 있을 수 있다 — 새 방에 들어가면 다른 모든 구관 방에서 자동으로 빠진다.
     const next: Record<RoomId, string[]> = { ...occ }
-    for (const id of CARD_ROOM_IDS) {
+    for (const id of [...ROOMS.map((r) => r.id), ...CARD_ROOM_IDS]) {
       if (id !== roomId) next[id] = (next[id] ?? []).filter((pid) => pid !== myId)
     }
     next[roomId] = [...(next[roomId] ?? []), myId]
@@ -523,6 +527,8 @@ export async function leaveCardRoomSync(myId: string, roomId: CardRoomId) {
   await runTransaction(requireDb(), async (tx) => {
     const snap = await tx.get(sref)
     const data = snap.data() as SessionDoc
+    if (!data.cardGames) data.cardGames = initialCardGames()
+    if (data.cardGames[roomId]?.status === 'playing') return
     const occ = data.roomOccupancy
     tx.update(sref, { roomOccupancy: { ...occ, [roomId]: (occ[roomId] ?? []).filter((id) => id !== myId) } })
   })
@@ -595,23 +601,53 @@ export async function playCardSync(myId: string, roomId: CardRoomId, pile: CardP
     if (!hand.includes(card)) return
     if (!isLegalCardPlay(card, game.pileAsc, game.pileDesc, pile)) return
     const nextHands = { ...game.hands, [myId]: hand.filter((c) => c !== card) }
+    const nextPileAsc = pile === 'asc' ? card : game.pileAsc
+    const nextPileDesc = pile === 'desc' ? card : game.pileDesc
+    const playLog = {
+      id: `cg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      kind: 'play' as const,
+      actorId: myId,
+      card,
+      pile,
+      atMs: Date.now(),
+    }
+    // 1 열/100 열은 갈수록 좁아지기만 하므로, 어느 순간 누군가의 손패가 통째로
+    // 못 낼 카드로만 남으면 그 사람은 앞으로도 절대 낼 수 없다. 그 사람의 차례가
+    // 될 때까지 기다리지 않고 이 순간 바로 패배 처리한다.
+    const stuckPlayerId = game.turnOrder.find((id) => {
+      const h = nextHands[id] ?? []
+      return h.length > 0 && !hasAnyLegalCardMove(h, nextPileAsc, nextPileDesc)
+    })
+    if (stuckPlayerId) {
+      const nextGame: CardGameState = {
+        ...game,
+        hands: nextHands,
+        pileAsc: nextPileAsc,
+        pileDesc: nextPileDesc,
+        cardsPlayedThisTurn: game.cardsPlayedThisTurn + 1,
+        status: 'lost',
+        log: [
+          ...game.log,
+          playLog,
+          {
+            id: `cg-${Date.now()}-lose`,
+            kind: 'lose',
+            actorId: stuckPlayerId,
+            reason: 'stuck',
+            atMs: Date.now(),
+          },
+        ],
+      }
+      tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
+      return
+    }
     const nextGame: CardGameState = {
       ...game,
       hands: nextHands,
-      pileAsc: pile === 'asc' ? card : game.pileAsc,
-      pileDesc: pile === 'desc' ? card : game.pileDesc,
+      pileAsc: nextPileAsc,
+      pileDesc: nextPileDesc,
       cardsPlayedThisTurn: game.cardsPlayedThisTurn + 1,
-      log: [
-        ...game.log,
-        {
-          id: `cg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          kind: 'play',
-          actorId: myId,
-          card,
-          pile,
-          atMs: Date.now(),
-        },
-      ],
+      log: [...game.log, playLog],
     }
     tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
   })
@@ -691,15 +727,16 @@ async function finishCardTurn(
   }
 
   const nextTurnIndex = (game.turnIndex + 1) % game.turnOrder.length
-  const nextPlayerId = game.turnOrder[nextTurnIndex]
-  const nextPlayerHand = nextHands[nextPlayerId] ?? []
-  const stuck = !hasAnyLegalCardMove(nextPlayerHand, game.pileAsc, game.pileDesc)
+  const stuckPlayerId = game.turnOrder.find((id) => {
+    const h = nextHands[id] ?? []
+    return h.length > 0 && !hasAnyLegalCardMove(h, game.pileAsc, game.pileDesc)
+  })
 
-  if (stuck) {
+  if (stuckPlayerId) {
     const loseLog = {
       id: `cg-${Date.now()}-lose`,
       kind: 'lose' as const,
-      actorId: nextPlayerId,
+      actorId: stuckPlayerId,
       reason: 'stuck' as const,
       atMs: Date.now(),
     }
