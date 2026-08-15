@@ -1371,8 +1371,29 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     if (!isAdminFlag) return
     const event = hallEventById(session.hallEvent.eventId ?? '')
     if (!event) return
+    const revealed = event.objects[session.hallEvent.objectIndex]
     const nextObjectIndex = Math.min(session.hallEvent.objectIndex + 1, event.objects.length)
-    void patchSession({ hallEvent: { ...session.hallEvent, objectIndex: nextObjectIndex } })
+    // 문제(퍼즐)는 누가 "열어 본다"를 눌러야 공개되는 다른 오브젝트와 달리, 특정
+    // 캐릭터에게 걸리는 위험/보상이 없으므로 공개되는 즉시 바로 문제가 보이게 한다.
+    const nextObjectResults =
+      revealed && revealed.kind === 'puzzle' && !session.hallEvent.objectResults[revealed.id]
+        ? {
+            ...session.hallEvent.objectResults,
+            [revealed.id]: {
+              status: 'opened' as const,
+              actorId: null,
+              puzzleSolved: false,
+              puzzleAttempts: 0,
+              minigamePending: [],
+              minigameChoices: {},
+              minigameParticipants: {},
+              minigameLog: [],
+            },
+          }
+        : session.hallEvent.objectResults
+    void patchSession({
+      hallEvent: { ...session.hallEvent, objectIndex: nextObjectIndex, objectResults: nextObjectResults },
+    })
   }
 
   function finishHallEvent() {
@@ -1497,8 +1518,18 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       if (!event) return {}
       const obj = event.objects.find((o) => o.id === objectId)
       if (!obj || obj.kind !== 'puzzle' || !obj.puzzleId) return {}
-      const existing = he.objectResults[objectId]
-      if (!existing || existing.status !== 'opened') return {}
+      // 문제는 "열어 본다"를 누르지 않아도 등장하는 즉시 바로 풀 수 있으므로,
+      // objectResults 항목이 아직 없어도(= 아무도 열지 않았어도) 기본값으로 채워 진행한다.
+      const existing: HallObjectResult = he.objectResults[objectId] ?? {
+        status: 'opened',
+        actorId: null,
+        puzzleSolved: false,
+        puzzleAttempts: 0,
+        minigamePending: [],
+        minigameChoices: {},
+        minigameParticipants: {},
+        minigameLog: [],
+      }
       if (existing.puzzleSolved || existing.puzzleAttempts >= 3) return {}
       const puzzle = hallPuzzleById(obj.puzzleId)
       if (!puzzle) return {}

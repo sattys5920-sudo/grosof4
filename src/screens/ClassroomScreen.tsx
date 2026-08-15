@@ -320,13 +320,17 @@ export function ClassroomScreen() {
       )
     }
 
+    // 문제(퍼즐)는 위험/보상이 특정 캐릭터에게 걸리지 않으므로, 다른 오브젝트처럼
+    // "열어 본다"를 눌러야 공개되는 절차 없이 등장하는 즉시 바로 문제를 보여준다.
+    const effectiveStatus = obj.kind === 'puzzle' && status === 'idle' ? 'opened' : status
+
     return (
-      <div key={obj.id} className={`hallobj hallobj--${status}`}>
+      <div key={obj.id} className={`hallobj hallobj--${effectiveStatus}`}>
         <div className="hallobj__head">
           <span className="hallobj__label">{obj.label}</span>
         </div>
 
-        {status === 'idle' && !isAdmin && (
+        {effectiveStatus === 'idle' && !isAdmin && (
           <div className="hallobj__actions">
             <p className="hallobj__warn">한 명만 시도할 수 있으니 다른 학생들과 논의해 보자.</p>
             <div className="hallobj__action-row">
@@ -335,7 +339,7 @@ export function ClassroomScreen() {
             </div>
           </div>
         )}
-        {status === 'idle' && isAdmin && <p className="hallobj__note">아직 아무도 손대지 않았다.</p>}
+        {effectiveStatus === 'idle' && isAdmin && <p className="hallobj__note">아직 아무도 손대지 않았다.</p>}
 
         {status === 'left' && <p className="hallobj__note">{actorName}이(가) 그냥 두기로 했다.</p>}
 
@@ -358,13 +362,13 @@ export function ClassroomScreen() {
           </p>
         )}
 
-        {status === 'opened' && obj.kind === 'puzzle' && obj.puzzleId && (() => {
+        {effectiveStatus === 'opened' && obj.kind === 'puzzle' && obj.puzzleId && (() => {
           const puzzle = hallPuzzleById(obj.puzzleId)!
           const attempts = result?.puzzleAttempts ?? 0
           const solved = result?.puzzleSolved ?? false
           return (
             <div className="hallobj__puzzle">
-              <p className="hallobj__note">{actorName}이(가) 열어 보니 문제가 나타났다.</p>
+              <p className="hallobj__note">문제가 나타났다.</p>
               <p className="hallobj__puzzle-text">{puzzle.questionText}</p>
               {solved ? (
                 <div className="hallobj__puzzle-solved">
