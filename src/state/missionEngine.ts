@@ -211,19 +211,22 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         else success++
       }
       const shieldedNow = state.shielded && rawFail > 0
-      const fail = shieldedNow ? rawFail - 1 : rawFail
-      const result: MissionOutcome = fail >= required ? 'fail' : 'success'
+      // 수호 능력은 판정 임계값에서만 실패 카드 1 장을 무효화한다. 실제로 제출된
+      // 카드 수(cardTally, 서술, CCTV 조회용 failCounts)는 그대로 rawFail을 써야
+      // "N 명이 갔는데 카드 수가 안 맞는" 것처럼 보이지 않는다.
+      const effectiveFail = shieldedNow ? rawFail - 1 : rawFail
+      const result: MissionOutcome = effectiveFail >= required ? 'fail' : 'success'
       const results = [...state.missionResults]
       results[state.missionIndex] = result
       const failCounts = [...state.failCounts]
-      failCounts[state.missionIndex] = fail
+      failCounts[state.missionIndex] = rawFail
       const teamHistory = [...state.teamHistory]
       teamHistory[state.missionIndex] = state.proposedTeam
       const wardWins = state.wardWins + (result === 'success' ? 1 : 0)
       const sinWins = state.sinWins + (result === 'fail' ? 1 : 0)
       return {
         ...state,
-        cardTally: { success, fail },
+        cardTally: { success, fail: rawFail },
         missionResults: results,
         failCounts,
         teamHistory,
@@ -233,8 +236,8 @@ export function missionReducer(state: MissionState, action: MissionAction): Miss
         phase: 'result',
         lastNote:
           result === 'success'
-            ? `성공 ${success} · 실패 ${fail} — 조사 성공.${shieldedNow ? ' (누군가 이 조사를 지켜냈다.......)' : ''}`
-            : `성공 ${success} · 실패 ${fail} — 조사 실패.${shieldedNow ? ' (지켜내려 했지만 막지 못했다.......)' : ''}`,
+            ? `성공 ${success} · 실패 ${rawFail} — 조사 성공.${shieldedNow ? ' (누군가 이 조사를 지켜냈다.......)' : ''}`
+            : `성공 ${success} · 실패 ${rawFail} — 조사 실패.${shieldedNow ? ' (지켜내려 했지만 막지 못했다.......)' : ''}`,
       }
     }
 
