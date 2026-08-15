@@ -38,7 +38,6 @@ import {
   CARD_ROOM_MIN_PLAYERS,
   CARD_TIMEOUT_STRIKES,
   CARD_TURN_TIME_LIMIT_MS,
-  DRAW_PER_TURN,
   HAND_SIZE,
   MIN_PLAY_PER_TURN,
   hasAnyLegalCardMove,
@@ -690,7 +689,8 @@ async function finishCardTurn(
   actingId: string,
   isTimeout: boolean,
 ) {
-  const drawCount = Math.min(DRAW_PER_TURN, game.drawPile.length)
+  // '더 게임' 규칙: 낸 만큼 그대로 보충해 손패가 항상 6 장으로 돌아온다(덱이 바닥나면 그만큼만).
+  const drawCount = Math.min(game.cardsPlayedThisTurn, game.drawPile.length)
   const drawn = game.drawPile.slice(0, drawCount)
   const remainingDeck = game.drawPile.slice(drawCount)
   const nextHands = { ...game.hands, [actingId]: [...(game.hands[actingId] ?? []), ...drawn] }

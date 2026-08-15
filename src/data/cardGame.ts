@@ -3,7 +3,6 @@ import type { CardPile, CardRoomId } from './types'
 export const CARD_MIN_VALUE = 2
 export const CARD_MAX_VALUE = 99
 export const HAND_SIZE = 6
-export const DRAW_PER_TURN = 2
 export const MIN_PLAY_PER_TURN = 2
 export const CARD_ROOM_CAPACITY = 5
 export const CARD_ROOM_MIN_PLAYERS = 2
