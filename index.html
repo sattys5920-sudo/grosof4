@@ -25,10 +25,25 @@
       // 입력창이 밀려 보인다. 그래서 높이가 "커질 때"(회전 등 실제 화면 변화)만
       // 반영하고, 키보드처럼 "줄어드는" 변화는 무시한다. 화면 회전 시에는
       // orientationchange에서 기준값을 다시 잡는다.
+      //
+      // 다만 화면 높이 자체는 고정해 두더라도, 키보드가 그만큼 화면 아래를
+      // 가리는 건 그대로다. 그래서 --app-height는 절대 줄이지 않는 대신,
+      // visualViewport로 실제 가려진 높이(키보드 높이)를 따로 재서
+      // --kb-inset에 담아 두고, 채팅/입력창이 있는 최하단 영역이 그만큼
+      // 위로 올라와 보이게 한다 (App.css의 .shell 참고).
       ;(function () {
         var maxHeight = window.innerHeight
         function setAppHeight(h) {
           document.documentElement.style.setProperty('--app-height', h + 'px')
+        }
+        function setKbInset(px) {
+          document.documentElement.style.setProperty('--kb-inset', px + 'px')
+        }
+        function syncKbInset() {
+          var vv = window.visualViewport
+          if (!vv) return
+          var inset = Math.max(0, maxHeight - vv.height)
+          setKbInset(inset)
         }
         setAppHeight(maxHeight)
         window.addEventListener('resize', function () {
@@ -36,11 +51,18 @@
             maxHeight = window.innerHeight
             setAppHeight(maxHeight)
           }
+          syncKbInset()
         })
         window.addEventListener('orientationchange', function () {
           maxHeight = window.innerHeight
           setAppHeight(maxHeight)
+          setKbInset(0)
         })
+        if (window.visualViewport) {
+          syncKbInset()
+          window.visualViewport.addEventListener('resize', syncKbInset)
+          window.visualViewport.addEventListener('scroll', syncKbInset)
+        }
       })()
     </script>
   </head>

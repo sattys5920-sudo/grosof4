@@ -3,11 +3,13 @@
   width: 100%;
   max-width: 430px;
   height: var(--app-height, 100svh);
+  padding-bottom: var(--kb-inset, 0px);
   display: flex;
   flex-direction: column;
   background: var(--void);
   border-inline: 1px solid var(--line);
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .shell__fog {
