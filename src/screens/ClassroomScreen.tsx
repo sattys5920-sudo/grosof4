@@ -57,6 +57,7 @@ export function ClassroomScreen() {
   const [now, setNow] = useState(Date.now())
   const chatLogRef = useRef<HTMLDivElement | null>(null)
   const hallEventLogsRef = useRef<HTMLDivElement | null>(null)
+  const pinRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!hallEvent.startedAtMs) return
@@ -74,6 +75,12 @@ export function ClassroomScreen() {
     const el = hallEventLogsRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [hallEvent.logIndex])
+
+  // 상단 조사 패널 전체도 새 내용(로그/오브젝트)이 생기면 맨 아래로 랜딩한다.
+  useEffect(() => {
+    const el = pinRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [hallEvent.eventId, hallEvent.logIndex, hallEvent.objectIndex])
 
   const canChat = (!!viewerId && classroomOpen) || isAdmin
   const activeEvent = hallEvent.eventId ? hallEventById(hallEvent.eventId) : null
@@ -400,7 +407,7 @@ export function ClassroomScreen() {
 
   return (
     <div className="classroom">
-      <div className="classroom__pin">
+      <div className="classroom__pin" ref={pinRef}>
         <div className="classroom__pin-head">
           <span className="classroom__pin-heading">강당</span>
           {gmReveal && (

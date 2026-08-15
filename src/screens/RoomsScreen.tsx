@@ -72,10 +72,16 @@ export function RoomsScreen() {
   const [blockedModalOpen, setBlockedModalOpen] = useState(false)
   const [now, setNow] = useState(Date.now())
   const viewer = viewerId ? charOf(viewerId) : null
+  const pinScrollRef = useRef<HTMLDivElement | null>(null)
   const investigationLogsRef = useRef<HTMLDivElement | null>(null)
+  const combatLogRef = useRef<HTMLDivElement | null>(null)
   const chatLogRef = useRef<HTMLDivElement | null>(null)
   const currentInvestigationLogIndex = openRoom ? (roomEvents[openRoom]?.investigation?.logIndex ?? 0) : 0
   const currentRoomMsgCount = openRoom ? (roomMessages[openRoom]?.length ?? 0) : 0
+  const currentCombatLogCount = openRoom ? (roomEvents[openRoom]?.combat?.log.length ?? 0) : 0
+  const currentEventKey = openRoom
+    ? `${roomEvents[openRoom]?.event?.title ?? ''}-${roomEvents[openRoom]?.investigation?.completed ?? false}-${roomEvents[openRoom]?.combat?.defeated ?? false}`
+    : ''
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
@@ -86,6 +92,18 @@ export function RoomsScreen() {
     const el = investigationLogsRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [openRoom, currentInvestigationLogIndex])
+
+  // 전투 로그도 항상 가장 최근 판정이 보이는 맨 아래로 스크롤한다.
+  useEffect(() => {
+    const el = combatLogRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [openRoom, currentCombatLogCount])
+
+  // 상단 패널(조사/전투 등) 전체도 새 내용이 생기면 맨 아래(가장 최근)로 랜딩한다.
+  useEffect(() => {
+    const el = pinScrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [openRoom, currentInvestigationLogIndex, currentCombatLogCount, currentEventKey])
 
   // 방에 들어오거나 새 메시지가 오면 항상 가장 최근 대화가 보이게 한다.
   useEffect(() => {
@@ -138,7 +156,7 @@ export function RoomsScreen() {
           <button className="rooms__back" onClick={() => setOpenRoom(null)}>
             ← 구관 목록
           </button>
-          <div className="rooms__pin-scroll">
+          <div className="rooms__pin-scroll" ref={pinScrollRef}>
           <div className="rooms__pin-head">
             <span className="rooms__pin-title">{room.name}</span>
             {gmReveal && (
@@ -283,7 +301,7 @@ export function RoomsScreen() {
                   HP {combat.creatureHp}/{creature.hp}
                 </span>
               </div>
-              <div className="rooms__combat-log">
+              <div className="rooms__combat-log" ref={combatLogRef}>
                 {combat.log.length === 0 && (
                   <p className="rooms__empty">아직 아무도 손을 대지 않았다.</p>
                 )}
