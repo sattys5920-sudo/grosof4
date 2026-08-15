@@ -531,6 +531,7 @@ export async function startCardGameSync(roomId: CardRoomId, turnOrder: string[])
   await runTransaction(requireDb(), async (tx) => {
     const snap = await tx.get(sref)
     const data = snap.data() as SessionDoc
+    if (!data.cardGames) data.cardGames = initialCardGames()
     const occ = data.roomOccupancy[roomId] ?? []
     if (occ.length < CARD_ROOM_MIN_PLAYERS || occ.length > CARD_ROOM_CAPACITY) return
     if (data.cardGames[roomId]) return
@@ -560,6 +561,7 @@ export async function playCardSync(myId: string, roomId: CardRoomId, pile: CardP
   await runTransaction(requireDb(), async (tx) => {
     const snap = await tx.get(sref)
     const data = snap.data() as SessionDoc
+    if (!data.cardGames) data.cardGames = initialCardGames()
     const game = data.cardGames[roomId]
     if (!game || game.status !== 'playing') return
     if (game.turnOrder[game.turnIndex] !== myId) return
@@ -707,6 +709,7 @@ export async function endCardTurnSync(myId: string, roomId: CardRoomId) {
   await runTransaction(requireDb(), async (tx) => {
     const snap = await tx.get(sref)
     const data = snap.data() as SessionDoc
+    if (!data.cardGames) data.cardGames = initialCardGames()
     const game = data.cardGames[roomId]
     if (!game || game.status !== 'playing') return
     if (game.turnOrder[game.turnIndex] !== myId) return
@@ -723,6 +726,7 @@ export async function forceEndCardTurnSync(roomId: CardRoomId) {
   await runTransaction(requireDb(), async (tx) => {
     const snap = await tx.get(sref)
     const data = snap.data() as SessionDoc
+    if (!data.cardGames) data.cardGames = initialCardGames()
     const game = data.cardGames[roomId]
     if (!game || game.status !== 'playing') return
     if (Date.now() - game.turnStartedAtMs < CARD_TURN_TIME_LIMIT_MS) return

@@ -31,6 +31,11 @@
       // visualViewport로 실제 가려진 높이(키보드 높이)를 따로 재서
       // --kb-inset에 담아 두고, 채팅/입력창이 있는 최하단 영역이 그만큼
       // 위로 올라와 보이게 한다 (App.css의 .shell 참고).
+      //
+      // 이때 기준값은 반드시 "지금" window.innerHeight여야 한다. 고정해 둔
+      // maxHeight를 기준으로 빼면, innerHeight가 이미 줄어드는 브라우저에서는
+      // 두 번 겹쳐 줄어들어(브라우저가 한 번, 우리가 또 한 번) 입력창이
+      // 필요 이상으로 위로 밀려 보인다.
       ;(function () {
         var maxHeight = window.innerHeight
         function setAppHeight(h) {
@@ -42,7 +47,7 @@
         function syncKbInset() {
           var vv = window.visualViewport
           if (!vv) return
-          var inset = Math.max(0, maxHeight - vv.height)
+          var inset = Math.max(0, window.innerHeight - vv.height)
           setKbInset(inset)
         }
         setAppHeight(maxHeight)
