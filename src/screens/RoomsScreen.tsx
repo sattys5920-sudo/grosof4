@@ -13,6 +13,7 @@ import {
   MIN_PLAY_PER_TURN,
 } from '../data/cardGame'
 import { HALLI_COLOR_LABEL, HALLI_ROOM_MIN_PLAYERS } from '../data/halliGame'
+import { resolvedTeam } from '../state/missionEngine'
 import type { CardRoomId, HalliRoomId, RoomId } from '../data/types'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
@@ -75,6 +76,7 @@ export function RoomsScreen() {
     dispatchCreature,
     closeRoomInvestigation,
     setRoomOpen,
+    mission,
     startHallwayInvestigation,
     advanceHallwayInvestigationLog,
     finishHallwayInvestigation,
@@ -279,7 +281,7 @@ export function RoomsScreen() {
               const c = charOf(id)
               return (
                 <span key={id} className="rooms__pin-occupant">
-                  <Badge team={c.team} size={18} revealed={revealedFor(c)} />
+                  <Badge team={resolvedTeam(mission, c.id)} size={18} revealed={revealedFor(c)} />
                   {isAdmin && (
                     <button
                       className="rooms__pin-kick"
@@ -1146,7 +1148,7 @@ export function RoomsScreen() {
               <div className="rooms__card-avatars">
                 {occupants.map((id) => {
                   const c = charOf(id)
-                  return <Badge key={id} team={c.team} size={18} revealed={revealedFor(c)} />
+                  return <Badge key={id} team={resolvedTeam(mission, c.id)} size={18} revealed={revealedFor(c)} />
                 })}
               </div>
             </button>

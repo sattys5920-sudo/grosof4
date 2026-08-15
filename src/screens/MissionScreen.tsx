@@ -435,7 +435,7 @@ export function MissionScreen() {
                     onClick={() => toggleDraft(c.id)}
                   >
                     <Badge
-                      team={c.team}
+                      team={resolvedTeam(mission, c.id)}
                       size={20}
                       revealed={isRevealedTo(viewer, c, gmReveal)}
                     />
@@ -473,7 +473,7 @@ export function MissionScreen() {
               const c = charOf(id)
               return (
                 <div key={id} className="mission__pick is-picked">
-                  <Badge team={c.team} size={20} revealed={isRevealedTo(viewer, c, gmReveal)} />
+                  <Badge team={resolvedTeam(mission, c.id)} size={20} revealed={isRevealedTo(viewer, c, gmReveal)} />
                   <span>{displayName(c.id)}</span>
                 </div>
               )
@@ -532,7 +532,7 @@ export function MissionScreen() {
               const c = charOf(id)
               return (
                 <div key={id} className="mission__pick is-picked">
-                  <Badge team={c.team} size={20} revealed={isRevealedTo(viewer, c, gmReveal)} />
+                  <Badge team={resolvedTeam(mission, c.id)} size={20} revealed={isRevealedTo(viewer, c, gmReveal)} />
                   <span>{displayName(c.id)}</span>
                 </div>
               )

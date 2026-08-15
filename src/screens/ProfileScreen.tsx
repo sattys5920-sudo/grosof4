@@ -12,7 +12,7 @@ import {
 } from '../data/characters'
 import { HALL_EVENTS } from '../data/hallEvents'
 import { SHOP_ITEMS, shopItemById } from '../data/shop'
-import { MISSION_SIZES } from '../state/missionEngine'
+import { MISSION_SIZES, resolvedTeam } from '../state/missionEngine'
 import { Badge } from '../components/Badge'
 import { AbilityUseModal } from '../components/AbilityUseModal'
 import { PixelIcon } from '../components/PixelIcon'
@@ -339,7 +339,7 @@ export function ProfileScreen() {
               {photo ? (
                 <img className="profile__photo" src={photo} alt="프로필 사진" />
               ) : (
-                <Badge team={viewer.team} size={56} />
+                <Badge team={resolvedTeam(mission, viewer.id)} size={56} />
               )}
               <span className="profile__photo-edit">수정</span>
             </label>
@@ -354,7 +354,7 @@ export function ProfileScreen() {
                 }}
                 placeholder="닉네임을 입력하세요"
               />
-              <span className={`profile__role profile__role--${viewer.team}`}>
+              <span className={`profile__role profile__role--${resolvedTeam(mission, viewer.id)}`}>
                 {roleLabel(viewer)} · {grade}
               </span>
             </div>
