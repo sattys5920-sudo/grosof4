@@ -759,6 +759,20 @@ export function ProfileScreen() {
               {gmReveal && (
                 <span className="profile__roster-role">{roleLabel(c, resolvedTeam(mission, c.id))}</span>
               )}
+              {gmReveal && c.role === '망각자' && (
+                <span className="profile__roster-role">
+                  (
+                  {[0, 1, 2]
+                    .map((i) => {
+                      const onTeam = mission.teamHistory[i]?.includes(c.id) ?? false
+                      const result = mission.missionResults[i]
+                      const tag = !onTeam ? '미참여' : result === 'fail' ? '실패' : result === 'success' ? '성공' : '진행중'
+                      return `${i + 1}차 ${tag}`
+                    })
+                    .join(' / ')}
+                  )
+                </span>
+              )}
               {c.id === viewerId && <span className="profile__me-tag">나</span>}
             </div>
           ))}
