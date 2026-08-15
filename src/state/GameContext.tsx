@@ -324,6 +324,7 @@ interface GameState {
   voteHallLogChoice: (choiceId: string) => void
   closeHallLogVote: () => void
   advanceHallObject: () => void
+  forceSkipHallObject: (objectId: string) => void
   finishHallEvent: () => void
   resolveHallObject: (objectId: string, choice: 'open' | 'leave') => void
   submitHallPuzzleAnswer: (objectId: string, text: string) => void
@@ -1367,6 +1368,19 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     })
   }
 
+  function emptyHallObjectResult(): HallObjectResult {
+    return {
+      status: 'opened',
+      actorId: null,
+      puzzleSolved: false,
+      puzzleAttempts: 0,
+      minigamePending: [],
+      minigameChoices: {},
+      minigameParticipants: {},
+      minigameLog: [],
+    }
+  }
+
   function advanceHallObject() {
     if (!isAdminFlag) return
     const event = hallEventById(session.hallEvent.eventId ?? '')
@@ -1377,22 +1391,31 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     // 캐릭터에게 걸리는 위험/보상이 없으므로 공개되는 즉시 바로 문제가 보이게 한다.
     const nextObjectResults =
       revealed && revealed.kind === 'puzzle' && !session.hallEvent.objectResults[revealed.id]
-        ? {
-            ...session.hallEvent.objectResults,
-            [revealed.id]: {
-              status: 'opened' as const,
-              actorId: null,
-              puzzleSolved: false,
-              puzzleAttempts: 0,
-              minigamePending: [],
-              minigameChoices: {},
-              minigameParticipants: {},
-              minigameLog: [],
-            },
-          }
+        ? { ...session.hallEvent.objectResults, [revealed.id]: emptyHallObjectResult() }
         : session.hallEvent.objectResults
     void patchSession({
       hallEvent: { ...session.hallEvent, objectIndex: nextObjectIndex, objectResults: nextObjectResults },
+    })
+  }
+
+  /** 문제를 못 풀거나 아무도 오브젝트를 열어 보지 않아 막혀 있을 때, 불가가 그
+   * 오브젝트를 강제로 (틀림/스킵 처리해) 마무리 짓고 다음으로 넘어갈 수 있게 한다. */
+  function forceSkipHallObject(objectId: string) {
+    if (!isAdminFlag) return
+    const event = hallEventById(session.hallEvent.eventId ?? '')
+    if (!event) return
+    const obj = event.objects.find((o) => o.id === objectId)
+    if (!obj) return
+    const existing = session.hallEvent.objectResults[objectId]
+    const nextResult: HallObjectResult =
+      obj.kind === 'puzzle'
+        ? { ...(existing ?? emptyHallObjectResult()), status: 'opened', puzzleAttempts: 3, puzzleSolved: existing?.puzzleSolved ?? false }
+        : { ...(existing ?? emptyHallObjectResult()), status: 'left', actorId: null }
+    void patchSession({
+      hallEvent: {
+        ...session.hallEvent,
+        objectResults: { ...session.hallEvent.objectResults, [objectId]: nextResult },
+      },
     })
   }
 
@@ -1520,16 +1543,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       if (!obj || obj.kind !== 'puzzle' || !obj.puzzleId) return {}
       // 문제는 "열어 본다"를 누르지 않아도 등장하는 즉시 바로 풀 수 있으므로,
       // objectResults 항목이 아직 없어도(= 아무도 열지 않았어도) 기본값으로 채워 진행한다.
-      const existing: HallObjectResult = he.objectResults[objectId] ?? {
-        status: 'opened',
-        actorId: null,
-        puzzleSolved: false,
-        puzzleAttempts: 0,
-        minigamePending: [],
-        minigameChoices: {},
-        minigameParticipants: {},
-        minigameLog: [],
-      }
+      const existing: HallObjectResult = he.objectResults[objectId] ?? emptyHallObjectResult()
       if (existing.puzzleSolved || existing.puzzleAttempts >= 3) return {}
       const puzzle = hallPuzzleById(obj.puzzleId)
       if (!puzzle) return {}
@@ -2602,6 +2616,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       voteHallLogChoice,
       closeHallLogVote,
       advanceHallObject,
+      forceSkipHallObject,
       finishHallEvent,
       resolveHallObject,
       submitHallPuzzleAnswer,

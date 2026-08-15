@@ -39,6 +39,7 @@ export function ClassroomScreen() {
     voteHallLogChoice,
     closeHallLogVote,
     advanceHallObject,
+    forceSkipHallObject,
     finishHallEvent,
     resolveHallObject,
     submitHallPuzzleAnswer,
@@ -339,7 +340,14 @@ export function ClassroomScreen() {
             </div>
           </div>
         )}
-        {effectiveStatus === 'idle' && isAdmin && <p className="hallobj__note">아직 아무도 손대지 않았다.</p>}
+        {effectiveStatus === 'idle' && isAdmin && (
+          <div className="hallobj__gm-skip">
+            <p className="hallobj__note">아직 아무도 손대지 않았다.</p>
+            <button className="hallobj__gm-skip-btn" onClick={() => forceSkipHallObject(obj.id)}>
+              그냥 둔 것으로 처리하고 넘기기
+            </button>
+          </div>
+        )}
 
         {status === 'left' && <p className="hallobj__note">{actorName}이(가) 그냥 두기로 했다.</p>}
 
@@ -370,6 +378,11 @@ export function ClassroomScreen() {
             <div className="hallobj__puzzle">
               <p className="hallobj__note">문제가 나타났다.</p>
               <p className="hallobj__puzzle-text">{puzzle.questionText}</p>
+              {isAdmin && !solved && (
+                <button className="hallobj__gm-skip-btn" onClick={() => forceSkipHallObject(obj.id)}>
+                  못 푼 것으로 처리하고 넘기기
+                </button>
+              )}
               {solved ? (
                 <div className="hallobj__puzzle-solved">
                   <span>정답: {puzzle.answer}</span>

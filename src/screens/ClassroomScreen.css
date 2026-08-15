@@ -593,6 +593,29 @@
   color: var(--sin);
 }
 
+.hallobj__gm-skip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.hallobj__gm-skip-btn {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  padding: 5px 8px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--void-3);
+  color: var(--bone-dim);
+  align-self: flex-start;
+}
+
+.hallobj__gm-skip-btn:hover {
+  border-color: var(--sin);
+  color: var(--bone-bright);
+}
+
 .hallobj__puzzle {
   display: flex;
   flex-direction: column;
