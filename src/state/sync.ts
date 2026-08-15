@@ -1097,8 +1097,10 @@ export async function toggleHeartSync(postId: string, myId: string) {
     const snap = await tx.get(pref)
     if (!snap.exists()) return
     const data = snap.data() as FeedPostDoc
-    const has = data.heartedBy.includes(myId)
-    tx.update(pref, { heartedBy: has ? data.heartedBy.filter((id) => id !== myId) : [...data.heartedBy, myId] })
+    // 댓글/하트 기능이 추가되기 전에 만들어진 게시글은 heartedBy 필드 자체가 없을 수 있으므로 방어한다.
+    const heartedBy = data.heartedBy ?? []
+    const has = heartedBy.includes(myId)
+    tx.update(pref, { heartedBy: has ? heartedBy.filter((id) => id !== myId) : [...heartedBy, myId] })
   })
 }
 
@@ -1109,7 +1111,8 @@ export async function addCommentSync(postId: string, comment: FeedComment) {
     if (!snap.exists()) return
     const data = snap.data() as FeedPostDoc
     if (!data.commentsEnabled) return
-    tx.update(pref, { comments: [...data.comments, comment] })
+    // 댓글 기능이 추가되기 전에 만들어진 게시글은 comments 필드 자체가 없을 수 있으므로 방어한다.
+    tx.update(pref, { comments: [...(data.comments ?? []), comment] })
   })
 }
 
@@ -1120,7 +1123,7 @@ export async function editCommentSync(postId: string, commentId: string, authorI
     if (!snap.exists()) return
     const data = snap.data() as FeedPostDoc
     tx.update(pref, {
-      comments: data.comments.map((c) => (c.id === commentId && c.authorId === authorId ? { ...c, text } : c)),
+      comments: (data.comments ?? []).map((c) => (c.id === commentId && c.authorId === authorId ? { ...c, text } : c)),
     })
   })
 }
@@ -1132,7 +1135,7 @@ export async function deleteCommentSync(postId: string, commentId: string, autho
     if (!snap.exists()) return
     const data = snap.data() as FeedPostDoc
     tx.update(pref, {
-      comments: data.comments.filter((c) => !(c.id === commentId && c.authorId === authorId)),
+      comments: (data.comments ?? []).filter((c) => !(c.id === commentId && c.authorId === authorId)),
     })
   })
 }

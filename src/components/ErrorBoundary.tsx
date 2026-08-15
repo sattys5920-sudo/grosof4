@@ -17,9 +17,11 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   handleRejection = (event: PromiseRejectionEvent) => {
-    const reason = event.reason
-    const error = reason instanceof Error ? reason : new Error(String(reason))
-    this.setState({ error })
+    // Firestore 쓰기 같은 fire-and-forget 비동기 작업 하나가 실패한다고 해서
+    // 화면 전체를 크래시 화면으로 덮어 버리면 안 된다(실제로 여러 기능에서
+    // "튕긴다"는 제보로 이어졌다). 진짜 화면이 깨지는 렌더링 에러만
+    // getDerivedStateFromError로 잡고, 여기서는 콘솔에만 남긴다.
+    console.error('처리되지 않은 프라미스 거부', event.reason)
   }
 
   componentDidMount() {
