@@ -601,41 +601,6 @@ export function RoomsScreen() {
 
             {game && (
               <div className="cardgame">
-                <div className="cardgame__piles">
-                  <div className="cardgame__pile">
-                    <span className="cardgame__pile-label">1열 · 오름차순</span>
-                    <div className="cardgame__pile-history">
-                      <span className="cardcard cardcard--sm cardcard--start">1</span>
-                      {game.log
-                        .filter((e) => e.kind === 'play' && e.pile === 'asc')
-                        .map((e, i, arr) => (
-                          <span
-                            key={e.id}
-                            className={`cardcard cardcard--sm ${i === arr.length - 1 ? 'is-current' : ''}`}
-                          >
-                            {e.card}
-                          </span>
-                        ))}
-                    </div>
-                  </div>
-                  <div className="cardgame__pile">
-                    <span className="cardgame__pile-label">100열 · 내림차순</span>
-                    <div className="cardgame__pile-history">
-                      <span className="cardcard cardcard--sm cardcard--start">100</span>
-                      {game.log
-                        .filter((e) => e.kind === 'play' && e.pile === 'desc')
-                        .map((e, i, arr) => (
-                          <span
-                            key={e.id}
-                            className={`cardcard cardcard--sm ${i === arr.length - 1 ? 'is-current' : ''}`}
-                          >
-                            {e.card}
-                          </span>
-                        ))}
-                    </div>
-                  </div>
-                </div>
-
                 <div className="cardgame__deck">덱 {game.drawPile.length}장 남음</div>
 
                 <div className="cardgame__order">
@@ -746,6 +711,18 @@ export function RoomsScreen() {
             )}
           </div>
         </div>
+
+        {game && (
+          <div className="cardgame__pile-fixed">
+            <span className="cardgame__pile-fixed-row">
+              1열 {[1, ...game.log.filter((e) => e.kind === 'play' && e.pile === 'asc').map((e) => e.card)].join(' ')}
+            </span>
+            <span className="cardgame__pile-fixed-row">
+              100열{' '}
+              {[100, ...game.log.filter((e) => e.kind === 'play' && e.pile === 'desc').map((e) => e.card)].join(' ')}
+            </span>
+          </div>
+        )}
 
         {iAmHere || isAdmin ? (
           <>
