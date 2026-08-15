@@ -11,7 +11,9 @@ import {
   serverTimestamp,
   updateDoc,
   writeBatch,
+  type DocumentReference,
   type Firestore,
+  type Transaction,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { CHARACTERS, DAY4_REVEAL_TEXT, ENDING_SCRIPTS, ROOMS } from '../data/characters'
@@ -34,6 +36,8 @@ import {
   CARD_ROOM_CAPACITY,
   CARD_ROOM_IDS,
   CARD_ROOM_MIN_PLAYERS,
+  CARD_TIMEOUT_STRIKES,
+  CARD_TURN_TIME_LIMIT_MS,
   DRAW_PER_TURN,
   HAND_SIZE,
   MIN_PLAY_PER_TURN,
@@ -508,7 +512,7 @@ export async function leaveCardRoomSync(myId: string, roomId: CardRoomId) {
   })
 }
 
-/** 정확히 5 명이 모이면(멱등적으로 여러 클라이언트가 동시에 감지해도 한 번만 실행됨) 카드를 나눠 게임을 시작한다. */
+/** 불가가 "플레이"를 누르면(2~5 명 사이일 때) 카드를 나눠 게임을 시작한다. */
 export async function startCardGameSync(roomId: CardRoomId, turnOrder: string[]) {
   const sref = sessionRef()
   await runTransaction(requireDb(), async (tx) => {
@@ -530,6 +534,8 @@ export async function startCardGameSync(roomId: CardRoomId, turnOrder: string[])
       turnOrder,
       turnIndex: 0,
       cardsPlayedThisTurn: 0,
+      turnStartedAtMs: Date.now(),
+      timeoutCount: 0,
       log: [{ id: `cg-${Date.now()}`, kind: 'start', atMs: Date.now() }],
     }
     tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: game } })
@@ -570,6 +576,119 @@ export async function playCardSync(myId: string, roomId: CardRoomId, pile: CardP
   })
 }
 
+/**
+ * 한 차례를 마무리한다(수동 종료든 시간 초과 강제 종료든 공통). 덱에서 최대 2 장을
+ * 보충하고, 승리/시간 초과 패배/막힘 패배를 순서대로 확인한 뒤, 아니면 다음 차례로 넘긴다.
+ */
+async function finishCardTurn(
+  tx: Transaction,
+  sref: DocumentReference,
+  data: SessionDoc,
+  roomId: CardRoomId,
+  game: CardGameState,
+  actingId: string,
+  isTimeout: boolean,
+) {
+  const drawCount = Math.min(DRAW_PER_TURN, game.drawPile.length)
+  const drawn = game.drawPile.slice(0, drawCount)
+  const remainingDeck = game.drawPile.slice(drawCount)
+  const nextHands = { ...game.hands, [actingId]: [...(game.hands[actingId] ?? []), ...drawn] }
+  const totalHandCards = Object.values(nextHands).reduce((sum, h) => sum + h.length, 0)
+  const nextTimeoutCount = isTimeout ? game.timeoutCount + 1 : game.timeoutCount
+
+  const endLog = {
+    id: `cg-${Date.now()}-end`,
+    kind: 'endTurn' as const,
+    actorId: actingId,
+    deckLeft: remainingDeck.length,
+    atMs: Date.now(),
+    ...(isTimeout ? { reason: 'timeout' as const } : {}),
+  }
+
+  if (isTimeout && nextTimeoutCount >= CARD_TIMEOUT_STRIKES) {
+    const loseLog = {
+      id: `cg-${Date.now()}-lose`,
+      kind: 'lose' as const,
+      actorId: actingId,
+      reason: 'timeout' as const,
+      atMs: Date.now(),
+    }
+    const nextGame: CardGameState = {
+      ...game,
+      hands: nextHands,
+      drawPile: remainingDeck,
+      status: 'lost',
+      timeoutCount: nextTimeoutCount,
+      cardsPlayedThisTurn: 0,
+      log: [...game.log, endLog, loseLog],
+    }
+    tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
+    return
+  }
+
+  if (remainingDeck.length === 0 && totalHandCards === 0) {
+    const winLog = { id: `cg-${Date.now()}-win`, kind: 'win' as const, atMs: Date.now() }
+    const nextGame: CardGameState = {
+      ...game,
+      hands: nextHands,
+      drawPile: remainingDeck,
+      status: 'won',
+      cardsPlayedThisTurn: 0,
+      timeoutCount: nextTimeoutCount,
+      log: [...game.log, endLog, winLog],
+    }
+    // 클리어 보상: 참여한 모두에게 코인 지급 (트랜잭션 규칙상 읽기를 먼저 전부 끝낸다).
+    const playerSnaps = await Promise.all(game.turnOrder.map((id) => tx.get(playerRef(id))))
+    tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
+    for (let i = 0; i < game.turnOrder.length; i++) {
+      const pSnap = playerSnaps[i]
+      if (!pSnap.exists()) continue
+      const pData = pSnap.data() as PlayerDoc
+      tx.update(playerRef(game.turnOrder[i]), { coins: pData.coins + CARD_GAME_WIN_COINS })
+    }
+    return
+  }
+
+  const nextTurnIndex = (game.turnIndex + 1) % game.turnOrder.length
+  const nextPlayerId = game.turnOrder[nextTurnIndex]
+  const nextPlayerHand = nextHands[nextPlayerId] ?? []
+  const stuck = !hasAnyLegalCardMove(nextPlayerHand, game.pileAsc, game.pileDesc)
+
+  if (stuck) {
+    const loseLog = {
+      id: `cg-${Date.now()}-lose`,
+      kind: 'lose' as const,
+      actorId: nextPlayerId,
+      reason: 'stuck' as const,
+      atMs: Date.now(),
+    }
+    const nextGame: CardGameState = {
+      ...game,
+      hands: nextHands,
+      drawPile: remainingDeck,
+      status: 'lost',
+      turnIndex: nextTurnIndex,
+      cardsPlayedThisTurn: 0,
+      timeoutCount: nextTimeoutCount,
+      log: [...game.log, endLog, loseLog],
+    }
+    tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
+    return
+  }
+
+  const nextGame: CardGameState = {
+    ...game,
+    hands: nextHands,
+    drawPile: remainingDeck,
+    turnIndex: nextTurnIndex,
+    cardsPlayedThisTurn: 0,
+    timeoutCount: nextTimeoutCount,
+    turnStartedAtMs: Date.now(),
+    log: [...game.log, endLog],
+  }
+  tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
+}
+
 export async function endCardTurnSync(myId: string, roomId: CardRoomId) {
   const sref = sessionRef()
   await runTransaction(requireDb(), async (tx) => {
@@ -580,72 +699,22 @@ export async function endCardTurnSync(myId: string, roomId: CardRoomId) {
     if (game.turnOrder[game.turnIndex] !== myId) return
     const requiredMin = game.drawPile.length > 0 ? MIN_PLAY_PER_TURN : 1
     if (game.cardsPlayedThisTurn < requiredMin) return
+    await finishCardTurn(tx, sref, data, roomId, game, myId, false)
+  })
+}
 
-    const drawCount = Math.min(DRAW_PER_TURN, game.drawPile.length)
-    const drawn = game.drawPile.slice(0, drawCount)
-    const remainingDeck = game.drawPile.slice(drawCount)
-    const nextHands = { ...game.hands, [myId]: [...(game.hands[myId] ?? []), ...drawn] }
-    const totalHandCards = Object.values(nextHands).reduce((sum, h) => sum + h.length, 0)
-
-    const endLog = {
-      id: `cg-${Date.now()}-end`,
-      kind: 'endTurn' as const,
-      actorId: myId,
-      deckLeft: remainingDeck.length,
-      atMs: Date.now(),
-    }
-
-    if (remainingDeck.length === 0 && totalHandCards === 0) {
-      const winLog = { id: `cg-${Date.now()}-win`, kind: 'win' as const, atMs: Date.now() }
-      const nextGame: CardGameState = {
-        ...game,
-        hands: nextHands,
-        drawPile: remainingDeck,
-        status: 'won',
-        cardsPlayedThisTurn: 0,
-        log: [...game.log, endLog, winLog],
-      }
-      // 클리어 보상: 참여한 모두에게 코인 지급 (트랜잭션 규칙상 읽기를 먼저 전부 끝낸다).
-      const playerSnaps = await Promise.all(game.turnOrder.map((id) => tx.get(playerRef(id))))
-      tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
-      for (let i = 0; i < game.turnOrder.length; i++) {
-        const pSnap = playerSnaps[i]
-        if (!pSnap.exists()) continue
-        const pData = pSnap.data() as PlayerDoc
-        tx.update(playerRef(game.turnOrder[i]), { coins: pData.coins + CARD_GAME_WIN_COINS })
-      }
-      return
-    }
-
-    const nextTurnIndex = (game.turnIndex + 1) % game.turnOrder.length
-    const nextPlayerId = game.turnOrder[nextTurnIndex]
-    const nextPlayerHand = nextHands[nextPlayerId] ?? []
-    const stuck = !hasAnyLegalCardMove(nextPlayerHand, game.pileAsc, game.pileDesc)
-
-    if (stuck) {
-      const loseLog = { id: `cg-${Date.now()}-lose`, kind: 'lose' as const, actorId: nextPlayerId, atMs: Date.now() }
-      const nextGame: CardGameState = {
-        ...game,
-        hands: nextHands,
-        drawPile: remainingDeck,
-        status: 'lost',
-        turnIndex: nextTurnIndex,
-        cardsPlayedThisTurn: 0,
-        log: [...game.log, endLog, loseLog],
-      }
-      tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
-      return
-    }
-
-    const nextGame: CardGameState = {
-      ...game,
-      hands: nextHands,
-      drawPile: remainingDeck,
-      turnIndex: nextTurnIndex,
-      cardsPlayedThisTurn: 0,
-      log: [...game.log, endLog],
-    }
-    tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
+/** 한 사람의 차례 제한 시간(3 분)이 지나면, 누군가의 화면이든 켜져 있는 클라이언트가
+ * 대신 그 차례를 강제로 마무리한다(멱등적이라 여러 클라이언트가 동시에 감지해도 문제없다). */
+export async function forceEndCardTurnSync(roomId: CardRoomId) {
+  const sref = sessionRef()
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(sref)
+    const data = snap.data() as SessionDoc
+    const game = data.cardGames[roomId]
+    if (!game || game.status !== 'playing') return
+    if (Date.now() - game.turnStartedAtMs < CARD_TURN_TIME_LIMIT_MS) return
+    const actingId = game.turnOrder[game.turnIndex]
+    await finishCardTurn(tx, sref, data, roomId, game, actingId, true)
   })
 }
 

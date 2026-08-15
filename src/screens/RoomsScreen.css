@@ -696,13 +696,27 @@
 }
 
 .cardgame__rule {
-  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   padding: 6px 8px;
-  font-size: 11.5px;
-  color: var(--ward);
   background: var(--void);
   border: 1px dashed var(--line);
+}
+
+.cardgame__rule-line {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--ward);
   line-height: 1.6;
+}
+
+.cardgame__rule-sub {
+  margin: 0 0 0 10px;
+  font-size: 10.5px;
+  color: var(--bone-dim);
+  font-style: italic;
+  line-height: 1.5;
 }
 
 .cardgame {

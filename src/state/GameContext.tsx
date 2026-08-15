@@ -10,7 +10,7 @@ import {
   TEAM_LABEL,
   leakerRevealText,
 } from '../data/characters'
-import { CARD_ROOM_CAPACITY, CARD_ROOM_MIN_PLAYERS } from '../data/cardGame'
+import { CARD_ROOM_CAPACITY, CARD_ROOM_MIN_PLAYERS, CARD_TURN_TIME_LIMIT_MS } from '../data/cardGame'
 import { creatureById } from '../data/creatures'
 import { shopItemById } from '../data/shop'
 import { hallEventById } from '../data/hallEvents'
@@ -67,6 +67,7 @@ import {
   openMissionsSync,
   patchPlayer,
   playCardSync,
+  forceEndCardTurnSync,
   resetCardGameSync,
   startCardGameSync,
   patchSession,
@@ -781,6 +782,19 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     return () => clearInterval(t)
   }, [session.roomEvents])
 
+  // 카드 게임 차례 제한 시간(3 분)이 지나면, 누군가의 화면이든 켜져 있는 클라이언트가
+  // 대신 그 차례를 강제로 넘긴다(멱등적이라 여러 클라이언트가 동시에 감지해도 문제없다).
+  useEffect(() => {
+    const t = setInterval(() => {
+      for (const room of CARD_ROOMS) {
+        const game = session.cardGames[room.id]
+        if (game && game.status === 'playing' && Date.now() - game.turnStartedAtMs >= CARD_TURN_TIME_LIMIT_MS) {
+          void forceEndCardTurnSync(room.id)
+        }
+      }
+    }, 10000)
+    return () => clearInterval(t)
+  }, [session.cardGames])
 
   // 강당 채팅에 새 메시지가 오면 (내가 보낸 게 아니면) 상단바 + 백그라운드 알림을 띄운다.
   // 나를 태그(@닉네임)한 메시지는 더 눈에 띄게 표시한다.

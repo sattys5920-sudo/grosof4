@@ -4,7 +4,14 @@ import { useGame } from '../state/GameContext'
 import { CARD_ROOMS, CHARACTERS, ROOMS } from '../data/characters'
 import { CREATURES } from '../data/creatures'
 import { hallwayInvestigationByRoom } from '../data/hallwayInvestigations'
-import { CARD_GAME_WIN_COINS, CARD_ROOM_MIN_PLAYERS, isLegalCardPlay, MIN_PLAY_PER_TURN } from '../data/cardGame'
+import {
+  CARD_GAME_WIN_COINS,
+  CARD_ROOM_MIN_PLAYERS,
+  CARD_TIMEOUT_STRIKES,
+  CARD_TURN_TIME_LIMIT_MS,
+  isLegalCardPlay,
+  MIN_PLAY_PER_TURN,
+} from '../data/cardGame'
 import type { CardRoomId, RoomId } from '../data/types'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
@@ -518,10 +525,9 @@ export function RoomsScreen() {
                 {occupants.length}/{room.capacity}
               </span>
               {occupants.map((id) => {
-                const c = charOf(id)
                 return (
                   <span key={id} className="rooms__pin-occupant">
-                    <Badge team={c.team} size={18} revealed={revealedFor(c)} />
+                    <ChatAvatar authorId={id} name={displayName(id)} photo={players[id]?.photo} size={22} />
                     {isAdmin && (
                       <button
                         className="rooms__pin-kick"
@@ -561,14 +567,29 @@ export function RoomsScreen() {
               <p className="rooms__pin-ambient">이 구관은 아직 잠겨 있다.</p>
             )}
 
-            <p className="cardgame__rule">
-              게임 방법: 2부터 99까지의 숫자 카드로 진행하는 협동 카드 게임이다....... 1열은 오름차순(현재 숫자보다 큰
-              카드만), 100열은 내림차순(현재 숫자보다 작은 카드만) 낼 수 있다. {CARD_ROOM_MIN_PLAYERS}명에서 {room.capacity}명
-              사이로 모이면 불가가 "플레이" 버튼을 눌러 시작하고, 참여자 닉네임의 ㄱㄴㄷ 순서대로 차례가 돈다. 손에는
-              항상 6장을 들고, 자기 차례에는 반드시 2장 이상을 내야 한다(덱이 떨어지면 1장만 내도 된다). 카드를 내고
-              차례를 마치면 남은 덱에서 2장을 새로 받는다. 모두의 손패와 덱이 함께 텅 비면 승리, 낼 수 있는 카드가
-              없어 막히면 패배다. 클리어하면 참여자 전원에게 코인 {CARD_GAME_WIN_COINS}개가 지급된다.
-            </p>
+            <div className="cardgame__rule">
+              <p className="cardgame__rule-line">
+                참여 인원 {CARD_ROOM_MIN_PLAYERS}~{room.capacity}명. 시작·종료는 모두 불가의 권한이다.
+              </p>
+              <p className="cardgame__rule-line">손패 중 최소 2 장을 턴마다 내려놓을 수 있다.</p>
+              <p className="cardgame__rule-line">카드를 내려놓으면 보충 덱에서 2 장 즉시 보충된다.</p>
+              <p className="cardgame__rule-line">보충 덱이 없어질 경우, 최소 1 장씩 내려놓을 수 있다.</p>
+              <p className="cardgame__rule-line">
+                1 열과 100 열 중 하나를 골라서 내려놓을 수 있다. (장마다 다른 곳에 내려놓기 가능)
+              </p>
+              <p className="cardgame__rule-line">1 열은 오름차순, 100 열은 내림차순으로 만들어야 한다.</p>
+              <p className="cardgame__rule-line">카드에 대한 직접적인 언급은 엄금한다. 시도 시 패배 처리.</p>
+              <p className="cardgame__rule-sub">(ex. 86 있는 사람!! 또는 나 34 근처 있는데!!)</p>
+              <p className="cardgame__rule-line">다만, 간접적인 어필은 가능하다.</p>
+              <p className="cardgame__rule-sub">(ex. 1 열 안 건드려 주면.. 고마울 것 같어)</p>
+              <p className="cardgame__rule-line">
+                수열의 오류 없이 모든 숫자를 내려놓게 되면 성공. 성공 시 참여자 전원 코인 {CARD_GAME_WIN_COINS}개 지급.
+              </p>
+              <p className="cardgame__rule-line">
+                한 사람당 차례 제한 시간은 3 분이며, 지나면 다음 사람에게 넘어간다. 이 경우가 {CARD_TIMEOUT_STRIKES} 회
+                누적되면 즉시 패배 처리된다.
+              </p>
+            </div>
 
             {!game && (roomEvent.open || isAdmin || iAmHere) && (
               <p className="rooms__pin-ambient">
@@ -604,7 +625,9 @@ export function RoomsScreen() {
                 {game.status === 'playing' && (
                   <p className="cardgame__turn">
                     지금 차례: <strong>{displayName(game.turnOrder[game.turnIndex])}</strong> (이번 차례{' '}
-                    {game.cardsPlayedThisTurn}/{requiredMin}장)
+                    {game.cardsPlayedThisTurn}/{requiredMin}장) · 남은 시간{' '}
+                    {formatRemaining(Math.max(0, game.turnStartedAtMs + CARD_TURN_TIME_LIMIT_MS - now))} · 시간 초과{' '}
+                    {game.timeoutCount}/{CARD_TIMEOUT_STRIKES}
                   </p>
                 )}
                 {game.status === 'won' && (
@@ -613,7 +636,11 @@ export function RoomsScreen() {
                   </p>
                 )}
                 {game.status === 'lost' && (
-                  <p className="cardgame__result is-lose">더 이상 낼 수 있는 카드가 없다....... 패배.</p>
+                  <p className="cardgame__result is-lose">
+                    {game.log[game.log.length - 1]?.reason === 'timeout'
+                      ? `시간 초과가 ${CARD_TIMEOUT_STRIKES} 회 누적됐다....... 패배.`
+                      : '더 이상 낼 수 있는 카드가 없다....... 패배.'}
+                  </p>
                 )}
 
                 <div className="cardgame__log" ref={cardLogRef}>
@@ -622,9 +649,15 @@ export function RoomsScreen() {
                       {entry.kind === 'start' && '게임을 시작했다....... 카드를 나눠 가졌다.'}
                       {entry.kind === 'play' &&
                         `${displayName(entry.actorId!)}이(가) ${entry.pile === 'asc' ? '1열' : '100열'}에 ${entry.card}을(를) 놓았다.`}
-                      {entry.kind === 'endTurn' && `${displayName(entry.actorId!)}의 차례가 끝났다. (덱 ${entry.deckLeft}장 남음)`}
+                      {entry.kind === 'endTurn' &&
+                        (entry.reason === 'timeout'
+                          ? `${displayName(entry.actorId!)}의 차례가 시간 초과로 끝났다. (덱 ${entry.deckLeft}장 남음)`
+                          : `${displayName(entry.actorId!)}의 차례가 끝났다. (덱 ${entry.deckLeft}장 남음)`)}
                       {entry.kind === 'win' && `모두의 손패를 비웠다! 게임 승리 — 참여자 전원 코인 ${CARD_GAME_WIN_COINS}개 지급.`}
-                      {entry.kind === 'lose' && `${displayName(entry.actorId!)}의 차례에 낼 수 있는 카드가 없다....... 게임 패배.`}
+                      {entry.kind === 'lose' &&
+                        (entry.reason === 'timeout'
+                          ? `시간 초과가 ${CARD_TIMEOUT_STRIKES} 회 누적됐다....... 게임 패배.`
+                          : `${displayName(entry.actorId!)}의 차례에 낼 수 있는 카드가 없다....... 게임 패배.`)}
                     </p>
                   ))}
                 </div>
@@ -808,10 +841,9 @@ export function RoomsScreen() {
               </div>
               <p className="rooms__card-desc">{room.description}</p>
               <div className="rooms__card-avatars">
-                {occupants.map((id) => {
-                  const c = charOf(id)
-                  return <Badge key={id} team={c.team} size={18} revealed={revealedFor(c)} />
-                })}
+                {occupants.map((id) => (
+                  <ChatAvatar key={id} authorId={id} name={displayName(id)} photo={players[id]?.photo} size={18} />
+                ))}
               </div>
             </button>
           )

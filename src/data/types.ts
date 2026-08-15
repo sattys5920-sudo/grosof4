@@ -306,12 +306,14 @@ export interface CardLogEntry {
   card?: number
   pile?: CardPile
   deckLeft?: number
+  reason?: 'stuck' | 'timeout'
   atMs: number
 }
 
 // "더 게임" 협동 카드 게임 상태. 1열은 오름차순(현재 값보다 큰 카드만),
 // 100열은 내림차순(현재 값보다 작은 카드만) 낼 수 있다. 덱이 남아 있는 한
-// 차례마다 최소 2장을 내야 하고, 덱이 떨어지면 1장만 내도 된다.
+// 차례마다 최소 2장을 내야 하고, 덱이 떨어지면 1장만 내도 된다. 차례마다
+// 제한 시간(turnStartedAtMs 기준)이 있고, 시간 초과가 누적되면 패배한다.
 export interface CardGameState {
   status: 'playing' | 'won' | 'lost'
   hands: Record<string, number[]>
@@ -321,5 +323,7 @@ export interface CardGameState {
   turnOrder: string[]
   turnIndex: number
   cardsPlayedThisTurn: number
+  turnStartedAtMs: number
+  timeoutCount: number
   log: CardLogEntry[]
 }

@@ -8,6 +8,8 @@ export const MIN_PLAY_PER_TURN = 2
 export const CARD_ROOM_CAPACITY = 5
 export const CARD_ROOM_MIN_PLAYERS = 2
 export const CARD_GAME_WIN_COINS = 100
+export const CARD_TURN_TIME_LIMIT_MS = 3 * 60 * 1000
+export const CARD_TIMEOUT_STRIKES = 3
 
 export const CARD_ROOM_IDS: CardRoomId[] = ['classroomA', 'classroomB']
 
