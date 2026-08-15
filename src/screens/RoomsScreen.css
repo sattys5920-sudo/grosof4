@@ -8,20 +8,20 @@
 .rooms__intro {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 14px 16px;
+  gap: 3px;
+  padding: 10px 16px;
 }
 
 .rooms__intro-label {
   font-family: var(--font-pixel);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--veil);
   letter-spacing: 1px;
 }
 
 .rooms__intro p {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 12px;
   color: var(--bone-dim);
 }
 
@@ -31,8 +31,8 @@
   align-content: start;
   flex: 1;
   min-height: 0;
-  gap: 10px;
-  padding: 0 16px 20px;
+  gap: 8px;
+  padding: 0 16px 16px;
   overflow-y: auto;
 }
 
@@ -40,11 +40,11 @@
   text-align: left;
   background: var(--void-2);
   border: 1px solid var(--line);
-  padding: 14px;
+  padding: 10px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -67,46 +67,48 @@
 
 .rooms__card-locked-tag {
   font-family: var(--font-pixel);
-  font-size: 9px;
+  font-size: 8px;
   color: var(--bone-dim);
   border: 1px solid var(--line);
-  padding: 2px 5px;
+  padding: 1px 4px;
 }
 
 .rooms__card-top {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  flex-wrap: wrap;
+  row-gap: 3px;
 }
 
 .rooms__card-name {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-family: var(--font-title);
-  font-size: 15px;
+  font-size: 13px;
   color: var(--bone-bright);
 }
 
 .rooms__card-clue-tag {
   font-family: var(--font-pixel);
-  font-size: 9px;
+  font-size: 8px;
   color: var(--ward);
   border: 1px solid var(--ward);
-  padding: 2px 5px;
+  padding: 1px 4px;
 }
 
 .rooms__card-active-tag {
   font-family: var(--font-pixel);
-  font-size: 9px;
+  font-size: 8px;
   color: var(--sin);
   border: 1px solid var(--sin);
-  padding: 2px 5px;
+  padding: 1px 4px;
 }
 
 .rooms__card-count {
   font-family: var(--font-pixel);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--ward);
 }
 
@@ -116,15 +118,15 @@
 
 .rooms__card-desc {
   margin: 0;
-  font-size: 13.5px;
+  font-size: 11.5px;
   color: var(--bone-dim);
-  line-height: 1.55;
+  line-height: 1.45;
 }
 
 .rooms__card-avatars {
   display: flex;
   gap: 6px;
-  min-height: 18px;
+  min-height: 16px;
 }
 
 .rooms__back {
