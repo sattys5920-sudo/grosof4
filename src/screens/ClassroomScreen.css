@@ -700,6 +700,14 @@
   font-style: italic;
 }
 
+.hallobj__puzzle-wrong {
+  width: 100%;
+  margin: 0;
+  font-size: 11px;
+  color: var(--sin);
+  font-style: italic;
+}
+
 .hallobj--minigame {
   border-color: var(--ward);
 }

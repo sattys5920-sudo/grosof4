@@ -327,7 +327,7 @@ interface GameState {
   forceSkipHallObject: (objectId: string) => void
   finishHallEvent: () => void
   resolveHallObject: (objectId: string, choice: 'open' | 'leave') => void
-  submitHallPuzzleAnswer: (objectId: string, text: string) => void
+  submitHallPuzzleAnswer: (objectId: string, text: string) => boolean
   joinHallMinigame: (objectId: string, choiceId: string) => void
   resolveHallMinigame: (objectId: string) => void
   startHallGame: (objectId: string) => void
@@ -1528,36 +1528,42 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     }
   }
 
-  function submitHallPuzzleAnswer(objectId: string, text: string) {
-    if (!viewerId || !text.trim()) return
+  function submitHallPuzzleAnswer(objectId: string, text: string): boolean {
+    if (!viewerId || !text.trim()) return false
     const heNow = session.hallEvent
-    const eventNow = heNow.eventId ? hallEventById(heNow.eventId) : null
+    const eventNow = heNow?.eventId ? hallEventById(heNow.eventId) : null
     const objNow = eventNow?.objects.find((o) => o.id === objectId)
     const puzzleNow = objNow?.puzzleId ? hallPuzzleById(objNow.puzzleId) : null
-    void runAbilityTransaction(viewerId, (sess) => {
+    const correct = !!(objNow && puzzleNow && normalize(text) === normalize(puzzleNow.answer))
+    runAbilityTransaction(viewerId, (sess) => {
+      // 세션 문서가 이 기능이 추가되기 전에 만들어졌을 수도 있으므로, hallEvent나
+      // objectResults 자체가 아예 없어도 크래시 없이 기본값으로 채워 진행한다.
       const he = sess.hallEvent
-      if (!he.eventId) return {}
+      if (!he || !he.eventId) return {}
       const event = hallEventById(he.eventId)
       if (!event) return {}
       const obj = event.objects.find((o) => o.id === objectId)
       if (!obj || obj.kind !== 'puzzle' || !obj.puzzleId) return {}
+      const objectResults = he.objectResults ?? {}
       // 문제는 "열어 본다"를 누르지 않아도 등장하는 즉시 바로 풀 수 있으므로,
       // objectResults 항목이 아직 없어도(= 아무도 열지 않았어도) 기본값으로 채워 진행한다.
-      const existing: HallObjectResult = he.objectResults[objectId] ?? emptyHallObjectResult()
+      const existing: HallObjectResult = objectResults[objectId] ?? emptyHallObjectResult()
       if (existing.puzzleSolved || existing.puzzleAttempts >= 3) return {}
       const puzzle = hallPuzzleById(obj.puzzleId)
       if (!puzzle) return {}
-      const correct = normalize(text) === normalize(puzzle.answer)
+      const isCorrect = normalize(text) === normalize(puzzle.answer)
       const nextResult: HallObjectResult = {
         ...existing,
         puzzleAttempts: existing.puzzleAttempts + 1,
-        puzzleSolved: correct,
+        puzzleSolved: isCorrect,
       }
       return {
-        session: { hallEvent: { ...he, objectResults: { ...he.objectResults, [objectId]: nextResult } } },
+        session: { hallEvent: { ...he, objectResults: { ...objectResults, [objectId]: nextResult } } },
       }
+    }).catch((err) => {
+      console.error('문제 정답 제출 실패', err)
     })
-    if (objNow && puzzleNow && normalize(text) === normalize(puzzleNow.answer)) {
+    if (correct && objNow && puzzleNow) {
       void sendClassroomMessageSync({
         id: `he-${Date.now()}-puzzle-${objectId}`,
         authorId: 'admin',
@@ -1565,6 +1571,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         time: '지금',
       })
     }
+    return correct
   }
 
   function joinHallMinigame(objectId: string, choiceId: string) {

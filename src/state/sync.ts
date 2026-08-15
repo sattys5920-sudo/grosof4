@@ -909,19 +909,26 @@ export async function runAbilityTransaction(
 ) {
   const sref = sessionRef()
   const pref = playerRef(myId)
-  await runTransaction(requireDb(), async (tx) => {
-    const sSnap = await tx.get(sref)
-    const pSnap = await tx.get(pref)
-    if (!pSnap.exists()) return
-    const rawSession = sSnap.data() as SessionDoc
-    const session = { ...rawSession, mission: deserializeMission(rawSession.mission) }
-    const player = pSnap.data() as PlayerDoc
-    const { session: sessionPatch, player: playerPatch } = fn(session, player)
-    if (sessionPatch) {
-      tx.update(sref, sessionPatch.mission ? { ...sessionPatch, mission: serializeMission(sessionPatch.mission) } : sessionPatch)
-    }
-    if (playerPatch) tx.update(pref, playerPatch)
-  })
+  try {
+    await runTransaction(requireDb(), async (tx) => {
+      const sSnap = await tx.get(sref)
+      const pSnap = await tx.get(pref)
+      if (!pSnap.exists()) return
+      const rawSession = sSnap.data() as SessionDoc
+      const session = { ...rawSession, mission: deserializeMission(rawSession.mission) }
+      const player = pSnap.data() as PlayerDoc
+      const { session: sessionPatch, player: playerPatch } = fn(session, player)
+      if (sessionPatch) {
+        tx.update(sref, sessionPatch.mission ? { ...sessionPatch, mission: serializeMission(sessionPatch.mission) } : sessionPatch)
+      }
+      if (playerPatch) tx.update(pref, playerPatch)
+    })
+  } catch (err) {
+    // 게임 도중 문서 스키마가 늘어나는 등으로 이 트랜잭션 하나가 실패해도, 전역
+    // unhandledrejection 핸들러(ErrorBoundary)가 이를 잡아 앱 전체를 크래시 화면으로
+    // 튕겨 버리면 안 되므로 여기서 삼키고 로그만 남긴다.
+    console.error('runAbilityTransaction 실패', err)
+  }
 }
 
 /**

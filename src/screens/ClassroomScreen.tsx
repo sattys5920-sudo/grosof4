@@ -53,6 +53,7 @@ export function ClassroomScreen() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [pendingChoice, setPendingChoice] = useState<{ objectId: string; choice: 'open' | 'leave' } | null>(null)
   const [puzzleDrafts, setPuzzleDrafts] = useState<Record<string, string>>({})
+  const [puzzleWrong, setPuzzleWrong] = useState<Record<string, boolean>>({})
   const [baseballDrafts, setBaseballDrafts] = useState<Record<string, string>>({})
   const [davinciDrafts, setDavinciDrafts] = useState<Record<string, string>>({})
   const [now, setNow] = useState(Date.now())
@@ -395,23 +396,31 @@ export function ClassroomScreen() {
                   <div className="hallobj__puzzle-answer">
                     <input
                       value={puzzleDrafts[obj.id] ?? ''}
-                      onChange={(e) => setPuzzleDrafts((prev) => ({ ...prev, [obj.id]: e.target.value }))}
+                      onChange={(e) => {
+                        setPuzzleDrafts((prev) => ({ ...prev, [obj.id]: e.target.value }))
+                        setPuzzleWrong((prev) => ({ ...prev, [obj.id]: false }))
+                      }}
                       onKeyDown={(e) => {
                         if (e.key !== 'Enter') return
-                        submitHallPuzzleAnswer(obj.id, puzzleDrafts[obj.id] ?? '')
+                        if (!(puzzleDrafts[obj.id] ?? '').trim()) return
+                        const ok = submitHallPuzzleAnswer(obj.id, puzzleDrafts[obj.id] ?? '')
                         setPuzzleDrafts((prev) => ({ ...prev, [obj.id]: '' }))
+                        setPuzzleWrong((prev) => ({ ...prev, [obj.id]: !ok }))
                       }}
                       placeholder="정답 입력......"
                     />
                     <button
                       onClick={() => {
-                        submitHallPuzzleAnswer(obj.id, puzzleDrafts[obj.id] ?? '')
+                        if (!(puzzleDrafts[obj.id] ?? '').trim()) return
+                        const ok = submitHallPuzzleAnswer(obj.id, puzzleDrafts[obj.id] ?? '')
                         setPuzzleDrafts((prev) => ({ ...prev, [obj.id]: '' }))
+                        setPuzzleWrong((prev) => ({ ...prev, [obj.id]: !ok }))
                       }}
                     >
                       제출
                     </button>
                     <span className="hallobj__puzzle-attempts">남은 기회 {3 - attempts}/3</span>
+                    {puzzleWrong[obj.id] && <p className="hallobj__puzzle-wrong">오답이다....... 다시 시도해 보자.</p>}
                   </div>
                 )
               )}
