@@ -574,126 +574,173 @@ export async function leaveCardRoomSync(myId: string, roomId: CardRoomId) {
   })
 }
 
+// 강당/구관 곳곳에서 이미 실시간으로 몰려 쓰는 sessions/live 문서 하나를 공유하다 보니,
+// 여러 명이 거의 동시에 배팅·초기화를 누르면 Firestore 트랜잭션끼리 충돌해 재시도가
+// 필요할 수 있다. 기본 재시도 횟수(5 회)로는 10 인 동시 조작 상황에서 부족할 수 있어
+// 할리갈리 관련 트랜잭션은 재시도 한도를 넉넉히 늘리고, 그래도 실패하면(네트워크 문제 등)
+// 조용히 사라지지 않도록 콘솔에 남긴다.
+const HALLI_TX_OPTIONS = { maxAttempts: 25 }
+
 export async function joinHalliRoomSync(myId: string, roomId: HalliRoomId) {
   const sref = sessionRef()
-  await runTransaction(requireDb(), async (tx) => {
-    const snap = await tx.get(sref)
-    const data = snap.data() as SessionDoc
-    if (!data.halliGames) data.halliGames = initialHalliGames()
-    if (!data.roomEvents[roomId]?.open) return
-    // 배팅 단계(betting)든 진행 중(playing)이든 게임 객체가 있으면 입장/퇴장 모두 막는다.
-    if (data.halliGames[roomId]) return
-    const occ = data.roomOccupancy
-    if ((occ[roomId] ?? []).includes(myId)) return
-    if ((occ[roomId] ?? []).length >= HALLI_ROOM_CAPACITY) return
-    const next: Record<RoomId, string[]> = { ...occ }
-    for (const id of [...ROOMS.map((r) => r.id), ...CARD_ROOM_IDS, ...HALLI_ROOM_IDS]) {
-      if (id !== roomId) next[id] = (next[id] ?? []).filter((pid) => pid !== myId)
-    }
-    next[roomId] = [...(next[roomId] ?? []), myId]
-    tx.update(sref, { roomOccupancy: next })
-  })
+  try {
+    await runTransaction(
+      requireDb(),
+      async (tx) => {
+        const snap = await tx.get(sref)
+        const data = snap.data() as SessionDoc
+        if (!data.halliGames) data.halliGames = initialHalliGames()
+        if (!data.roomEvents[roomId]?.open) return
+        // 배팅 단계(betting)든 진행 중(playing)이든 게임 객체가 있으면 입장/퇴장 모두 막는다.
+        if (data.halliGames[roomId]) return
+        const occ = data.roomOccupancy
+        if ((occ[roomId] ?? []).includes(myId)) return
+        if ((occ[roomId] ?? []).length >= HALLI_ROOM_CAPACITY) return
+        const next: Record<RoomId, string[]> = { ...occ }
+        for (const id of [...ROOMS.map((r) => r.id), ...CARD_ROOM_IDS, ...HALLI_ROOM_IDS]) {
+          if (id !== roomId) next[id] = (next[id] ?? []).filter((pid) => pid !== myId)
+        }
+        next[roomId] = [...(next[roomId] ?? []), myId]
+        tx.update(sref, { roomOccupancy: next })
+      },
+      HALLI_TX_OPTIONS,
+    )
+  } catch (err) {
+    console.error('joinHalliRoomSync 실패', err)
+  }
 }
 
 export async function leaveHalliRoomSync(myId: string, roomId: HalliRoomId) {
   const sref = sessionRef()
-  await runTransaction(requireDb(), async (tx) => {
-    const snap = await tx.get(sref)
-    const data = snap.data() as SessionDoc
-    if (!data.halliGames) data.halliGames = initialHalliGames()
-    if (data.halliGames[roomId]) return
-    const occ = data.roomOccupancy
-    tx.update(sref, { roomOccupancy: { ...occ, [roomId]: (occ[roomId] ?? []).filter((id) => id !== myId) } })
-  })
+  try {
+    await runTransaction(
+      requireDb(),
+      async (tx) => {
+        const snap = await tx.get(sref)
+        const data = snap.data() as SessionDoc
+        if (!data.halliGames) data.halliGames = initialHalliGames()
+        if (data.halliGames[roomId]) return
+        const occ = data.roomOccupancy
+        tx.update(sref, { roomOccupancy: { ...occ, [roomId]: (occ[roomId] ?? []).filter((id) => id !== myId) } })
+      },
+      HALLI_TX_OPTIONS,
+    )
+  } catch (err) {
+    console.error('leaveHalliRoomSync 실패', err)
+  }
 }
 
 /** 불가가 "베팅 시작"을 누르면 그 순간 방에 있는 인원으로 참가자를 확정하고 배팅 단계로 들어간다. */
 export async function startHalliBettingSync(roomId: HalliRoomId) {
   const sref = sessionRef()
-  await runTransaction(requireDb(), async (tx) => {
-    const snap = await tx.get(sref)
-    const data = snap.data() as SessionDoc
-    if (!data.halliGames) data.halliGames = initialHalliGames()
-    if (data.halliGames[roomId]) return
-    const occ = data.roomOccupancy[roomId] ?? []
-    if (occ.length < HALLI_ROOM_MIN_PLAYERS || occ.length > HALLI_ROOM_CAPACITY) return
-    const game: HalliGameState = {
-      status: 'betting',
-      playerIds: [...occ],
-      bets: {},
-      decks: {},
-      revealed: {},
-      roundCards: [],
-      penaltyCards: [],
-      eliminated: [],
-      winnerId: null,
-      pot: 0,
-      log: [{ id: `hg-${Date.now()}`, kind: 'start', atMs: Date.now() }],
-    }
-    tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: game } })
-  })
+  try {
+    await runTransaction(
+      requireDb(),
+      async (tx) => {
+        const snap = await tx.get(sref)
+        const data = snap.data() as SessionDoc
+        if (!data.halliGames) data.halliGames = initialHalliGames()
+        if (data.halliGames[roomId]) return
+        const occ = data.roomOccupancy[roomId] ?? []
+        if (occ.length < HALLI_ROOM_MIN_PLAYERS || occ.length > HALLI_ROOM_CAPACITY) return
+        const game: HalliGameState = {
+          status: 'betting',
+          playerIds: [...occ],
+          bets: {},
+          decks: {},
+          revealed: {},
+          roundCards: [],
+          penaltyCards: [],
+          eliminated: [],
+          winnerId: null,
+          pot: 0,
+          log: [{ id: `hg-${Date.now()}`, kind: 'start', atMs: Date.now() }],
+        }
+        tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: game } })
+      },
+      HALLI_TX_OPTIONS,
+    )
+  } catch (err) {
+    console.error('startHalliBettingSync 실패', err)
+  }
 }
 
 /** 참가자 본인이 자기 코인 한도 내에서 배팅액을 정한다. */
 export async function placeHalliBetSync(myId: string, roomId: HalliRoomId, amount: number) {
   const sref = sessionRef()
-  await runTransaction(requireDb(), async (tx) => {
-    const sSnap = await tx.get(sref)
-    const data = sSnap.data() as SessionDoc
-    if (!data.halliGames) data.halliGames = initialHalliGames()
-    const game = data.halliGames[roomId]
-    if (!game || game.status !== 'betting') return
-    if (!game.playerIds.includes(myId)) return
-    const pSnap = await tx.get(playerRef(myId))
-    if (!pSnap.exists()) return
-    const player = pSnap.data() as PlayerDoc
-    if (amount < 1 || amount > player.coins) return
-    const nextGame: HalliGameState = { ...game, bets: { ...game.bets, [myId]: Math.round(amount) } }
-    tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: nextGame } })
-  })
+  try {
+    await runTransaction(
+      requireDb(),
+      async (tx) => {
+        const sSnap = await tx.get(sref)
+        const data = sSnap.data() as SessionDoc
+        if (!data.halliGames) data.halliGames = initialHalliGames()
+        const game = data.halliGames[roomId]
+        if (!game || game.status !== 'betting') return
+        if (!game.playerIds.includes(myId)) return
+        const pSnap = await tx.get(playerRef(myId))
+        if (!pSnap.exists()) return
+        const player = pSnap.data() as PlayerDoc
+        if (amount < 1 || amount > player.coins) return
+        const nextGame: HalliGameState = { ...game, bets: { ...game.bets, [myId]: Math.round(amount) } }
+        tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: nextGame } })
+      },
+      HALLI_TX_OPTIONS,
+    )
+  } catch (err) {
+    console.error('placeHalliBetSync 실패', err)
+  }
 }
 
 /** 전원이 배팅을 마치면, 불가가 카드를 나눠주고 실제 대전을 시작한다. */
 export async function dealHalliGameSync(roomId: HalliRoomId) {
   const sref = sessionRef()
-  await runTransaction(requireDb(), async (tx) => {
-    const snap = await tx.get(sref)
-    const data = snap.data() as SessionDoc
-    if (!data.halliGames) data.halliGames = initialHalliGames()
-    const game = data.halliGames[roomId]
-    if (!game || game.status !== 'betting') return
-    if (!game.playerIds.every((id) => game.bets[id] !== undefined)) return
-    // 트랜잭션 규칙상 쓰기 전에 읽기를 전부 끝내야 하므로, 배팅자 전원의 코인 잔액을 먼저 읽어 둔다.
-    const pSnaps = await Promise.all(game.playerIds.map((id) => tx.get(playerRef(id))))
-    const deck = buildHalliDeck()
-    const per = Math.floor(deck.length / game.playerIds.length)
-    const decks: Record<string, HalliCard[]> = {}
-    for (const id of game.playerIds) decks[id] = deck.splice(0, per)
-    // 56장이 인원수로 나누어떨어지지 않으면 남는 카드를 무작위 한 명에게 더 준다.
-    if (deck.length > 0) {
-      const luckyId = game.playerIds[Math.floor(Math.random() * game.playerIds.length)]
-      decks[luckyId] = [...decks[luckyId], ...deck]
-    }
-    const revealed: Record<string, HalliCard | null> = {}
-    for (const id of game.playerIds) revealed[id] = null
-    const pot = game.playerIds.reduce((sum, id) => sum + game.bets[id], 0)
-    const nextGame: HalliGameState = {
-      ...game,
-      status: 'playing',
-      decks,
-      revealed,
-      pot,
-      log: [...game.log, { id: `hg-${Date.now()}-deal`, kind: 'flip', atMs: Date.now() }],
-    }
-    tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: nextGame } })
-    for (let i = 0; i < game.playerIds.length; i++) {
-      const id = game.playerIds[i]
-      const pSnap = pSnaps[i]
-      if (!pSnap.exists()) continue
-      const player = pSnap.data() as PlayerDoc
-      tx.update(playerRef(id), { coins: Math.max(0, player.coins - game.bets[id]) })
-    }
-  })
+  try {
+    await runTransaction(
+      requireDb(),
+      async (tx) => {
+        const snap = await tx.get(sref)
+        const data = snap.data() as SessionDoc
+        if (!data.halliGames) data.halliGames = initialHalliGames()
+        const game = data.halliGames[roomId]
+        if (!game || game.status !== 'betting') return
+        if (!game.playerIds.every((id) => game.bets[id] !== undefined)) return
+        // 트랜잭션 규칙상 쓰기 전에 읽기를 전부 끝내야 하므로, 배팅자 전원의 코인 잔액을 먼저 읽어 둔다.
+        const pSnaps = await Promise.all(game.playerIds.map((id) => tx.get(playerRef(id))))
+        const deck = buildHalliDeck()
+        const per = Math.floor(deck.length / game.playerIds.length)
+        const decks: Record<string, HalliCard[]> = {}
+        for (const id of game.playerIds) decks[id] = deck.splice(0, per)
+        // 56장이 인원수로 나누어떨어지지 않으면 남는 카드를 무작위 한 명에게 더 준다.
+        if (deck.length > 0) {
+          const luckyId = game.playerIds[Math.floor(Math.random() * game.playerIds.length)]
+          decks[luckyId] = [...decks[luckyId], ...deck]
+        }
+        const revealed: Record<string, HalliCard | null> = {}
+        for (const id of game.playerIds) revealed[id] = null
+        const pot = game.playerIds.reduce((sum, id) => sum + game.bets[id], 0)
+        const nextGame: HalliGameState = {
+          ...game,
+          status: 'playing',
+          decks,
+          revealed,
+          pot,
+          log: [...game.log, { id: `hg-${Date.now()}-deal`, kind: 'flip', atMs: Date.now() }],
+        }
+        tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: nextGame } })
+        for (let i = 0; i < game.playerIds.length; i++) {
+          const id = game.playerIds[i]
+          const pSnap = pSnaps[i]
+          if (!pSnap.exists()) continue
+          const player = pSnap.data() as PlayerDoc
+          tx.update(playerRef(id), { coins: Math.max(0, player.coins - game.bets[id]) })
+        }
+      },
+      HALLI_TX_OPTIONS,
+    )
+  } catch (err) {
+    console.error('dealHalliGameSync 실패', err)
+  }
 }
 
 function halliEliminate(game: HalliGameState): HalliGameState {
@@ -708,25 +755,36 @@ function halliEliminate(game: HalliGameState): HalliGameState {
 
 export async function flipHalliCardSync(myId: string, roomId: HalliRoomId) {
   const sref = sessionRef()
-  await runTransaction(requireDb(), async (tx) => {
-    const snap = await tx.get(sref)
-    const data = snap.data() as SessionDoc
-    if (!data.halliGames) data.halliGames = initialHalliGames()
-    const game = data.halliGames[roomId]
-    if (!game || game.status !== 'playing') return
-    if (game.eliminated.includes(myId)) return
-    const deck = game.decks[myId] ?? []
-    if (deck.length === 0) return
-    const [card, ...rest] = deck
-    const nextGame: HalliGameState = {
-      ...game,
-      decks: { ...game.decks, [myId]: rest },
-      revealed: { ...game.revealed, [myId]: card },
-      roundCards: [...game.roundCards, { playerId: myId, card }],
-      log: [...game.log, { id: `hg-${Date.now()}-flip-${myId}`, kind: 'flip', actorId: myId, card, atMs: Date.now() }],
-    }
-    tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: nextGame } })
-  })
+  try {
+    await runTransaction(
+      requireDb(),
+      async (tx) => {
+        const snap = await tx.get(sref)
+        const data = snap.data() as SessionDoc
+        if (!data.halliGames) data.halliGames = initialHalliGames()
+        const game = data.halliGames[roomId]
+        if (!game || game.status !== 'playing') return
+        if (game.eliminated.includes(myId)) return
+        const deck = game.decks[myId] ?? []
+        if (deck.length === 0) return
+        const [card, ...rest] = deck
+        const nextGame: HalliGameState = {
+          ...game,
+          decks: { ...game.decks, [myId]: rest },
+          revealed: { ...game.revealed, [myId]: card },
+          roundCards: [...game.roundCards, { playerId: myId, card }],
+          log: [
+            ...game.log,
+            { id: `hg-${Date.now()}-flip-${myId}`, kind: 'flip', actorId: myId, card, atMs: Date.now() },
+          ],
+        }
+        tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: nextGame } })
+      },
+      HALLI_TX_OPTIONS,
+    )
+  } catch (err) {
+    console.error('flipHalliCardSync 실패', err)
+  }
 }
 
 /**
@@ -738,101 +796,120 @@ export async function flipHalliCardSync(myId: string, roomId: HalliRoomId) {
 export async function pressHalliBellSync(myId: string, roomId: HalliRoomId) {
   const sref = sessionRef()
   const meRef = playerRef(myId)
-  await runTransaction(requireDb(), async (tx) => {
-    // Firestore 트랜잭션은 쓰기 전에 읽기를 전부 끝내야 하므로, 게임이 끝나 코인을
-    // 지급해야 할 경우를 대비해 내 플레이어 문서를 미리 읽어 둔다(실제로 쓸지는 아래에서 결정).
-    const snap = await tx.get(sref)
-    const meSnap = await tx.get(meRef)
-    const data = snap.data() as SessionDoc
-    if (!data.halliGames) data.halliGames = initialHalliGames()
-    const game = data.halliGames[roomId]
-    if (!game || game.status !== 'playing') return
-    if (game.eliminated.includes(myId)) return
-    const revealedList = game.playerIds.map((id) => game.revealed[id])
-    const matchColor = findMatchingColor(revealedList)
+  try {
+    await runTransaction(
+      requireDb(),
+      async (tx) => {
+        // Firestore 트랜잭션은 쓰기 전에 읽기를 전부 끝내야 하므로, 게임이 끝나 코인을
+        // 지급해야 할 경우를 대비해 내 플레이어 문서를 미리 읽어 둔다(실제로 쓸지는 아래에서 결정).
+        const snap = await tx.get(sref)
+        const meSnap = await tx.get(meRef)
+        const data = snap.data() as SessionDoc
+        if (!data.halliGames) data.halliGames = initialHalliGames()
+        const game = data.halliGames[roomId]
+        if (!game || game.status !== 'playing') return
+        if (game.eliminated.includes(myId)) return
+        const revealedList = game.playerIds.map((id) => game.revealed[id])
+        const matchColor = findMatchingColor(revealedList)
 
-    if (matchColor) {
-      const collected = [...game.roundCards.map((rc) => rc.card), ...game.penaltyCards]
-      const nextRevealed: Record<string, HalliCard | null> = {}
-      for (const id of game.playerIds) nextRevealed[id] = null
-      let nextGame: HalliGameState = {
-        ...game,
-        decks: { ...game.decks, [myId]: [...(game.decks[myId] ?? []), ...collected] },
-        revealed: nextRevealed,
-        roundCards: [],
-        penaltyCards: [],
-        log: [
-          ...game.log,
-          {
-            id: `hg-${Date.now()}-win`,
-            kind: 'win',
-            actorId: myId,
-            color: matchColor,
-            collected: collected.length,
-            atMs: Date.now(),
-          },
-        ],
-      }
-      nextGame = halliEliminate(nextGame)
-      // 방금 카드를 받은 나는 덱이 비어 있을 수 없으므로, 이 판에서 나 말고 아무도 남지
-      // 않는다면 마지막 생존자는 항상 나 자신이다.
-      const survivors = nextGame.playerIds.filter((id) => !nextGame.eliminated.includes(id))
-      if (survivors.length <= 1 && meSnap.exists()) {
-        nextGame = {
-          ...nextGame,
-          status: 'ended',
-          winnerId: myId,
-          log: [...nextGame.log, { id: `hg-${Date.now()}-over`, kind: 'gameover', actorId: myId, atMs: Date.now() }],
+        if (matchColor) {
+          const collected = [...game.roundCards.map((rc) => rc.card), ...game.penaltyCards]
+          const nextRevealed: Record<string, HalliCard | null> = {}
+          for (const id of game.playerIds) nextRevealed[id] = null
+          let nextGame: HalliGameState = {
+            ...game,
+            decks: { ...game.decks, [myId]: [...(game.decks[myId] ?? []), ...collected] },
+            revealed: nextRevealed,
+            roundCards: [],
+            penaltyCards: [],
+            log: [
+              ...game.log,
+              {
+                id: `hg-${Date.now()}-win`,
+                kind: 'win',
+                actorId: myId,
+                color: matchColor,
+                collected: collected.length,
+                atMs: Date.now(),
+              },
+            ],
+          }
+          nextGame = halliEliminate(nextGame)
+          // 방금 카드를 받은 나는 덱이 비어 있을 수 없으므로, 이 판에서 나 말고 아무도 남지
+          // 않는다면 마지막 생존자는 항상 나 자신이다.
+          const survivors = nextGame.playerIds.filter((id) => !nextGame.eliminated.includes(id))
+          if (survivors.length <= 1 && meSnap.exists()) {
+            nextGame = {
+              ...nextGame,
+              status: 'ended',
+              winnerId: myId,
+              log: [
+                ...nextGame.log,
+                { id: `hg-${Date.now()}-over`, kind: 'gameover', actorId: myId, atMs: Date.now() },
+              ],
+            }
+            const mePlayer = meSnap.data() as PlayerDoc
+            tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: nextGame } })
+            tx.update(meRef, { coins: mePlayer.coins + nextGame.pot })
+            return
+          }
+          tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: nextGame } })
+          return
         }
-        const mePlayer = meSnap.data() as PlayerDoc
-        tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: nextGame } })
-        tx.update(meRef, { coins: mePlayer.coins + nextGame.pot })
-        return
-      }
-      tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: nextGame } })
-      return
-    }
 
-    // 잘못 눌렀다 — 자기 덱 맨 위 카드 한 장을 반납한다(있을 때만).
-    const myDeck = game.decks[myId] ?? []
-    if (myDeck.length === 0) return
-    const [penalty, ...restDeck] = myDeck
-    let nextGame: HalliGameState = {
-      ...game,
-      decks: { ...game.decks, [myId]: restDeck },
-      penaltyCards: [...game.penaltyCards, penalty],
-      log: [...game.log, { id: `hg-${Date.now()}-miss-${myId}`, kind: 'miss', actorId: myId, atMs: Date.now() }],
-    }
-    nextGame = halliEliminate(nextGame)
-    tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: nextGame } })
-  })
+        // 잘못 눌렀다 — 자기 덱 맨 위 카드 한 장을 반납한다(있을 때만).
+        const myDeck = game.decks[myId] ?? []
+        if (myDeck.length === 0) return
+        const [penalty, ...restDeck] = myDeck
+        let nextGame: HalliGameState = {
+          ...game,
+          decks: { ...game.decks, [myId]: restDeck },
+          penaltyCards: [...game.penaltyCards, penalty],
+          log: [...game.log, { id: `hg-${Date.now()}-miss-${myId}`, kind: 'miss', actorId: myId, atMs: Date.now() }],
+        }
+        nextGame = halliEliminate(nextGame)
+        tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: nextGame } })
+      },
+      HALLI_TX_OPTIONS,
+    )
+  } catch (err) {
+    console.error('pressHalliBellSync 실패', err)
+  }
 }
 
 /** 불가 전용: 게임을 초기화한다. 아직 끝나지 않았다면(승부 미결) 배팅한 코인을 전부 환불한다. */
 export async function resetHalliGameSync(roomId: HalliRoomId) {
   const sref = sessionRef()
-  await runTransaction(requireDb(), async (tx) => {
-    const snap = await tx.get(sref)
-    const data = snap.data() as SessionDoc
-    if (!data.halliGames) data.halliGames = initialHalliGames()
-    const game = data.halliGames[roomId]
-    if (!game) return
-    if (game.status === 'playing') {
-      const pSnaps = await Promise.all(game.playerIds.map((id) => tx.get(playerRef(id))))
-      tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: null } })
-      for (let i = 0; i < game.playerIds.length; i++) {
-        const id = game.playerIds[i]
-        const bet = game.bets[id]
-        if (!bet) continue
-        const pSnap = pSnaps[i]
-        if (!pSnap.exists()) continue
-        const player = pSnap.data() as PlayerDoc
-        tx.update(playerRef(id), { coins: player.coins + bet })
-      }
-      return
-    }
-    tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: null } })
-  })
+  try {
+    await runTransaction(
+      requireDb(),
+      async (tx) => {
+        const snap = await tx.get(sref)
+        const data = snap.data() as SessionDoc
+        if (!data.halliGames) data.halliGames = initialHalliGames()
+        const game = data.halliGames[roomId]
+        if (!game) return
+        if (game.status === 'playing') {
+          const pSnaps = await Promise.all(game.playerIds.map((id) => tx.get(playerRef(id))))
+          tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: null } })
+          for (let i = 0; i < game.playerIds.length; i++) {
+            const id = game.playerIds[i]
+            const bet = game.bets[id]
+            if (!bet) continue
+            const pSnap = pSnaps[i]
+            if (!pSnap.exists()) continue
+            const player = pSnap.data() as PlayerDoc
+            tx.update(playerRef(id), { coins: player.coins + bet })
+          }
+          return
+        }
+        tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: null } })
+      },
+      HALLI_TX_OPTIONS,
+    )
+  } catch (err) {
+    console.error('resetHalliGameSync 실패', err)
+  }
 }
 
 /** 불가가 "플레이"를 누르면(2~5 명 사이일 때) 카드를 나눠 게임을 시작한다. */

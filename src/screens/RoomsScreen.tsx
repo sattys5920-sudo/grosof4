@@ -112,6 +112,7 @@ export function RoomsScreen() {
   const [openCardRoom, setOpenCardRoom] = useState<CardRoomId | null>(null)
   const [openHalliRoom, setOpenHalliRoom] = useState<HalliRoomId | null>(null)
   const [halliBetDraft, setHalliBetDraft] = useState('')
+  const [halliActionPending, setHalliActionPending] = useState<'bet' | 'reset' | null>(null)
   const [firstCardPlayerId, setFirstCardPlayerId] = useState('')
   const [draft, setDraft] = useState('')
   const [selectedCard, setSelectedCard] = useState<number | null>(null)
@@ -136,6 +137,7 @@ export function RoomsScreen() {
   const currentCardRoomMsgCount = openCardRoom ? (roomMessages[openCardRoom]?.length ?? 0) : 0
   const currentCardLogCount = openCardRoom ? (cardGames[openCardRoom]?.log.length ?? 0) : 0
   const currentHalliRoomMsgCount = openHalliRoom ? (roomMessages[openHalliRoom]?.length ?? 0) : 0
+  const currentHalliGame = openHalliRoom ? halliGames[openHalliRoom] : null
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
@@ -201,7 +203,21 @@ export function RoomsScreen() {
 
   useEffect(() => {
     setHalliBetDraft('')
+    setHalliActionPending(null)
   }, [openHalliRoom])
+
+  // 배팅/초기화 버튼이 눌린 뒤 서버 응답(게임 상태 갱신)이 오면 즉시, 오지 않더라도
+  // 최대 4 초 뒤에는 눌림 상태를 풀어서 "눌러도 반응이 없다"처럼 보이지 않게 한다.
+  useEffect(() => {
+    if (!halliActionPending) return
+    setHalliActionPending(null)
+  }, [currentHalliGame])
+
+  useEffect(() => {
+    if (!halliActionPending) return
+    const t = setTimeout(() => setHalliActionPending(null), 4000)
+    return () => clearTimeout(t)
+  }, [halliActionPending])
 
   function revealedFor(c: ReturnType<typeof charOf>) {
     return viewer ? isRevealedTo(viewer, c, gmReveal) : gmReveal
@@ -893,8 +909,15 @@ export function RoomsScreen() {
                     </button>
                   )}
                   {game && (
-                    <button className="rooms__pin-reset" onClick={() => resetHalliGame(openHalliRoom!)}>
-                      게임 초기화
+                    <button
+                      className="rooms__pin-reset"
+                      disabled={halliActionPending === 'reset'}
+                      onClick={() => {
+                        setHalliActionPending('reset')
+                        resetHalliGame(openHalliRoom!)
+                      }}
+                    >
+                      {halliActionPending === 'reset' ? '초기화 중......' : '게임 초기화'}
                     </button>
                   )}
                 </div>
@@ -993,13 +1016,19 @@ export function RoomsScreen() {
                       placeholder={`걸 코인 (보유 ${coins})`}
                     />
                     <button
-                      disabled={!halliBetDraft.trim() || Number.isNaN(betAmount) || betAmount < 1 || betAmount > coins}
+                      disabled={
+                        halliActionPending === 'bet' ||
+                        !halliBetDraft.trim() ||
+                        Number.isNaN(betAmount) ||
+                        betAmount < 1 ||
+                        betAmount > coins
+                      }
                       onClick={() => {
+                        setHalliActionPending('bet')
                         placeHalliBet(openHalliRoom!, betAmount)
-                        setHalliBetDraft('')
                       }}
                     >
-                      배팅하기
+                      {halliActionPending === 'bet' ? '배팅하는 중......' : '배팅하기'}
                     </button>
                   </div>
                 )}
