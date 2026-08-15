@@ -250,6 +250,7 @@ export function ProfileScreen() {
     players,
     collectedClues,
     assignRoleManually,
+    grantCoins,
     resetAllData,
     storyDay,
     revealStoryDay,
@@ -277,6 +278,8 @@ export function ProfileScreen() {
   const [firstPlayerId, setFirstPlayerId] = useState('')
   const [manualCharacterId, setManualCharacterId] = useState('')
   const [manualNickname, setManualNickname] = useState('')
+  const [coinTargetId, setCoinTargetId] = useState('')
+  const [coinAmount, setCoinAmount] = useState('')
   const [openClueId, setOpenClueId] = useState<string | null>(null)
   const [abilityModalOpen, setAbilityModalOpen] = useState(false)
   const [masterListOpen, setMasterListOpen] = useState(false)
@@ -910,6 +913,46 @@ export function ProfileScreen() {
                 }}
               >
                 수동 배정하기
+              </button>
+            </div>
+          )}
+
+          {sortedPlayerEntries.length > 0 && (
+            <div className="profile__gm">
+              <span className="profile__section-label">불가 전용 — 코인 지급</span>
+              <p className="profile__gm-note">사람을 고르고 지급할 코인 양을 입력한다. 음수를 입력하면 코인을 회수한다.</p>
+              <div className="profile__gm-presets">
+                {sortedPlayerEntries.map(([id, p]) => {
+                  const c = CHARACTERS.find((ch) => ch.id === id)
+                  return (
+                    <button
+                      key={id}
+                      className={`profile__gm-preset ${coinTargetId === id ? 'is-active' : ''}`}
+                      onClick={() => setCoinTargetId(id)}
+                    >
+                      {p.nickname}
+                      {c ? ` · ${c.role}` : ''} · 코인 {p.coins}
+                    </button>
+                  )
+                })}
+              </div>
+              <input
+                className="profile__gm-input"
+                type="number"
+                value={coinAmount}
+                onChange={(e) => setCoinAmount(e.target.value)}
+                placeholder="지급할 코인 양 (예: 5, 회수는 -5)"
+              />
+              <button
+                className="profile__gm-send"
+                disabled={!coinTargetId || !coinAmount.trim() || Number(coinAmount) === 0 || Number.isNaN(Number(coinAmount))}
+                onClick={() => {
+                  grantCoins(coinTargetId, Number(coinAmount))
+                  setCoinTargetId('')
+                  setCoinAmount('')
+                }}
+              >
+                코인 지급하기
               </button>
             </div>
           )}

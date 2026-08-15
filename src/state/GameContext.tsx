@@ -53,6 +53,7 @@ import {
   ensureSessionInitialized,
   feedPostToFeedPost,
   forceCloseRoomSync,
+  grantCoinsSync,
   joinRoomSync,
   leaveRoomSync,
   openMissionsSync,
@@ -405,6 +406,7 @@ interface GameState {
   discussionOpenedAt: number | null
   setDiscussionOpen: (open: boolean) => void
   assignRoleManually: (characterId: string, nickname: string) => void
+  grantCoins: (characterId: string, amount: number) => void
   resetAllData: () => void
   shopOpen: boolean
   setShopOpen: (open: boolean) => void
@@ -1876,6 +1878,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void assignRoleManuallySync(characterId, nickname)
   }
 
+  function grantCoins(characterId: string, amount: number) {
+    if (!isAdminFlag || !Number.isFinite(amount) || amount === 0) return
+    void grantCoinsSync(characterId, Math.round(amount))
+  }
+
   function resetAllData() {
     if (!isAdminFlag) return
     void resetAllDataSync()
@@ -2503,6 +2510,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       discussionOpenedAt: session.discussionOpenedAt,
       setDiscussionOpen,
       assignRoleManually,
+      grantCoins,
       resetAllData,
       shopOpen: session.shopOpen,
       setShopOpen,

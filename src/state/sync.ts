@@ -394,6 +394,16 @@ export async function patchPlayer(characterId: string, patch: Partial<PlayerDoc>
   await updateDoc(playerRef(characterId), patch)
 }
 
+export async function grantCoinsSync(characterId: string, amount: number) {
+  const pref = playerRef(characterId)
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(pref)
+    if (!snap.exists()) return
+    const data = snap.data() as PlayerDoc
+    tx.update(pref, { coins: Math.max(0, data.coins + amount) })
+  })
+}
+
 export async function sendGmDmMessageSync(characterId: string, msg: ChatMessage) {
   await updateDoc(playerRef(characterId), { gmDmMessages: arrayUnion(msg) })
 }
