@@ -6,6 +6,7 @@ import {
   CHARACTERS,
   ENDING_LABELS,
   ENDING_SCRIPTS,
+  LEAKER_ABILITY_NAME,
   ROOMS,
   TEAM_LABEL,
   leakerRevealText,
@@ -2359,6 +2360,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         atMs: Date.now(),
       }
       return {
+        session: {
+          abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, LEAKER_ABILITY_NAME, resultText, [targetId])],
+        },
         player: {
           abilityUseCount: player.abilityUseCount + 1,
           leakLog: [...(player.leakLog ?? []), entry],

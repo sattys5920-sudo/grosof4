@@ -355,7 +355,7 @@ export function ProfileScreen() {
                 placeholder="닉네임을 입력하세요"
               />
               <span className={`profile__role profile__role--${resolvedTeam(mission, viewer.id)}`}>
-                {roleLabel(viewer)} · {grade}
+                {roleLabel(viewer, resolvedTeam(mission, viewer.id))} · {grade}
               </span>
             </div>
           </div>
@@ -756,7 +756,9 @@ export function ProfileScreen() {
           {CHARACTERS.map((c) => (
             <div key={c.id} className="profile__roster-item">
               <span className="profile__roster-name">{displayName(c.id)}</span>
-              {gmReveal && <span className="profile__roster-role">{roleLabel(c)}</span>}
+              {gmReveal && (
+                <span className="profile__roster-role">{roleLabel(c, resolvedTeam(mission, c.id))}</span>
+              )}
               {c.id === viewerId && <span className="profile__me-tag">나</span>}
             </div>
           ))}

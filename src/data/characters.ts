@@ -296,7 +296,13 @@ export const TEAM_LABEL: Record<Character['team'], string> = {
   veil: '독립',
 }
 
-export function roleLabel(c: Character): string {
+// 망각자의 정체가 확정된 뒤 역할명으로 표시되는 이름 (능력명 '유포'와는 별개).
+export const LEAKER_ROLE_LABEL = '유포자'
+
+export function roleLabel(c: Character, resolved?: 'ward' | 'sin' | 'veil'): string {
+  if (c.role === '망각자' && resolved && resolved !== 'veil') {
+    return `${TEAM_LABEL[resolved]} · ${LEAKER_ROLE_LABEL}`
+  }
   return `${TEAM_LABEL[c.team]} · ${c.role}`
 }
 
