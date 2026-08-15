@@ -900,6 +900,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
 
   function markRoomRead(roomId: RoomId) {
     const count = session.roomMessages[roomId]?.length ?? 0
+    if ((roomMsgSeenCounts[roomId] ?? 0) === count) return
     const next = { ...roomMsgSeenCounts, [roomId]: count }
     localStorage.setItem(LS.roomMsgSeenCounts, JSON.stringify(next))
     setRoomMsgSeenCountsLocal(next)

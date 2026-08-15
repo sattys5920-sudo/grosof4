@@ -604,11 +604,35 @@ export function RoomsScreen() {
                 <div className="cardgame__piles">
                   <div className="cardgame__pile">
                     <span className="cardgame__pile-label">1열 · 오름차순</span>
-                    <div className="cardcard cardcard--pile">{game.pileAsc}</div>
+                    <div className="cardgame__pile-history">
+                      <span className="cardcard cardcard--sm cardcard--start">1</span>
+                      {game.log
+                        .filter((e) => e.kind === 'play' && e.pile === 'asc')
+                        .map((e, i, arr) => (
+                          <span
+                            key={e.id}
+                            className={`cardcard cardcard--sm ${i === arr.length - 1 ? 'is-current' : ''}`}
+                          >
+                            {e.card}
+                          </span>
+                        ))}
+                    </div>
                   </div>
                   <div className="cardgame__pile">
                     <span className="cardgame__pile-label">100열 · 내림차순</span>
-                    <div className="cardcard cardcard--pile">{game.pileDesc}</div>
+                    <div className="cardgame__pile-history">
+                      <span className="cardcard cardcard--sm cardcard--start">100</span>
+                      {game.log
+                        .filter((e) => e.kind === 'play' && e.pile === 'desc')
+                        .map((e, i, arr) => (
+                          <span
+                            key={e.id}
+                            className={`cardcard cardcard--sm ${i === arr.length - 1 ? 'is-current' : ''}`}
+                          >
+                            {e.card}
+                          </span>
+                        ))}
+                    </div>
                   </div>
                 </div>
 
@@ -662,19 +686,23 @@ export function RoomsScreen() {
                   ))}
                 </div>
 
-                {iAmHere && game.status === 'playing' && myTurn && (
+                {iAmHere && game.status === 'playing' && (
                   <div className="cardgame__hand-area">
-                    <span className="cardgame__hand-label">내 손패</span>
-                    <div className="cardgame__hand">
+                    <span className="cardgame__hand-label">
+                      내 손패
+                      {!myTurn && ` · ${displayName(game.turnOrder[game.turnIndex])}의 차례를 기다리는 중.......`}
+                    </span>
+                    <div className={`cardgame__hand ${!myTurn ? 'is-inactive' : ''}`}>
                       {myHand.map((c) => {
                         const canAsc = isLegalCardPlay(c, game.pileAsc, game.pileDesc, 'asc')
                         const canDesc = isLegalCardPlay(c, game.pileAsc, game.pileDesc, 'desc')
+                        const deadForRules = !canAsc && !canDesc
                         const selected = selectedCard === c
                         return (
                           <button
                             key={c}
-                            className={`cardcard ${selected ? 'is-selected' : ''} ${!canAsc && !canDesc ? 'is-dead' : ''}`}
-                            disabled={!canAsc && !canDesc}
+                            className={`cardcard ${selected ? 'is-selected' : ''} ${deadForRules ? 'is-dead' : ''}`}
+                            disabled={!myTurn || deadForRules}
                             onClick={() => setSelectedCard(selected ? null : c)}
                           >
                             {c}
@@ -682,7 +710,7 @@ export function RoomsScreen() {
                         )
                       })}
                     </div>
-                    {selectedCard !== null && (
+                    {myTurn && selectedCard !== null && (
                       <div className="cardgame__play-actions">
                         <button
                           disabled={!isLegalCardPlay(selectedCard, game.pileAsc, game.pileDesc, 'asc')}
@@ -704,17 +732,14 @@ export function RoomsScreen() {
                         </button>
                       </div>
                     )}
-                    <button className="cardgame__end-turn" disabled={!canEndTurn} onClick={() => endCardTurn(openCardRoom!)}>
-                      {canEndTurn
-                        ? '차례 마치기'
-                        : `차례 마치려면 ${requiredMin}장 이상 내야 한다 (${game.cardsPlayedThisTurn}/${requiredMin})`}
-                    </button>
+                    {myTurn && (
+                      <button className="cardgame__end-turn" disabled={!canEndTurn} onClick={() => endCardTurn(openCardRoom!)}>
+                        {canEndTurn
+                          ? '차례 마치기'
+                          : `차례 마치려면 ${requiredMin}장 이상 내야 한다 (${game.cardsPlayedThisTurn}/${requiredMin})`}
+                      </button>
+                    )}
                   </div>
-                )}
-                {iAmHere && game.status === 'playing' && !myTurn && (
-                  <p className="rooms__pin-note">
-                    {displayName(game.turnOrder[game.turnIndex])}의 차례를 기다리는 중....... (내 손패 {myHand.length}장)
-                  </p>
                 )}
                 {!iAmHere && !isAdmin && <p className="rooms__pin-note">입장한 사람만 카드를 낼 수 있다.</p>}
               </div>
@@ -765,7 +790,7 @@ export function RoomsScreen() {
     <div className="rooms">
       <div className="rooms__intro">
         <span className="rooms__intro-label">구관</span>
-        <p>선착순으로 입장한다. 각 구관에는 인원 제한이 있다.</p>
+        <p>선착순으로 입장한다. 각 구관에는 인원 제한이 있다. 교실 A/B는 협동 카드 게임 "더 게임"이다.</p>
       </div>
       <div className="rooms__grid">
         {ROOMS.map((room) => {
@@ -805,13 +830,6 @@ export function RoomsScreen() {
             </button>
           )
         })}
-      </div>
-
-      <div className="rooms__intro">
-        <span className="rooms__intro-label">카드 게임</span>
-        <p>협동 카드 게임 "더 게임". {CARD_ROOM_MIN_PLAYERS}~5명이 모이면 불가가 시작할 수 있다.</p>
-      </div>
-      <div className="rooms__grid">
         {CARD_ROOMS.map((room) => {
           const occupants = roomOccupancy[room.id] ?? []
           const full = occupants.length >= room.capacity

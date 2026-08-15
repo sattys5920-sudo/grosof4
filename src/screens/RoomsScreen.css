@@ -26,12 +26,12 @@
 }
 
 .rooms__grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
   flex: 1;
   min-height: 0;
-  justify-content: space-evenly;
-  gap: 14px;
+  gap: 10px;
   padding: 0 16px 20px;
   overflow-y: auto;
 }
@@ -40,11 +40,12 @@
   text-align: left;
   background: var(--void-2);
   border: 1px solid var(--line);
-  padding: 18px;
+  padding: 14px;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 7px;
+  min-width: 0;
 }
 
 .rooms__card:hover {
@@ -736,12 +737,24 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  flex: 1;
+  min-width: 0;
 }
 
 .cardgame__pile-label {
   font-family: var(--font-pixel);
   font-size: 10px;
   color: var(--bone-dim);
+}
+
+.cardgame__pile-history {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  max-height: 92px;
+  overflow-y: auto;
+  padding: 2px;
 }
 
 .cardcard {
@@ -760,11 +773,20 @@
   user-select: none;
 }
 
-.cardcard--pile {
+.cardcard--sm {
+  width: 28px;
+  height: 38px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.cardcard--sm.is-current {
   border-color: var(--sin);
   background: var(--void-2);
-  font-size: 20px;
-  cursor: default;
+}
+
+.cardcard--start {
+  opacity: 0.4;
 }
 
 button.cardcard {
@@ -882,6 +904,10 @@ button.cardcard.is-dead {
   flex-wrap: wrap;
   gap: 6px;
   justify-content: center;
+}
+
+.cardgame__hand.is-inactive {
+  opacity: 0.55;
 }
 
 .cardgame__play-actions {
