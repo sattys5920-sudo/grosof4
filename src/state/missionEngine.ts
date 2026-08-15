@@ -52,9 +52,8 @@ export type MissionAction =
 
 const DEFAULT_ORDER = CHARACTERS.map((c) => c.id)
 
-// 망각자는 3 차 조사 결과가 확정되는 순간, 본인의 참가 여부와 무관하게
-// 1~3 차 조사 중 실패로 끝난 조사가 2 회 이상이면(=지금까지 괴이 쪽이 이기고
-// 있으면) '괴이'로, 아니면 '학생'으로 진영이 확정된다.
+// 망각자는 3 차 조사 결과가 확정되는 순간, 본인이 참가했던 1~3 차 조사 중
+// 실패로 끝난 조사가 2 회 이상이면 '괴이'로, 아니면 '학생'으로 진영이 확정된다.
 // 확정 전까지는 어느 쪽도 아닌 veil 로 취급한다.
 export function resolvedTeam(state: MissionState, viewerId: string): 'ward' | 'sin' | 'veil' {
   const char = CHARACTERS.find((c) => c.id === viewerId)!
@@ -62,7 +61,8 @@ export function resolvedTeam(state: MissionState, viewerId: string): 'ward' | 's
   if (state.missionResults[2] === null) return 'veil'
   let fails = 0
   for (let i = 0; i < 3; i++) {
-    if (state.missionResults[i] === 'fail') fails++
+    const team = state.teamHistory[i]
+    if (team && team.includes(viewerId) && state.missionResults[i] === 'fail') fails++
   }
   return fails >= 2 ? 'sin' : 'ward'
 }

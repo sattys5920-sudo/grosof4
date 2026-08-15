@@ -764,8 +764,9 @@ export function ProfileScreen() {
                   (
                   {[0, 1, 2]
                     .map((i) => {
+                      const onTeam = mission.teamHistory[i]?.includes(c.id) ?? false
                       const result = mission.missionResults[i]
-                      const tag = result === 'fail' ? '실패' : result === 'success' ? '성공' : '진행중'
+                      const tag = !onTeam ? '미참여' : result === 'fail' ? '실패' : result === 'success' ? '성공' : '진행중'
                       return `${i + 1}차 ${tag}`
                     })
                     .join(' / ')}
