@@ -503,6 +503,9 @@ export async function joinCardRoomSync(myId: string, roomId: CardRoomId) {
   await runTransaction(requireDb(), async (tx) => {
     const snap = await tx.get(sref)
     const data = snap.data() as SessionDoc
+    if (!data.cardGames) data.cardGames = initialCardGames()
+    if (!data.roomEvents[roomId]?.open) return
+    if (data.cardGames[roomId]?.status === 'playing') return
     const occ = data.roomOccupancy
     if ((occ[roomId] ?? []).includes(myId)) return
     if ((occ[roomId] ?? []).length >= CARD_ROOM_CAPACITY) return

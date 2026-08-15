@@ -548,7 +548,7 @@ export function RoomsScreen() {
                         나가기
                       </button>
                     )
-                  : !roomEvent.open
+                  : !roomEvent.open || game?.status === 'playing'
                     ? (
                         <span className="rooms__pin-locked">잠김</span>
                       )
@@ -565,6 +565,9 @@ export function RoomsScreen() {
 
             {!roomEvent.open && !isAdmin && !iAmHere && (
               <p className="rooms__pin-ambient">이 구관은 아직 잠겨 있다.</p>
+            )}
+            {roomEvent.open && game?.status === 'playing' && !isAdmin && !iAmHere && (
+              <p className="rooms__pin-ambient">게임이 진행 중이라 지금은 입장할 수 없다.</p>
             )}
 
             <div className="cardgame__rule">
