@@ -12,6 +12,7 @@ import {
 } from '../data/characters'
 import { HALL_EVENTS } from '../data/hallEvents'
 import { SHOP_ITEMS, shopItemById } from '../data/shop'
+import { MISSION_SIZES } from '../state/missionEngine'
 import { Badge } from '../components/Badge'
 import { AbilityUseModal } from '../components/AbilityUseModal'
 import { PixelIcon } from '../components/PixelIcon'
@@ -252,6 +253,7 @@ export function ProfileScreen() {
     assignRoleManually,
     grantCoins,
     grantItem,
+    fixCctvMissionRecord,
     resetAllData,
     storyDay,
     revealStoryDay,
@@ -283,6 +285,8 @@ export function ProfileScreen() {
   const [coinAmount, setCoinAmount] = useState('')
   const [itemTargetId, setItemTargetId] = useState('')
   const [itemSelectId, setItemSelectId] = useState('')
+  const [cctvMissionPick, setCctvMissionPick] = useState(1)
+  const [cctvCorrectCount, setCctvCorrectCount] = useState('')
   const [openClueId, setOpenClueId] = useState<string | null>(null)
   const [abilityModalOpen, setAbilityModalOpen] = useState(false)
   const [masterListOpen, setMasterListOpen] = useState(false)
@@ -1002,6 +1006,42 @@ export function ProfileScreen() {
               </button>
             </div>
           )}
+
+          <div className="profile__gm">
+            <span className="profile__section-label">불가 전용 — CCTV 기록 보정</span>
+            <p className="profile__gm-note">
+              특정 차수 조사의 실제 제출 카드 수가 잘못 저장/전달됐을 때, 그 차수의 CCTV 실패
+              카드 수를 바로잡는다. 이미 나간 CCTV 결과 문구(공용 로그·개인 단서·불가 DM)도 함께 고쳐진다.
+            </p>
+            <div className="profile__gm-presets">
+              {MISSION_SIZES.map((_, i) => (
+                <button
+                  key={i}
+                  className={`profile__gm-preset ${cctvMissionPick === i ? 'is-active' : ''}`}
+                  onClick={() => setCctvMissionPick(i)}
+                >
+                  {i + 1} 차 조사
+                </button>
+              ))}
+            </div>
+            <input
+              className="profile__gm-input"
+              type="number"
+              value={cctvCorrectCount}
+              onChange={(e) => setCctvCorrectCount(e.target.value)}
+              placeholder="실제 실패 카드 수 (예: 2)"
+            />
+            <button
+              className="profile__gm-send"
+              disabled={!cctvCorrectCount.trim() || Number.isNaN(Number(cctvCorrectCount)) || Number(cctvCorrectCount) < 0}
+              onClick={() => {
+                fixCctvMissionRecord(cctvMissionPick, Number(cctvCorrectCount))
+                setCctvCorrectCount('')
+              }}
+            >
+              CCTV 기록 보정하기
+            </button>
+          </div>
 
           <div className="profile__gm">
             <span className="profile__section-label">불가 전용 — 조사</span>

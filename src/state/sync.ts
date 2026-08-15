@@ -1176,6 +1176,52 @@ export async function resetAllDataSync(): Promise<void> {
 }
 
 /**
+ * GM 전용 일회성 보정: 수호 능력 버그로 CCTV 결과가 잘못 저장/전달됐던 과거 조사 한 건을
+ * 바로잡는다. mission.failCounts[missionIndex]를 correctCount로 고치고, 이미 나가 있는
+ * "《CCTV》 N 차 조사 — 실패 카드 X 장." 문구(공용 능력 로그 + 모든 플레이어의 개인 단서·
+ * 불가 DM)를 찾아 그 조사에 한해 correctCount로 다시 써 준다.
+ */
+export async function fixCctvMissionRecordSync(missionIndex: number, correctCount: number): Promise<void> {
+  const database = requireDb()
+  const pattern = new RegExp(`(${missionIndex + 1} 차 조사 — 실패 카드 )\\d+( 장\\.)`)
+  const replace = (text: string) => text.replace(pattern, `$1${correctCount}$2`)
+
+  const sref = sessionRef()
+  const sSnap = await getDoc(sref)
+  if (sSnap.exists()) {
+    const data = sSnap.data() as SessionDoc
+    const mission = deserializeMission(data.mission)
+    const failCounts = [...mission.failCounts]
+    failCounts[missionIndex] = correctCount
+    const abilityLog = (data.abilityLog ?? []).map((entry) =>
+      entry.abilityName === 'CCTV' && pattern.test(entry.resultText)
+        ? { ...entry, resultText: replace(entry.resultText) }
+        : entry,
+    )
+    await updateDoc(sref, { mission: serializeMission({ ...mission, failCounts }), abilityLog })
+  }
+
+  const playersSnap = await getDocs(playersCol())
+  const batch = writeBatch(database)
+  for (const d of playersSnap.docs) {
+    const data = d.data() as PlayerDoc
+    let changed = false
+    const personalClues = (data.personalClues ?? []).map((c) => {
+      if (!pattern.test(c)) return c
+      changed = true
+      return replace(c)
+    })
+    const gmDmMessages = (data.gmDmMessages ?? []).map((m) => {
+      if (!pattern.test(m.text)) return m
+      changed = true
+      return { ...m, text: replace(m.text) }
+    })
+    if (changed) batch.update(d.ref, { personalClues, gmDmMessages })
+  }
+  await batch.commit()
+}
+
+/**
  * GM 전용: N 일차가 지났다고 선언하고, 가입한 모든 플레이어에게 그날의 개인 서사를 한 번에 전달한다.
  * 1~4 일차 모두 각자 캐릭터의 개인화된 기억이며, 전체 전말 공개는 revealTruthSync가 별도로 담당한다.
  */

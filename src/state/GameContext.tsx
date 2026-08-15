@@ -59,6 +59,7 @@ import {
   feedPostToFeedPost,
   endCardTurnSync,
   forceCloseRoomSync,
+  fixCctvMissionRecordSync,
   grantCoinsSync,
   grantItemSync,
   joinCardRoomSync,
@@ -432,6 +433,7 @@ interface GameState {
   assignRoleManually: (characterId: string, nickname: string) => void
   grantCoins: (characterId: string, amount: number) => void
   grantItem: (characterId: string, itemId: string) => void
+  fixCctvMissionRecord: (missionIndex: number, correctCount: number) => void
   resetAllData: () => void
   shopOpen: boolean
   setShopOpen: (open: boolean) => void
@@ -2029,6 +2031,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void grantItemSync(characterId, itemId)
   }
 
+  function fixCctvMissionRecord(missionIndex: number, correctCount: number) {
+    if (!isAdminFlag || !Number.isInteger(correctCount) || correctCount < 0) return
+    void fixCctvMissionRecordSync(missionIndex, correctCount)
+  }
+
   function resetAllData() {
     if (!isAdminFlag) return
     void resetAllDataSync()
@@ -2668,6 +2675,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       assignRoleManually,
       grantCoins,
       grantItem,
+      fixCctvMissionRecord,
       resetAllData,
       shopOpen: session.shopOpen,
       setShopOpen,
