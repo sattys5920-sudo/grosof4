@@ -819,6 +819,13 @@ button.cardcard.is-dead {
   background: var(--void-2);
 }
 
+.cardgame__order-picker {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .cardgame__turn {
   margin: 0;
   text-align: center;

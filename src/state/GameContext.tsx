@@ -69,6 +69,7 @@ import {
   playCardSync,
   forceEndCardTurnSync,
   resetCardGameSync,
+  setCardFirstPlayerSync,
   startCardGameSync,
   patchSession,
   resetAllDataSync,
@@ -296,7 +297,8 @@ interface GameState {
   roomEvents: Record<RoomId, RoomEventState>
   cardGames: Record<CardRoomId, CardGameState | null>
   joinCardRoom: (roomId: CardRoomId) => void
-  startCardGame: (roomId: CardRoomId, firstPlayerId?: string) => void
+  startCardGame: (roomId: CardRoomId) => void
+  setCardFirstPlayer: (roomId: CardRoomId, firstPlayerId: string) => void
   leaveCardRoom: (roomId: CardRoomId) => void
   kickFromCardRoom: (roomId: CardRoomId, targetId: string) => void
   playCard: (roomId: CardRoomId, pile: CardPile, card: number) => void
@@ -1015,17 +1017,18 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void joinCardRoomSync(viewerId, roomId)
   }
 
-  function startCardGame(roomId: CardRoomId, firstPlayerId?: string) {
+  function startCardGame(roomId: CardRoomId) {
     if (!isAdminFlag) return
     const occ = session.roomOccupancy[roomId] ?? []
     if (occ.length < CARD_ROOM_MIN_PLAYERS || occ.length > CARD_ROOM_CAPACITY) return
     if (session.cardGames[roomId]) return
-    let turnOrder = [...occ].sort((a, b) => (players[a]?.nickname ?? '').localeCompare(players[b]?.nickname ?? '', 'ko'))
-    if (firstPlayerId && turnOrder.includes(firstPlayerId)) {
-      const idx = turnOrder.indexOf(firstPlayerId)
-      turnOrder = [...turnOrder.slice(idx), ...turnOrder.slice(0, idx)]
-    }
+    const turnOrder = [...occ].sort((a, b) => (players[a]?.nickname ?? '').localeCompare(players[b]?.nickname ?? '', 'ko'))
     void startCardGameSync(roomId, turnOrder)
+  }
+
+  function setCardFirstPlayer(roomId: CardRoomId, firstPlayerId: string) {
+    if (!isAdminFlag) return
+    void setCardFirstPlayerSync(roomId, firstPlayerId)
   }
 
   function leaveCardRoom(roomId: CardRoomId) {
@@ -2542,6 +2545,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       cardGames: session.cardGames,
       joinCardRoom,
       startCardGame,
+      setCardFirstPlayer,
       leaveCardRoom,
       kickFromCardRoom,
       playCard,

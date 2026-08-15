@@ -559,6 +559,29 @@ export async function startCardGameSync(roomId: CardRoomId, turnOrder: string[])
   })
 }
 
+/** 카드를 나눠 가진 직후, 아직 아무도 카드를 내지 않았을 때만 불가가 첫 순서를
+ * 다시 지정할 수 있다. 나머지는 기존 순서(가나다순)를 그대로 유지한 채 돌아간다. */
+export async function setCardFirstPlayerSync(roomId: CardRoomId, firstPlayerId: string) {
+  const sref = sessionRef()
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(sref)
+    const data = snap.data() as SessionDoc
+    if (!data.cardGames) data.cardGames = initialCardGames()
+    const game = data.cardGames[roomId]
+    if (!game || game.status !== 'playing') return
+    if (game.log.some((e) => e.kind === 'play')) return
+    if (!game.turnOrder.includes(firstPlayerId)) return
+    const idx = game.turnOrder.indexOf(firstPlayerId)
+    const nextGame: CardGameState = {
+      ...game,
+      turnOrder: [...game.turnOrder.slice(idx), ...game.turnOrder.slice(0, idx)],
+      turnIndex: 0,
+      turnStartedAtMs: Date.now(),
+    }
+    tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
+  })
+}
+
 export async function playCardSync(myId: string, roomId: CardRoomId, pile: CardPile, card: number) {
   const sref = sessionRef()
   await runTransaction(requireDb(), async (tx) => {
