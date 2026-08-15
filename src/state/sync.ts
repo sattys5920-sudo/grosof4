@@ -1106,14 +1106,28 @@ export async function toggleHeartSync(postId: string, myId: string) {
 
 export async function addCommentSync(postId: string, comment: FeedComment) {
   const pref = doc(feedCol(), postId)
-  await runTransaction(requireDb(), async (tx) => {
-    const snap = await tx.get(pref)
-    if (!snap.exists()) return
-    const data = snap.data() as FeedPostDoc
-    if (!data.commentsEnabled) return
-    // 댓글 기능이 추가되기 전에 만들어진 게시글은 comments 필드 자체가 없을 수 있으므로 방어한다.
-    tx.update(pref, { comments: [...(data.comments ?? []), comment] })
-  })
+  // 인원이 많은 실시간 게임에서 같은 게시글에 여러 명이 거의 동시에 댓글을 달면
+  // Firestore 트랜잭션 내부 재시도만으로는 부족해 드물게 충돌로 실패할 수 있다.
+  // 매 시도마다 최신 상태를 다시 읽는 트랜잭션이라 재시도해도 중복/유실 위험이
+  // 없으므로, 여기서 한 번 더 겉에서 재시도해 순간적인 충돌을 흡수한다.
+  let lastErr: unknown
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await runTransaction(requireDb(), async (tx) => {
+        const snap = await tx.get(pref)
+        if (!snap.exists()) return
+        const data = snap.data() as FeedPostDoc
+        if (!data.commentsEnabled) return
+        // 댓글 기능이 추가되기 전에 만들어진 게시글은 comments 필드 자체가 없을 수 있으므로 방어한다.
+        tx.update(pref, { comments: [...(data.comments ?? []), comment] })
+      })
+      return
+    } catch (err) {
+      lastErr = err
+      await new Promise((resolve) => setTimeout(resolve, 200 * (attempt + 1)))
+    }
+  }
+  throw lastErr
 }
 
 export async function editCommentSync(postId: string, commentId: string, authorId: string, text: string) {

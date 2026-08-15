@@ -323,10 +323,24 @@
 
 .feed__comment-composer {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px dashed var(--line);
+}
+
+.feed__comment-error {
+  width: 100%;
+  margin: 0 0 2px;
+  font-size: 11px;
+  color: var(--sin);
+  font-style: italic;
+}
+
+.feed__comment-composer button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .feed__comment-composer input {

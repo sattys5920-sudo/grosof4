@@ -25,6 +25,8 @@ export function MainFeedScreen() {
   const [openPostId, setOpenPostId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [secret, setSecret] = useState(false)
+  const [commentError, setCommentError] = useState(false)
+  const [commentSending, setCommentSending] = useState(false)
   const [composerOpen, setComposerOpen] = useState(false)
   const [postTitle, setPostTitle] = useState('')
   const [postBody, setPostBody] = useState('')
@@ -37,6 +39,12 @@ export function MainFeedScreen() {
 
   const openPost = feed.find((p) => p.id === openPostId) ?? null
   const myCommentId = gmReveal ? 'admin' : viewerId
+
+  useEffect(() => {
+    setDraft('')
+    setCommentError(false)
+    setCommentSending(false)
+  }, [openPostId])
 
   // 게시글을 열거나 새 댓글이 달리면 카톡/밴드처럼 항상 가장 최근 댓글이 보이는
   // 맨 아래로 스크롤한다. 이 화면은 전용 스크롤 영역이 없이 앱 전체 스크롤
@@ -59,10 +67,20 @@ export function MainFeedScreen() {
     setEditDraft('')
   }
 
-  function submitComment(postId: string) {
-    addComment(postId, draft, secret)
-    setDraft('')
-    setSecret(false)
+  async function submitComment(postId: string) {
+    if (!draft.trim() || commentSending) return
+    setCommentSending(true)
+    setCommentError(false)
+    const ok = await addComment(postId, draft, secret)
+    setCommentSending(false)
+    if (ok) {
+      setDraft('')
+      setSecret(false)
+    } else {
+      // 실패하면 입력한 내용을 그대로 남겨 둬서, 글이 그냥 사라진 것처럼 보이지 않고
+      // 다시 등록 버튼을 눌러 재시도할 수 있게 한다.
+      setCommentError(true)
+    }
   }
 
   function startEditPost(title: string, body: string) {
@@ -200,10 +218,16 @@ export function MainFeedScreen() {
             })}
           {openPost.commentsEnabled ? (
             <div className="feed__comment-composer">
+              {commentError && (
+                <p className="feed__comment-error">댓글 등록에 실패했다....... 다시 한 번 등록을 눌러 보자.</p>
+              )}
               <TagPicker names={tagNames} onPick={(name) => setDraft((prev) => `${prev}@${name} `)} />
               <input
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(e) => {
+                  setDraft(e.target.value)
+                  setCommentError(false)
+                }}
                 onKeyDown={(e) => e.key === 'Enter' && submitComment(openPost.id)}
                 placeholder="댓글 남기기......"
               />
@@ -215,7 +239,9 @@ export function MainFeedScreen() {
                 />
                 비밀
               </label>
-              <button onClick={() => submitComment(openPost.id)}>등록</button>
+              <button disabled={commentSending || !draft.trim()} onClick={() => submitComment(openPost.id)}>
+                {commentSending ? '등록 중......' : '등록'}
+              </button>
             </div>
           ) : (
             openPost.comments.length > 0 && (

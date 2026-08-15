@@ -415,7 +415,7 @@ interface GameState {
   editFeedPost: (postId: string, title: string, body: string) => void
   deleteFeedPost: (postId: string) => void
   toggleCommentsEnabled: (postId: string) => void
-  addComment: (postId: string, text: string, secret: boolean) => void
+  addComment: (postId: string, text: string, secret: boolean) => Promise<boolean>
   editComment: (postId: string, commentId: string, text: string) => void
   deleteComment: (postId: string, commentId: string) => void
   players: Record<string, PlayerDoc>
@@ -1827,8 +1827,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void toggleHeartSync(postId, myId)
   }
 
-  function addComment(postId: string, text: string, secret: boolean) {
-    if (!text.trim() || !signedUp) return
+  async function addComment(postId: string, text: string, secret: boolean): Promise<boolean> {
+    if (!text.trim() || !signedUp) return false
     const authorId = viewerId ?? 'admin'
     const comment: FeedComment = {
       id: `${postId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -1836,7 +1836,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       text: text.trim(),
       secret,
     }
-    void addCommentSync(postId, comment)
+    try {
+      await addCommentSync(postId, comment)
+      return true
+    } catch (err) {
+      console.error('댓글 등록 실패', err)
+      return false
+    }
   }
 
   function toggleCommentsEnabled(postId: string) {
