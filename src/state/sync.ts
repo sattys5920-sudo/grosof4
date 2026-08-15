@@ -297,7 +297,7 @@ function serializeMission(mission: MissionState) {
 }
 
 function deserializeMission(raw: MissionState): MissionState {
-  const rawHistory = raw.teamHistory as unknown as ({ team: string[] } | string[] | null)[]
+  const rawHistory = (raw.teamHistory ?? []) as unknown as ({ team: string[] } | string[] | null)[]
   return {
     ...raw,
     teamHistory: rawHistory.map((entry) => {
@@ -311,7 +311,20 @@ export function subscribeSession(cb: (data: SessionDoc) => void) {
   return onSnapshot(sessionRef(), (snap) => {
     if (!snap.exists()) return
     const data = snap.data() as SessionDoc
-    cb({ ...data, mission: deserializeMission(data.mission) })
+    // 게임 도중 방(구관)이 새로 추가되는 등 스키마가 늘어나면, 그 전에 만들어진
+    // 세션 문서에는 새 방의 키가 아예 없다. 그 상태로 roomEvents[room.id] 같은
+    // 걸 그대로 읽으면 undefined라 화면이 통째로 깨진다. 그래서 기본값과
+    // 병합해 없는 키만 채워 넣는다(있는 값은 그대로 유지).
+    const defaults = defaultSessionState()
+    const merged: SessionDoc = {
+      ...defaults,
+      ...data,
+      roomOccupancy: { ...defaults.roomOccupancy, ...(data.roomOccupancy ?? {}) },
+      roomMessages: { ...defaults.roomMessages, ...(data.roomMessages ?? {}) },
+      roomEvents: { ...defaults.roomEvents, ...(data.roomEvents ?? {}) },
+      cardGames: { ...defaults.cardGames, ...(data.cardGames ?? {}) },
+    }
+    cb({ ...merged, mission: deserializeMission(merged.mission) })
   })
 }
 
@@ -762,7 +775,15 @@ export async function updateRoomEventSync(
   await runTransaction(requireDb(), async (tx) => {
     const snap = await tx.get(sref)
     const data = snap.data() as SessionDoc
-    const current = data.roomEvents[roomId]
+    const current = data.roomEvents[roomId] ?? {
+      event: null,
+      cleared: false,
+      clue: null,
+      note: null,
+      combat: null,
+      open: false,
+      investigation: { started: false, logIndex: 0, completed: false },
+    }
     const withInvestigation: RoomEventState = {
       ...current,
       investigation: current.investigation ?? { started: false, logIndex: 0, completed: false },
