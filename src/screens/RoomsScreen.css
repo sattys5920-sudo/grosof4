@@ -197,6 +197,16 @@
   color: var(--bone-bright);
 }
 
+.rooms__pin-first-select {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  padding: 5px 6px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--void-3);
+  color: var(--bone-dim);
+}
+
 .rooms__pin-plus {
   width: 26px;
   height: 26px;

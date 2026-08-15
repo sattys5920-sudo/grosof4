@@ -84,6 +84,7 @@ export function RoomsScreen() {
   } = useGame()
   const [openRoom, setOpenRoom] = useState<RoomId | null>(null)
   const [openCardRoom, setOpenCardRoom] = useState<CardRoomId | null>(null)
+  const [firstCardPlayerId, setFirstCardPlayerId] = useState('')
   const [draft, setDraft] = useState('')
   const [selectedCard, setSelectedCard] = useState<number | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -156,6 +157,7 @@ export function RoomsScreen() {
 
   useEffect(() => {
     setSelectedCard(null)
+    setFirstCardPlayerId('')
   }, [openCardRoom])
 
   function revealedFor(c: ReturnType<typeof charOf>) {
@@ -503,13 +505,29 @@ export function RoomsScreen() {
                     구관 {roomEvent.open ? '닫기' : '열기'}
                   </button>
                   {!game && (
-                    <button
-                      className="rooms__pin-reset"
-                      disabled={occupants.length < CARD_ROOM_MIN_PLAYERS || occupants.length > room.capacity}
-                      onClick={() => startCardGame(openCardRoom!)}
-                    >
-                      플레이
-                    </button>
+                    <>
+                      <select
+                        className="rooms__pin-first-select"
+                        value={firstCardPlayerId}
+                        onChange={(e) => setFirstCardPlayerId(e.target.value)}
+                      >
+                        <option value="">첫 순서: 가나다순 자동</option>
+                        {[...occupants]
+                          .sort((a, b) => displayName(a).localeCompare(displayName(b), 'ko'))
+                          .map((id) => (
+                            <option key={id} value={id}>
+                              첫 순서: {displayName(id)}
+                            </option>
+                          ))}
+                      </select>
+                      <button
+                        className="rooms__pin-reset"
+                        disabled={occupants.length < CARD_ROOM_MIN_PLAYERS || occupants.length > room.capacity}
+                        onClick={() => startCardGame(openCardRoom!, firstCardPlayerId || undefined)}
+                      >
+                        플레이
+                      </button>
+                    </>
                   )}
                   {game && (
                     <button className="rooms__pin-reset" onClick={() => resetCardGame(openCardRoom!)}>

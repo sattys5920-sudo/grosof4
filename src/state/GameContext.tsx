@@ -296,7 +296,7 @@ interface GameState {
   roomEvents: Record<RoomId, RoomEventState>
   cardGames: Record<CardRoomId, CardGameState | null>
   joinCardRoom: (roomId: CardRoomId) => void
-  startCardGame: (roomId: CardRoomId) => void
+  startCardGame: (roomId: CardRoomId, firstPlayerId?: string) => void
   leaveCardRoom: (roomId: CardRoomId) => void
   kickFromCardRoom: (roomId: CardRoomId, targetId: string) => void
   playCard: (roomId: CardRoomId, pile: CardPile, card: number) => void
@@ -1015,12 +1015,16 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void joinCardRoomSync(viewerId, roomId)
   }
 
-  function startCardGame(roomId: CardRoomId) {
+  function startCardGame(roomId: CardRoomId, firstPlayerId?: string) {
     if (!isAdminFlag) return
     const occ = session.roomOccupancy[roomId] ?? []
     if (occ.length < CARD_ROOM_MIN_PLAYERS || occ.length > CARD_ROOM_CAPACITY) return
     if (session.cardGames[roomId]) return
-    const turnOrder = [...occ].sort((a, b) => (players[a]?.nickname ?? '').localeCompare(players[b]?.nickname ?? '', 'ko'))
+    let turnOrder = [...occ].sort((a, b) => (players[a]?.nickname ?? '').localeCompare(players[b]?.nickname ?? '', 'ko'))
+    if (firstPlayerId && turnOrder.includes(firstPlayerId)) {
+      const idx = turnOrder.indexOf(firstPlayerId)
+      turnOrder = [...turnOrder.slice(idx), ...turnOrder.slice(0, idx)]
+    }
     void startCardGameSync(roomId, turnOrder)
   }
 
