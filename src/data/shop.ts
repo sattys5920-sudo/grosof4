@@ -47,6 +47,39 @@ export const SHOP_ITEMS: ShopItem[] = [
     },
   },
   {
+    id: 'sh-food-4',
+    name: '도시락',
+    kind: 'food',
+    amount: 65,
+    price: 20,
+    art: {
+      pixels: ['NNNNNNNN', 'NRRWWWRN', 'NRRWWWRN', 'NRRGGGRN', 'NRRGGGRN', 'NRRYYYRN', 'NRRYYYRN', 'NNNNNNNN'],
+      palette: { N: '#1c1815', R: '#e8d9c0', W: '#f0f0f0', G: '#5a8a4a', Y: '#e0b23c' },
+    },
+  },
+  {
+    id: 'sh-food-5',
+    name: '에너지바 세트',
+    kind: 'food',
+    amount: 85,
+    price: 28,
+    art: {
+      pixels: ['WWWWWWWW', 'WBBBBBBW', 'WBBBBBBW', 'WWWWWWWW', 'WBBBBBBW', 'WBBBBBBW', 'WWWWWWWW', '........'],
+      palette: { W: '#e8d9c0', B: '#8a5a2f' },
+    },
+  },
+  {
+    id: 'sh-food-6',
+    name: '특제 보양식',
+    kind: 'food',
+    amount: 110,
+    price: 38,
+    art: {
+      pixels: ['..GGGG..', '.GBBBBG.', 'GBBBBBBG', 'GBDDDDBG', 'GBDDDDBG', 'GBBBBBBG', '.GBBBBG.', '..GGGG..'],
+      palette: { G: '#c9a83c', B: '#8a5a2f', D: '#5a3a1c' },
+    },
+  },
+  {
     id: 'sh-med-0',
     name: '연고',
     kind: 'medicine',
@@ -146,6 +179,39 @@ export const SHOP_ITEMS: ShopItem[] = [
     },
   },
   {
+    id: 'sh-wpn-5',
+    name: '알루미늄 야구 배트',
+    kind: 'weapon',
+    amount: 18,
+    price: 85,
+    art: {
+      pixels: ['.......S', '......SS', '.....SS.', '....SS..', '...SS...', '..SS....', '.GG.....', 'GG......'],
+      palette: { S: '#c9c9d9', G: '#3a3a4a' },
+    },
+  },
+  {
+    id: 'sh-wpn-6',
+    name: '목검',
+    kind: 'weapon',
+    amount: 24,
+    price: 110,
+    art: {
+      pixels: ['.......W', '......W.', '.....W..', '....W...', '...W....', '..W.....', '.DKD....', 'DDDD....'],
+      palette: { W: '#b8895a', D: '#5a3a1c', K: '#1c1815' },
+    },
+  },
+  {
+    id: 'sh-wpn-7',
+    name: '쇠파이프',
+    kind: 'weapon',
+    amount: 32,
+    price: 140,
+    art: {
+      pixels: ['.......M', '......MM', '.....MM.', '....MM..', '...MM...', '..MM....', '.MM.....', 'MM......'],
+      palette: { M: '#8a8fa0' },
+    },
+  },
+  {
     id: 'sh-arm-0',
     name: '체육복 상의',
     kind: 'armor',
@@ -198,6 +264,39 @@ export const SHOP_ITEMS: ShopItem[] = [
     art: {
       pixels: ['.FFFFFF.', 'FFFFFFFF', 'FFSSSSFF', 'FFFFFFFF', 'FF.FF.FF', 'FF.FF.FF', 'FF.FF.FF', '........'],
       palette: { F: '#c97b2a', S: '#d9cfbf' },
+    },
+  },
+  {
+    id: 'sh-arm-5',
+    name: '강화 헬멧',
+    kind: 'armor',
+    amount: 12,
+    price: 95,
+    art: {
+      pixels: ['..MMMM..', '.MMMMMM.', 'MMMMMMMM', 'MMMMMMMM', 'MMMMMMMM', 'M......M', '........', '........'],
+      palette: { M: '#8a8fa0' },
+    },
+  },
+  {
+    id: 'sh-arm-6',
+    name: '방탄조끼',
+    kind: 'armor',
+    amount: 16,
+    price: 125,
+    art: {
+      pixels: ['K......K', 'KK....KK', '.KKKKKK.', '.KDDDDK.', '.KDDDDK.', '.KDDDDK.', '.KKKKKK.', '........'],
+      palette: { K: '#1c1815', D: '#3a4a3a' },
+    },
+  },
+  {
+    id: 'sh-arm-7',
+    name: '전신 보호대',
+    kind: 'armor',
+    amount: 21,
+    price: 160,
+    art: {
+      pixels: ['MMMMMMMM', 'MDDDDDDM', 'MDMMMMDM', 'MDMMMMDM', 'MDMMMMDM', 'MDDDDDDM', 'MMMMMMMM', 'MM....MM'],
+      palette: { M: '#8a8fa0', D: '#5b7a9e' },
     },
   },
 ]

@@ -30,6 +30,7 @@ import type {
   RoomId,
 } from '../data/types'
 import {
+  CARD_GAME_WIN_COINS,
   CARD_ROOM_CAPACITY,
   CARD_ROOM_IDS,
   DRAW_PER_TURN,
@@ -603,7 +604,15 @@ export async function endCardTurnSync(myId: string, roomId: CardRoomId) {
         cardsPlayedThisTurn: 0,
         log: [...game.log, endLog, winLog],
       }
+      // 클리어 보상: 참여한 모두에게 코인 지급 (트랜잭션 규칙상 읽기를 먼저 전부 끝낸다).
+      const playerSnaps = await Promise.all(game.turnOrder.map((id) => tx.get(playerRef(id))))
       tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
+      for (let i = 0; i < game.turnOrder.length; i++) {
+        const pSnap = playerSnaps[i]
+        if (!pSnap.exists()) continue
+        const pData = pSnap.data() as PlayerDoc
+        tx.update(playerRef(game.turnOrder[i]), { coins: pData.coins + CARD_GAME_WIN_COINS })
+      }
       return
     }
 

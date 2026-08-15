@@ -4,7 +4,7 @@ import { useGame } from '../state/GameContext'
 import { CARD_ROOMS, CHARACTERS, ROOMS } from '../data/characters'
 import { CREATURES } from '../data/creatures'
 import { hallwayInvestigationByRoom } from '../data/hallwayInvestigations'
-import { isLegalCardPlay, MIN_PLAY_PER_TURN } from '../data/cardGame'
+import { CARD_GAME_WIN_COINS, isLegalCardPlay, MIN_PLAY_PER_TURN } from '../data/cardGame'
 import type { CardRoomId, RoomId } from '../data/types'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
@@ -540,7 +540,8 @@ export function RoomsScreen() {
               카드만), 100열은 내림차순(현재 숫자보다 작은 카드만) 낼 수 있다. 다섯 명이 모이면 자동으로 시작되고,
               참여자 닉네임의 ㄱㄴㄷ 순서대로 차례가 돈다. 손에는 항상 6장을 들고, 자기 차례에는 반드시 2장 이상을
               내야 한다(덱이 떨어지면 1장만 내도 된다). 카드를 내고 차례를 마치면 남은 덱에서 2장을 새로 받는다.
-              모두의 손패와 덱이 함께 텅 비면 승리, 낼 수 있는 카드가 없어 막히면 패배다.
+              모두의 손패와 덱이 함께 텅 비면 승리, 낼 수 있는 카드가 없어 막히면 패배다. 클리어하면 참여자
+              전원에게 코인 {CARD_GAME_WIN_COINS}개가 지급된다.
             </p>
 
             {!game && (
@@ -580,7 +581,11 @@ export function RoomsScreen() {
                     {game.cardsPlayedThisTurn}/{requiredMin}장)
                   </p>
                 )}
-                {game.status === 'won' && <p className="cardgame__result is-win">모두의 손패를 비웠다....... 승리!</p>}
+                {game.status === 'won' && (
+                  <p className="cardgame__result is-win">
+                    모두의 손패를 비웠다....... 승리! 참여자 전원이 코인 {CARD_GAME_WIN_COINS}개를 얻었다.
+                  </p>
+                )}
                 {game.status === 'lost' && (
                   <p className="cardgame__result is-lose">더 이상 낼 수 있는 카드가 없다....... 패배.</p>
                 )}
@@ -592,7 +597,7 @@ export function RoomsScreen() {
                       {entry.kind === 'play' &&
                         `${displayName(entry.actorId!)}이(가) ${entry.pile === 'asc' ? '1열' : '100열'}에 ${entry.card}을(를) 놓았다.`}
                       {entry.kind === 'endTurn' && `${displayName(entry.actorId!)}의 차례가 끝났다. (덱 ${entry.deckLeft}장 남음)`}
-                      {entry.kind === 'win' && '모두의 손패를 비웠다! 게임 승리.'}
+                      {entry.kind === 'win' && `모두의 손패를 비웠다! 게임 승리 — 참여자 전원 코인 ${CARD_GAME_WIN_COINS}개 지급.`}
                       {entry.kind === 'lose' && `${displayName(entry.actorId!)}의 차례에 낼 수 있는 카드가 없다....... 게임 패배.`}
                     </p>
                   ))}
