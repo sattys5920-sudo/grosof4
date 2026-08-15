@@ -410,6 +410,8 @@ interface GameState {
   setShopOpen: (open: boolean) => void
   classroomOpen: boolean
   setClassroomOpen: (open: boolean) => void
+  abilitiesOpen: boolean
+  setAbilitiesOpen: (open: boolean) => void
   storyDay: 0 | 1 | 2 | 3 | 4
   revealStoryDay: (day: 1 | 2 | 3 | 4) => void
   truthRevealed: boolean
@@ -1864,6 +1866,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void patchSession({ classroomOpen: open })
   }
 
+  function setAbilitiesOpen(open: boolean) {
+    if (!isAdminFlag) return
+    void patchSession({ abilitiesOpen: open })
+  }
+
   function assignRoleManually(characterId: string, nickname: string) {
     if (!isAdminFlag || !nickname.trim()) return
     void assignRoleManuallySync(characterId, nickname)
@@ -1897,6 +1904,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function useRecordBook(targetAId: string, targetBId: string) {
     if (!viewerId || targetAId === targetBId || targetAId === viewerId || targetBId === viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
+      if (!sess.abilitiesOpen) return {}
       if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('기록자')) return {}
       const today = new Date().toISOString().slice(0, 10)
       if (player.lastRecordBookDate === today) return {}
@@ -1927,6 +1935,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function investigate(targetId: string) {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
+      if (!sess.abilitiesOpen) return {}
       if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('감찰자')) return {}
       const check = resolveTeamCheckPure(sess.disguiseArmedUntilMs, targetId)
       const resultText = `《학생부 조사》 ${displayName(targetId)} — 실패 카드를 ${check.team === 'sin' ? '낼 수 있다' : '낼 수 없다'}.`
@@ -1946,6 +1955,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function armShield() {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
+      if (!sess.abilitiesOpen) return {}
       if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('보호자')) return {}
       if (sess.mission.shielded) return {}
       const text = '《수호》를 발동했다 — 다음 조사 결과에서 실패 카드 1 장이 무효화된다.'
@@ -1966,6 +1976,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function checkCctv(missionIndex: number) {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
+      if (!sess.abilitiesOpen) return {}
       if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('목격자')) return {}
       const count = sess.mission.failCounts[missionIndex]
       if (count === null || count === undefined) return {}
@@ -1987,6 +1998,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       viewerId,
       () => targetId,
       (sess, me, target) => {
+        if (!sess.abilitiesOpen) return {}
         if (!me.abilityUnlocked || me.abilityUseCount >= abilityMax('괴이의 사도')) return {}
         const today = new Date().toISOString().slice(0, 10)
         if (me.lastDiscernDate === today) return {}
@@ -2009,6 +2021,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function forgeResult() {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
+      if (!sess.abilitiesOpen) return {}
       if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('파괴자')) return {}
       if (!sess.mission.proposedTeam.includes(viewerId)) return {}
       if (sess.mission.missionResults[sess.mission.missionIndex] !== 'success') return {}
@@ -2033,6 +2046,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       viewerId,
       () => targetId,
       (sess, me, target) => {
+        if (!sess.abilitiesOpen) return {}
         if (!me.abilityUnlocked || me.abilityUseCount >= abilityMax('복수자')) return {}
         if (!target) return {}
         const targetChar = CHARACTERS.find((c) => c.id === targetId)!
@@ -2065,6 +2079,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function armDisguise() {
     if (!viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
+      if (!sess.abilitiesOpen) return {}
       if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('잠입자')) return {}
       if (sess.disguiseArmedUntilMs && Date.now() < sess.disguiseArmedUntilMs) return {}
       const text = '《위장》을 걸었다 — 6시간 동안 정체 확인 결과가 무조건 학생으로 나온다.'
@@ -2085,6 +2100,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function investigateLeak(targetId: string) {
     if (!viewerId || targetId === viewerId) return
     void runAbilityTransaction(viewerId, (sess, player) => {
+      if (!sess.abilitiesOpen) return {}
       if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('망각자')) return {}
       if (sess.mission.missionResults[2] === null) return {}
       const targetName = displayName(targetId)
@@ -2492,6 +2508,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       setShopOpen,
       classroomOpen: session.classroomOpen ?? true,
       setClassroomOpen,
+      abilitiesOpen: session.abilitiesOpen ?? false,
+      setAbilitiesOpen,
       storyDay: session.storyDay,
       revealStoryDay,
       truthRevealed: session.truthRevealed,

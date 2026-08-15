@@ -75,6 +75,7 @@ export interface SessionDoc {
   discussionOpenedAt: number | null
   shopOpen: boolean
   classroomOpen: boolean
+  abilitiesOpen: boolean
   hallEvent: HallEventState
   storyDay: 0 | 1 | 2 | 3 | 4
   truthRevealed: boolean
@@ -161,6 +162,7 @@ export function defaultSessionState(): SessionDoc {
     disguiseArmedUntilMs: null,
     shopOpen: false,
     classroomOpen: true,
+    abilitiesOpen: false,
     hallEvent: {
       eventId: null,
       logIndex: 0,

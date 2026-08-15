@@ -347,6 +347,29 @@
   line-height: 1.6;
 }
 
+.profile__gm-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--bone-bright);
+}
+
+.profile__ability-toggle {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  padding: 7px 12px;
+  cursor: pointer;
+  border: 1px solid var(--sin);
+  background: var(--void-2);
+  color: var(--bone-bright);
+}
+
+.profile__ability-toggle:hover {
+  background: var(--sin);
+}
+
 .profile__gm-presets {
   display: flex;
   gap: 8px;

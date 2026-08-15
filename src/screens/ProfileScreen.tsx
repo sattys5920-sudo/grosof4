@@ -56,12 +56,18 @@ function formatDisguiseRemaining(untilMs: number): string {
 }
 
 function AdminAbilityLogPanel() {
-  const { abilityLog, displayName } = useGame()
+  const { abilityLog, displayName, abilitiesOpen, setAbilitiesOpen } = useGame()
   const sorted = [...abilityLog].sort((a, b) => b.atMs - a.atMs)
 
   return (
     <div className="profile__gm">
       <span className="profile__section-label">불가 전용 — 능력 사용 기록</span>
+      <div className="profile__gm-toggle-row">
+        <span>능력 사용 상태: {abilitiesOpen ? '열림' : '닫힘'}</span>
+        <button className="profile__ability-toggle" onClick={() => setAbilitiesOpen(!abilitiesOpen)}>
+          {abilitiesOpen ? '닫기' : '열기'}
+        </button>
+      </div>
       <p className="profile__gm-note">누가 언제 어떤 능력을 썼고 그 결과로 무엇을 받았는지 시간순으로 모아 보여준다.</p>
       <div className="profile__ability-log">
         {sorted.length === 0 && <p className="profile__dm-empty">아직 사용된 능력이 없다.</p>}
@@ -211,6 +217,7 @@ export function ProfileScreen() {
     setMissionsOpen,
     abilityUseCount,
     abilityMaxUses,
+    abilitiesOpen,
     personalClues,
     forgottenIdentity,
     useRecordBook,
@@ -399,7 +406,11 @@ export function ProfileScreen() {
 
             {['기록자', '감찰자', '복수자', '보호자', '목격자', '괴이의 사도', '파괴자'].includes(viewer.role) && (
                 <>
-                  {usesLeft <= 0 ? (
+                  {!abilitiesOpen ? (
+                    <p className="profile__ability-locked">
+                      지금은 능력을 사용할 수 없다....... 불가가 능력 사용을 열어야 쓸 수 있다.
+                    </p>
+                  ) : usesLeft <= 0 ? (
                     <p className="profile__ability-locked">
                       사용 완료 ({abilityUseCount}/{abilityMaxUses}) — ??와의 개인 대화에서 결과를 다시
                       확인할 수 있다.
@@ -442,6 +453,10 @@ export function ProfileScreen() {
                   <p className="profile__ability-locked">
                     지금 위장이 걸려 있다....... {formatDisguiseRemaining(disguiseArmedUntilMs)} 후 풀린다.
                   </p>
+                ) : !abilitiesOpen ? (
+                  <p className="profile__ability-locked">
+                    지금은 능력을 사용할 수 없다....... 불가가 능력 사용을 열어야 쓸 수 있다.
+                  </p>
                 ) : usesLeft <= 0 ? (
                   <p className="profile__ability-locked">
                     사용 완료 ({abilityUseCount}/{abilityMaxUses}) — 더는 위장을 걸 수 없다.
@@ -463,7 +478,11 @@ export function ProfileScreen() {
                 </p>
                 {leakUnlocked && (
                   <>
-                    {usesLeft <= 0 ? (
+                    {!abilitiesOpen ? (
+                      <p className="profile__ability-locked">
+                        지금은 능력을 사용할 수 없다....... 불가가 능력 사용을 열어야 쓸 수 있다.
+                      </p>
+                    ) : usesLeft <= 0 ? (
                       <p className="profile__ability-locked">
                         사용 완료 ({abilityUseCount}/{abilityMaxUses}) — 더는 유포할 수 없다.
                       </p>
