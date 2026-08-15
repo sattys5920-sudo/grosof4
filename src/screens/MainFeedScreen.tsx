@@ -6,6 +6,37 @@ import { ChatAvatar } from '../components/ChatAvatar'
 import { TaggedText } from '../components/TaggedText'
 import { TagPicker } from '../components/TagPicker'
 
+const FEED_IMAGE_MAX_DIM = 1000
+const FEED_IMAGE_QUALITY = 0.75
+
+// Firestore 문서 하나에 다 들어가는 구조라, 원본 사진을 그대로 올리면 용량을 크게
+// 잡아먹을 수 있다. 캔버스로 적당한 크기까지만 줄이고 JPEG로 압축해서 저장한다.
+function compressImageFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = () => reject(reader.error)
+    reader.onload = () => {
+      const img = new Image()
+      img.onerror = () => reject(new Error('이미지를 읽을 수 없다'))
+      img.onload = () => {
+        const scale = Math.min(1, FEED_IMAGE_MAX_DIM / Math.max(img.width, img.height))
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(img.width * scale)
+        canvas.height = Math.round(img.height * scale)
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          reject(new Error('캔버스를 사용할 수 없다'))
+          return
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        resolve(canvas.toDataURL('image/jpeg', FEED_IMAGE_QUALITY))
+      }
+      img.src = reader.result as string
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
 export function MainFeedScreen() {
   const {
     feed,
@@ -30,6 +61,8 @@ export function MainFeedScreen() {
   const [composerOpen, setComposerOpen] = useState(false)
   const [postTitle, setPostTitle] = useState('')
   const [postBody, setPostBody] = useState('')
+  const [postImage, setPostImage] = useState<string | null>(null)
+  const [postImageError, setPostImageError] = useState(false)
   const [postCommentsOn, setPostCommentsOn] = useState(false)
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState('')
@@ -107,11 +140,25 @@ export function MainFeedScreen() {
   const tagNames = ['전원', ...CHARACTERS.map((c) => displayName(c.id)), displayName('admin')]
 
   function submitNewPost() {
-    createFeedPost(postTitle, postBody, postCommentsOn)
+    createFeedPost(postTitle, postBody, postCommentsOn, postImage ?? undefined)
     setPostTitle('')
     setPostBody('')
+    setPostImage(null)
+    setPostImageError(false)
     setPostCommentsOn(false)
     setComposerOpen(false)
+  }
+
+  async function onPostImagePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setPostImageError(false)
+    try {
+      setPostImage(await compressImageFile(file))
+    } catch {
+      setPostImageError(true)
+    }
   }
 
   if (openPost) {
@@ -147,6 +194,9 @@ export function MainFeedScreen() {
           ) : (
             <>
               <h2 className="feed__detail-title">{openPost.title}</h2>
+              {openPost.imageDataUrl && (
+                <img className="feed__detail-image" src={openPost.imageDataUrl} alt="게시글 사진" />
+              )}
               <p className="feed__detail-body">{openPost.body}</p>
             </>
           )}
@@ -289,6 +339,20 @@ export function MainFeedScreen() {
             placeholder="게시글 내용"
             rows={3}
           />
+          {postImageError && <p className="feed__image-error">사진을 불러오지 못했다....... 다시 시도해 보자.</p>}
+          {postImage ? (
+            <div className="feed__image-preview">
+              <img src={postImage} alt="첨부한 사진" />
+              <button type="button" className="feed__image-remove" onClick={() => setPostImage(null)}>
+                사진 빼기
+              </button>
+            </div>
+          ) : (
+            <label className="feed__image-pick">
+              <input type="file" accept="image/*" onChange={onPostImagePick} hidden />
+              사진첩에서 사진 추가
+            </label>
+          )}
           <div className="feed__composer-row">
             <label className="feed__secret-toggle">
               <input
@@ -323,6 +387,7 @@ export function MainFeedScreen() {
               <span className="feed__time">{post.time}</span>
             </div>
             <h3 className="feed__title">{post.title}</h3>
+            {post.imageDataUrl && <img className="feed__thumb" src={post.imageDataUrl} alt="게시글 사진" />}
             <p className="feed__preview">{post.body}</p>
             <div className="feed__meta">
               <span className={`feed__meta-heart ${post.heartedByViewer ? 'is-active' : ''}`}>

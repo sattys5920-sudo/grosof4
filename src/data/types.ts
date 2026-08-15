@@ -166,6 +166,7 @@ export interface FeedPost {
   tag: string
   title: string
   body: string
+  imageDataUrl?: string
   time: string
   hearts: number
   heartedByViewer: boolean

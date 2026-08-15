@@ -435,7 +435,7 @@ interface GameState {
   useItem: (itemId: string) => void
   giftItem: (itemId: string, targetId: string) => void
   inventory: Record<string, number>
-  createFeedPost: (title: string, body: string, commentsEnabled: boolean) => void
+  createFeedPost: (title: string, body: string, commentsEnabled: boolean, imageDataUrl?: string) => void
   editFeedPost: (postId: string, title: string, body: string) => void
   deleteFeedPost: (postId: string) => void
   toggleCommentsEnabled: (postId: string) => void
@@ -1939,13 +1939,14 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void deleteCommentSync(postId, commentId, myId)
   }
 
-  function createFeedPost(title: string, body: string, commentsEnabled: boolean) {
+  function createFeedPost(title: string, body: string, commentsEnabled: boolean, imageDataUrl?: string) {
     if (!title.trim() || !body.trim()) return
     void createFeedPostSync({
       authorLabel: '[??]',
       tag: '공지',
       title: title.trim(),
       body: body.trim(),
+      ...(imageDataUrl ? { imageDataUrl } : {}),
       time: '방금',
       commentsEnabled,
     })

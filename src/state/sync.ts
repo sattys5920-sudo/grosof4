@@ -143,6 +143,7 @@ export interface FeedPostDoc {
   tag: string
   title: string
   body: string
+  imageDataUrl?: string
   time: string
   heartedBy: string[]
   commentsEnabled: boolean
@@ -1724,6 +1725,7 @@ export function feedPostToFeedPost(id: string, doc: FeedPostDoc, myId: string): 
     tag: doc.tag,
     title: doc.title,
     body: doc.body,
+    imageDataUrl: doc.imageDataUrl,
     time: doc.time,
     hearts: doc.heartedBy.length,
     heartedByViewer: doc.heartedBy.includes(myId),
