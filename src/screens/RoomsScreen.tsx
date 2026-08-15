@@ -4,7 +4,7 @@ import { useGame } from '../state/GameContext'
 import { CARD_ROOMS, CHARACTERS, ROOMS } from '../data/characters'
 import { CREATURES } from '../data/creatures'
 import { hallwayInvestigationByRoom } from '../data/hallwayInvestigations'
-import { CARD_GAME_WIN_COINS, isLegalCardPlay, MIN_PLAY_PER_TURN } from '../data/cardGame'
+import { CARD_GAME_WIN_COINS, CARD_ROOM_MIN_PLAYERS, isLegalCardPlay, MIN_PLAY_PER_TURN } from '../data/cardGame'
 import type { CardRoomId, RoomId } from '../data/types'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
@@ -68,6 +68,7 @@ export function RoomsScreen() {
     players,
     cardGames,
     joinCardRoom,
+    startCardGame,
     leaveCardRoom,
     kickFromCardRoom,
     playCard,
@@ -462,6 +463,7 @@ export function RoomsScreen() {
     const room = CARD_ROOMS.find((r) => r.id === openCardRoom)!
     const occupants = roomOccupancy[openCardRoom] ?? []
     const iAmHere = !!viewerId && occupants.includes(viewerId)
+    const roomEvent = roomEvents[openCardRoom]
     const game = cardGames[openCardRoom]
     const requiredMin = game && game.drawPile.length === 0 ? 1 : MIN_PLAY_PER_TURN
     const myTurn = !!viewerId && !!game && game.status === 'playing' && game.turnOrder[game.turnIndex] === viewerId
@@ -488,10 +490,26 @@ export function RoomsScreen() {
           <div className="rooms__pin-scroll" ref={cardPinScrollRef}>
             <div className="rooms__pin-head">
               <span className="rooms__pin-title">{room.name}</span>
-              {gmReveal && game && (
-                <button className="rooms__pin-reset" onClick={() => resetCardGame(openCardRoom!)}>
-                  게임 초기화
-                </button>
+              {gmReveal && (
+                <div className="rooms__pin-gm">
+                  <button className="rooms__pin-reset" onClick={() => setRoomOpen(openCardRoom!, !roomEvent.open)}>
+                    구관 {roomEvent.open ? '닫기' : '열기'}
+                  </button>
+                  {!game && (
+                    <button
+                      className="rooms__pin-reset"
+                      disabled={occupants.length < CARD_ROOM_MIN_PLAYERS || occupants.length > room.capacity}
+                      onClick={() => startCardGame(openCardRoom!)}
+                    >
+                      플레이
+                    </button>
+                  )}
+                  {game && (
+                    <button className="rooms__pin-reset" onClick={() => resetCardGame(openCardRoom!)}>
+                      게임 초기화
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -524,31 +542,39 @@ export function RoomsScreen() {
                         나가기
                       </button>
                     )
-                  : (
-                      <button
-                        className="rooms__pin-toggle"
-                        disabled={occupants.length >= room.capacity}
-                        onClick={() => joinCardRoom(openCardRoom!)}
-                      >
-                        {occupants.length >= room.capacity ? '인원 초과' : '입장'}
-                      </button>
-                    ))}
+                  : !roomEvent.open
+                    ? (
+                        <span className="rooms__pin-locked">잠김</span>
+                      )
+                    : (
+                        <button
+                          className="rooms__pin-toggle"
+                          disabled={occupants.length >= room.capacity}
+                          onClick={() => joinCardRoom(openCardRoom!)}
+                        >
+                          {occupants.length >= room.capacity ? '인원 초과' : '입장'}
+                        </button>
+                      ))}
             </div>
+
+            {!roomEvent.open && !isAdmin && !iAmHere && (
+              <p className="rooms__pin-ambient">이 구관은 아직 잠겨 있다.</p>
+            )}
 
             <p className="cardgame__rule">
               게임 방법: 2부터 99까지의 숫자 카드로 진행하는 협동 카드 게임이다....... 1열은 오름차순(현재 숫자보다 큰
-              카드만), 100열은 내림차순(현재 숫자보다 작은 카드만) 낼 수 있다. 다섯 명이 모이면 자동으로 시작되고,
-              참여자 닉네임의 ㄱㄴㄷ 순서대로 차례가 돈다. 손에는 항상 6장을 들고, 자기 차례에는 반드시 2장 이상을
-              내야 한다(덱이 떨어지면 1장만 내도 된다). 카드를 내고 차례를 마치면 남은 덱에서 2장을 새로 받는다.
-              모두의 손패와 덱이 함께 텅 비면 승리, 낼 수 있는 카드가 없어 막히면 패배다. 클리어하면 참여자
-              전원에게 코인 {CARD_GAME_WIN_COINS}개가 지급된다.
+              카드만), 100열은 내림차순(현재 숫자보다 작은 카드만) 낼 수 있다. {CARD_ROOM_MIN_PLAYERS}명에서 {room.capacity}명
+              사이로 모이면 불가가 "플레이" 버튼을 눌러 시작하고, 참여자 닉네임의 ㄱㄴㄷ 순서대로 차례가 돈다. 손에는
+              항상 6장을 들고, 자기 차례에는 반드시 2장 이상을 내야 한다(덱이 떨어지면 1장만 내도 된다). 카드를 내고
+              차례를 마치면 남은 덱에서 2장을 새로 받는다. 모두의 손패와 덱이 함께 텅 비면 승리, 낼 수 있는 카드가
+              없어 막히면 패배다. 클리어하면 참여자 전원에게 코인 {CARD_GAME_WIN_COINS}개가 지급된다.
             </p>
 
-            {!game && (
+            {!game && (roomEvent.open || isAdmin || iAmHere) && (
               <p className="rooms__pin-ambient">
-                {occupants.length >= room.capacity
-                  ? '카드를 나눠 가지는 중......'
-                  : `아직 인원이 다 모이지 않았다. (${occupants.length}/${room.capacity}) 다섯 명이 모이면 자동으로 시작된다.`}
+                {occupants.length < CARD_ROOM_MIN_PLAYERS
+                  ? `최소 ${CARD_ROOM_MIN_PLAYERS}명이 모여야 시작할 수 있다. (${occupants.length}/${room.capacity})`
+                  : `불가가 "플레이"를 누르면 시작된다. (${occupants.length}/${room.capacity})`}
               </p>
             )}
 
@@ -750,17 +776,18 @@ export function RoomsScreen() {
 
       <div className="rooms__intro">
         <span className="rooms__intro-label">카드 게임</span>
-        <p>협동 카드 게임 "더 게임". 다섯 명이 모이면 자동으로 시작된다.</p>
+        <p>협동 카드 게임 "더 게임". {CARD_ROOM_MIN_PLAYERS}~5명이 모이면 불가가 시작할 수 있다.</p>
       </div>
       <div className="rooms__grid">
         {CARD_ROOMS.map((room) => {
           const occupants = roomOccupancy[room.id] ?? []
           const full = occupants.length >= room.capacity
           const game = cardGames[room.id]
+          const open = roomEvents[room.id].open
           return (
             <button
               key={room.id}
-              className="rooms__card"
+              className={`rooms__card ${!open ? 'is-locked' : ''}`}
               onClick={() => {
                 setOpenRoom(null)
                 setOpenCardRoom(room.id)
@@ -770,6 +797,7 @@ export function RoomsScreen() {
                 <span className="rooms__card-name">
                   {room.name}
                   {hasUnreadRoom(room.id) && <span className="rooms__card-ping" />}
+                  {!open && <span className="rooms__card-locked-tag">잠김</span>}
                   {game?.status === 'playing' && <span className="rooms__card-active-tag">진행 중</span>}
                   {game?.status === 'won' && <span className="rooms__card-clue-tag">승리</span>}
                   {game?.status === 'lost' && <span className="rooms__card-locked-tag">패배</span>}

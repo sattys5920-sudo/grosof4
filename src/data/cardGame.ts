@@ -6,6 +6,7 @@ export const HAND_SIZE = 6
 export const DRAW_PER_TURN = 2
 export const MIN_PLAY_PER_TURN = 2
 export const CARD_ROOM_CAPACITY = 5
+export const CARD_ROOM_MIN_PLAYERS = 2
 export const CARD_GAME_WIN_COINS = 100
 
 export const CARD_ROOM_IDS: CardRoomId[] = ['classroomA', 'classroomB']

@@ -33,6 +33,7 @@ import {
   CARD_GAME_WIN_COINS,
   CARD_ROOM_CAPACITY,
   CARD_ROOM_IDS,
+  CARD_ROOM_MIN_PLAYERS,
   DRAW_PER_TURN,
   HAND_SIZE,
   MIN_PLAY_PER_TURN,
@@ -514,7 +515,7 @@ export async function startCardGameSync(roomId: CardRoomId, turnOrder: string[])
     const snap = await tx.get(sref)
     const data = snap.data() as SessionDoc
     const occ = data.roomOccupancy[roomId] ?? []
-    if (occ.length !== CARD_ROOM_CAPACITY) return
+    if (occ.length < CARD_ROOM_MIN_PLAYERS || occ.length > CARD_ROOM_CAPACITY) return
     if (data.cardGames[roomId]) return
     if (turnOrder.length !== occ.length || !turnOrder.every((id) => occ.includes(id))) return
     const deck = shuffledCardDeck()

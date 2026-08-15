@@ -10,6 +10,7 @@ import {
   TEAM_LABEL,
   leakerRevealText,
 } from '../data/characters'
+import { CARD_ROOM_CAPACITY, CARD_ROOM_MIN_PLAYERS } from '../data/cardGame'
 import { creatureById } from '../data/creatures'
 import { shopItemById } from '../data/shop'
 import { hallEventById } from '../data/hallEvents'
@@ -294,6 +295,7 @@ interface GameState {
   roomEvents: Record<RoomId, RoomEventState>
   cardGames: Record<CardRoomId, CardGameState | null>
   joinCardRoom: (roomId: CardRoomId) => void
+  startCardGame: (roomId: CardRoomId) => void
   leaveCardRoom: (roomId: CardRoomId) => void
   kickFromCardRoom: (roomId: CardRoomId, targetId: string) => void
   playCard: (roomId: CardRoomId, pile: CardPile, card: number) => void
@@ -779,19 +781,6 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     return () => clearInterval(t)
   }, [session.roomEvents])
 
-  // 교실 A/B(카드 게임방)에 정확히 5 명이 모이면, 누군가의 화면이든 켜져 있는 클라이언트가
-  // 대신 카드를 나눠 게임을 시작한다(멱등적이라 여러 클라이언트가 동시에 감지해도 문제없다).
-  // 차례 순서는 참여자 닉네임의 가나다 순으로 정한다.
-  useEffect(() => {
-    if (!sessionLoaded || !playersLoaded) return
-    for (const room of CARD_ROOMS) {
-      const occ = session.roomOccupancy[room.id] ?? []
-      if (occ.length === room.capacity && !session.cardGames[room.id]) {
-        const turnOrder = [...occ].sort((a, b) => (players[a]?.nickname ?? '').localeCompare(players[b]?.nickname ?? '', 'ko'))
-        void startCardGameSync(room.id, turnOrder)
-      }
-    }
-  }, [session.roomOccupancy, session.cardGames, players, sessionLoaded, playersLoaded])
 
   // 강당 채팅에 새 메시지가 오면 (내가 보낸 게 아니면) 상단바 + 백그라운드 알림을 띄운다.
   // 나를 태그(@닉네임)한 메시지는 더 눈에 띄게 표시한다.
@@ -1011,6 +1000,15 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void joinCardRoomSync(viewerId, roomId)
   }
 
+  function startCardGame(roomId: CardRoomId) {
+    if (!isAdminFlag) return
+    const occ = session.roomOccupancy[roomId] ?? []
+    if (occ.length < CARD_ROOM_MIN_PLAYERS || occ.length > CARD_ROOM_CAPACITY) return
+    if (session.cardGames[roomId]) return
+    const turnOrder = [...occ].sort((a, b) => (players[a]?.nickname ?? '').localeCompare(players[b]?.nickname ?? '', 'ko'))
+    void startCardGameSync(roomId, turnOrder)
+  }
+
   function leaveCardRoom(roomId: CardRoomId) {
     if (!viewerId) return
     void leaveCardRoomSync(viewerId, roomId)
@@ -1122,8 +1120,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function setRoomOpen(roomId: RoomId, open: boolean) {
     if (!isAdminFlag) return
     void updateRoomEventSync(roomId, (state) => ({ ...state, open }))
-    const room = ROOMS.find((r) => r.id === roomId)!
-    if (open) {
+    const room = ROOMS.find((r) => r.id === roomId) ?? CARD_ROOMS.find((r) => r.id === roomId)
+    if (open && room) {
       sendBroadcast('event', `${room.name} 개방`, `${room.name}이(가) 열렸다....... 지금 입장할 수 있다.`)
     }
   }
@@ -2524,6 +2522,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       roomEvents: session.roomEvents,
       cardGames: session.cardGames,
       joinCardRoom,
+      startCardGame,
       leaveCardRoom,
       kickFromCardRoom,
       playCard,
