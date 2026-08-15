@@ -733,8 +733,8 @@ export function RoomsScreen() {
                     {myTurn && (
                       <button className="cardgame__end-turn" disabled={!canEndTurn} onClick={() => endCardTurn(openCardRoom!)}>
                         {canEndTurn
-                          ? '차례 마치기'
-                          : `차례 마치려면 ${requiredMin}장 이상 내야 한다 (${game.cardsPlayedThisTurn}/${requiredMin})`}
+                          ? '턴 넘기기'
+                          : `턴을 넘기려면 ${requiredMin}장 이상 내야 한다 (${game.cardsPlayedThisTurn}/${requiredMin})`}
                       </button>
                     )}
                   </div>
