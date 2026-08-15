@@ -37,6 +37,19 @@ export function buildHalliDeck(): HalliCard[] {
   return deck
 }
 
+/**
+ * playerIds 순서(=시계 방향 자리 순서)를 기준으로, fromIndex 다음 자리부터 한 바퀴 돌며
+ * 탈락하지 않은 사람의 인덱스를 찾는다. 전원 탈락 등 예외 상황이면 fromIndex를 그대로 돌려준다.
+ */
+export function nextAliveHalliIndex(playerIds: string[], eliminated: string[], fromIndex: number): number {
+  const n = playerIds.length
+  for (let step = 1; step <= n; step++) {
+    const idx = (fromIndex + step) % n
+    if (!eliminated.includes(playerIds[idx])) return idx
+  }
+  return fromIndex
+}
+
 /** 지금 공개돼 있는 카드들을 색깔별로 더해서, 합이 정확히 5가 되는 색을 찾는다. 없으면 null. */
 export function findMatchingColor(revealed: (HalliCard | null | undefined)[]): HalliColor | null {
   const sums = new Map<HalliColor, number>()

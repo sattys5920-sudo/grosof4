@@ -1100,7 +1100,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     const occ = session.roomOccupancy[roomId] ?? []
     if (occ.length < HALLI_ROOM_MIN_PLAYERS || occ.length > HALLI_ROOM_CAPACITY) return
     if (session.halliGames[roomId]) return
-    void startHalliBettingSync(roomId)
+    // 1 라운드 뒤집기 순서는 가나다순으로 정한다(카드게임 turnOrder와 동일한 방식).
+    const seatOrder = [...occ].sort((a, b) => (players[a]?.nickname ?? '').localeCompare(players[b]?.nickname ?? '', 'ko'))
+    void startHalliBettingSync(roomId, seatOrder)
   }
 
   function placeHalliBet(roomId: HalliRoomId, amount: number) {

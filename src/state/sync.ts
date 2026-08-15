@@ -47,7 +47,14 @@ import {
   isLegalCardPlay,
   shuffledCardDeck,
 } from '../data/cardGame'
-import { HALLI_ROOM_CAPACITY, HALLI_ROOM_IDS, HALLI_ROOM_MIN_PLAYERS, buildHalliDeck, findMatchingColor } from '../data/halliGame'
+import {
+  HALLI_ROOM_CAPACITY,
+  HALLI_ROOM_IDS,
+  HALLI_ROOM_MIN_PLAYERS,
+  buildHalliDeck,
+  findMatchingColor,
+  nextAliveHalliIndex,
+} from '../data/halliGame'
 import { initialMissionState, type MissionState } from './missionEngine'
 import { shopItemById } from '../data/shop'
 
@@ -648,8 +655,12 @@ export async function leaveHalliRoomSync(myId: string, roomId: HalliRoomId) {
   }
 }
 
-/** 불가가 "베팅 시작"을 누르면 그 순간 방에 있는 인원으로 참가자를 확정하고 배팅 단계로 들어간다. */
-export async function startHalliBettingSync(roomId: HalliRoomId) {
+/**
+ * 불가가 "베팅 시작"을 누르면 그 순간 방에 있는 인원으로 참가자를 확정하고 배팅 단계로 들어간다.
+ * seatOrder는 시계 방향 자리 순서(=뒤집기 차례 순서)이며, 1 라운드는 가나다순으로 정렬해
+ * 클라이언트에서 미리 계산해 전달한다(카드게임 turnOrder와 동일한 패턴).
+ */
+export async function startHalliBettingSync(roomId: HalliRoomId, seatOrder: string[]) {
   const sref = sessionRef()
   try {
     await runTransaction(
@@ -661,9 +672,10 @@ export async function startHalliBettingSync(roomId: HalliRoomId) {
         if (data.halliGames[roomId]) return
         const occ = data.roomOccupancy[roomId] ?? []
         if (occ.length < HALLI_ROOM_MIN_PLAYERS || occ.length > HALLI_ROOM_CAPACITY) return
+        if (seatOrder.length !== occ.length || !seatOrder.every((id) => occ.includes(id))) return
         const game: HalliGameState = {
           status: 'betting',
-          playerIds: [...occ],
+          playerIds: seatOrder,
           bets: {},
           decks: {},
           revealed: {},
@@ -673,6 +685,7 @@ export async function startHalliBettingSync(roomId: HalliRoomId) {
           winnerId: null,
           pot: 0,
           log: [{ id: `hg-${Date.now()}`, kind: 'start', atMs: Date.now() }],
+          turnIndex: 0,
         }
         tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: game } })
       },
@@ -783,6 +796,8 @@ export async function flipHalliCardSync(myId: string, roomId: HalliRoomId) {
         const game = data.halliGames[roomId]
         if (!game || game.status !== 'playing') return
         if (game.eliminated.includes(myId)) return
+        // 뒤집기는 시계 방향(playerIds 순서) 차례제다 — 지금 내 차례가 아니면 낼 수 없다.
+        if (game.playerIds[game.turnIndex] !== myId) return
         const deck = game.decks[myId] ?? []
         if (deck.length === 0) return
         const [card, ...rest] = deck
@@ -791,6 +806,7 @@ export async function flipHalliCardSync(myId: string, roomId: HalliRoomId) {
           decks: { ...game.decks, [myId]: rest },
           revealed: { ...game.revealed, [myId]: card },
           roundCards: [...game.roundCards, { playerId: myId, card }],
+          turnIndex: nextAliveHalliIndex(game.playerIds, game.eliminated, game.turnIndex),
           log: [
             ...game.log,
             { id: `hg-${Date.now()}-flip-${myId}`, kind: 'flip', actorId: myId, card, atMs: Date.now() },
@@ -840,6 +856,8 @@ export async function pressHalliBellSync(myId: string, roomId: HalliRoomId) {
             revealed: nextRevealed,
             roundCards: [],
             penaltyCards: [],
+            // 이번 판을 이긴 사람이 다음 판의 첫 뒤집기 차례를 갖는다.
+            turnIndex: game.playerIds.indexOf(myId),
             log: [
               ...game.log,
               {
@@ -890,6 +908,10 @@ export async function pressHalliBellSync(myId: string, roomId: HalliRoomId) {
           log: [...game.log, { id: `hg-${Date.now()}-miss-${myId}`, kind: 'miss', actorId: myId, atMs: Date.now() }],
         }
         nextGame = halliEliminate(nextGame)
+        // 지금 뒤집기 차례였던 사람이 방금 카드를 다 반납해 탈락해 버렸다면, 다음 차례로 넘긴다.
+        if (nextGame.eliminated.includes(nextGame.playerIds[nextGame.turnIndex])) {
+          nextGame = { ...nextGame, turnIndex: nextAliveHalliIndex(nextGame.playerIds, nextGame.eliminated, nextGame.turnIndex) }
+        }
         tx.update(sref, { halliGames: { ...data.halliGames, [roomId]: nextGame } })
       },
       HALLI_TX_OPTIONS,

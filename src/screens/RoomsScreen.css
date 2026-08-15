@@ -1025,6 +1025,15 @@ button.cardcard.is-dead {
   opacity: 0.35;
 }
 
+.halli-slot.is-turn .halli-slot__name {
+  color: var(--sin);
+}
+
+.halli-slot.is-turn .hallicard,
+.halli-slot.is-turn .hallicard--empty {
+  box-shadow: 0 0 0 2px var(--sin);
+}
+
 .halli-slot__name {
   font-size: 11px;
   color: var(--bone-bright);

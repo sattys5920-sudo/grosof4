@@ -868,6 +868,8 @@ export function RoomsScreen() {
     const allBetsIn = !!game && game.playerIds.every((id) => game.bets[id] !== undefined)
     const betAmount = Number(halliBetDraft)
     const useCenterBell = !!game && (game.playerIds.length === 4 || game.playerIds.length === 5)
+    const turnPlayerId = game && game.status === 'playing' ? game.playerIds[game.turnIndex] : null
+    const isMyTurn = !!viewerId && turnPlayerId === viewerId
 
     function submitHalliChat() {
       sendRoomMessage(openHalliRoom!, draft)
@@ -1029,7 +1031,11 @@ export function RoomsScreen() {
                     const eliminated = game.eliminated.includes(id)
                     const style = halliSlotStyle(i, game.playerIds.length)
                     return (
-                      <div key={id} className={`halli-slot ${eliminated ? 'is-eliminated' : ''}`} style={style}>
+                      <div
+                        key={id}
+                        className={`halli-slot ${eliminated ? 'is-eliminated' : ''} ${id === turnPlayerId ? 'is-turn' : ''}`}
+                        style={style}
+                      >
                         <span className="halli-slot__name">{displayName(id)}</span>
                         <span className="halli-slot__count">{(game.decks[id] ?? []).length}장</span>
                         {card ? (
@@ -1051,7 +1057,14 @@ export function RoomsScreen() {
                 {game.status === 'playing' && (
                   <div className="halliactions">
                     {iAmParticipant && !iAmEliminated && (
-                      <button className="halliactions__flip" disabled={myDeckCount === 0} onClick={() => flipHalliCard(openHalliRoom!)}>
+                      <p className="rooms__pin-note">{isMyTurn ? '내 뒤집기 차례!' : `${displayName(turnPlayerId!)}의 뒤집기 차례`}</p>
+                    )}
+                    {iAmParticipant && !iAmEliminated && (
+                      <button
+                        className="halliactions__flip"
+                        disabled={myDeckCount === 0 || !isMyTurn}
+                        onClick={() => flipHalliCard(openHalliRoom!)}
+                      >
                         뒤집기
                       </button>
                     )}

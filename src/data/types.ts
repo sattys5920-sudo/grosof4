@@ -374,4 +374,6 @@ export interface HalliGameState {
   winnerId: string | null
   pot: number
   log: HalliLogEntry[]
+  /** playerIds 배열상에서(=시계 방향 자리 순서) 지금 '뒤집기'를 낼 수 있는 사람의 인덱스. */
+  turnIndex: number
 }
