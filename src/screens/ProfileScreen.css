@@ -399,7 +399,8 @@
 }
 
 .profile__gm-input,
-.profile__gm-textarea {
+.profile__gm-textarea,
+.profile__gm-select {
   width: 100%;
   background: var(--void-3);
   border: 1px solid var(--line);
@@ -411,7 +412,8 @@
 }
 
 .profile__gm-input:focus,
-.profile__gm-textarea:focus {
+.profile__gm-textarea:focus,
+.profile__gm-select:focus {
   outline: none;
   border-color: var(--sin);
 }

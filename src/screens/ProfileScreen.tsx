@@ -251,6 +251,7 @@ export function ProfileScreen() {
     collectedClues,
     assignRoleManually,
     grantCoins,
+    grantItem,
     resetAllData,
     storyDay,
     revealStoryDay,
@@ -280,6 +281,8 @@ export function ProfileScreen() {
   const [manualNickname, setManualNickname] = useState('')
   const [coinTargetId, setCoinTargetId] = useState('')
   const [coinAmount, setCoinAmount] = useState('')
+  const [itemTargetId, setItemTargetId] = useState('')
+  const [itemSelectId, setItemSelectId] = useState('')
   const [openClueId, setOpenClueId] = useState<string | null>(null)
   const [abilityModalOpen, setAbilityModalOpen] = useState(false)
   const [masterListOpen, setMasterListOpen] = useState(false)
@@ -953,6 +956,49 @@ export function ProfileScreen() {
                 }}
               >
                 코인 지급하기
+              </button>
+            </div>
+          )}
+
+          {sortedPlayerEntries.length > 0 && (
+            <div className="profile__gm">
+              <span className="profile__section-label">불가 전용 — 아이템 지급</span>
+              <p className="profile__gm-note">
+                사람과 아이템을 고르면 코인 지급처럼 대가 없이 바로 보내진다. 무기·방어구는 즉시 장착된다.
+              </p>
+              <div className="profile__gm-presets">
+                {sortedPlayerEntries.map(([id, p]) => {
+                  const c = CHARACTERS.find((ch) => ch.id === id)
+                  return (
+                    <button
+                      key={id}
+                      className={`profile__gm-preset ${itemTargetId === id ? 'is-active' : ''}`}
+                      onClick={() => setItemTargetId(id)}
+                    >
+                      {p.nickname}
+                      {c ? ` · ${c.role}` : ''}
+                    </button>
+                  )
+                })}
+              </div>
+              <select className="profile__gm-select" value={itemSelectId} onChange={(e) => setItemSelectId(e.target.value)}>
+                <option value="">보낼 아이템 고르기</option>
+                {SHOP_ITEMS.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} ({item.kind === 'weapon' ? '무기' : item.kind === 'armor' ? '방어구' : item.kind === 'food' ? '음식' : '약'})
+                  </option>
+                ))}
+              </select>
+              <button
+                className="profile__gm-send"
+                disabled={!itemTargetId || !itemSelectId}
+                onClick={() => {
+                  grantItem(itemTargetId, itemSelectId)
+                  setItemTargetId('')
+                  setItemSelectId('')
+                }}
+              >
+                아이템 지급하기
               </button>
             </div>
           )}

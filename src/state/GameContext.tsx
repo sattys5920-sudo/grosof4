@@ -60,6 +60,7 @@ import {
   endCardTurnSync,
   forceCloseRoomSync,
   grantCoinsSync,
+  grantItemSync,
   joinCardRoomSync,
   joinRoomSync,
   leaveCardRoomSync,
@@ -430,6 +431,7 @@ interface GameState {
   setDiscussionOpen: (open: boolean) => void
   assignRoleManually: (characterId: string, nickname: string) => void
   grantCoins: (characterId: string, amount: number) => void
+  grantItem: (characterId: string, itemId: string) => void
   resetAllData: () => void
   shopOpen: boolean
   setShopOpen: (open: boolean) => void
@@ -2016,6 +2018,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void grantCoinsSync(characterId, Math.round(amount))
   }
 
+  function grantItem(characterId: string, itemId: string) {
+    if (!isAdminFlag) return
+    void grantItemSync(characterId, itemId)
+  }
+
   function resetAllData() {
     if (!isAdminFlag) return
     void resetAllDataSync()
@@ -2654,6 +2661,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       setDiscussionOpen,
       assignRoleManually,
       grantCoins,
+      grantItem,
       resetAllData,
       shopOpen: session.shopOpen,
       setShopOpen,

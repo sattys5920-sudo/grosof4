@@ -46,6 +46,7 @@ import {
   shuffledCardDeck,
 } from '../data/cardGame'
 import { initialMissionState, type MissionState } from './missionEngine'
+import { shopItemById } from '../data/shop'
 
 const SESSION_ID = 'live'
 
@@ -458,6 +459,29 @@ export async function grantCoinsSync(characterId: string, amount: number) {
     if (!snap.exists()) return
     const data = snap.data() as PlayerDoc
     tx.update(pref, { coins: Math.max(0, data.coins + amount) })
+  })
+}
+
+/** 코인 지급과 마찬가지로, 불가가 대가 없이 아이템을 지급한다. 무기/방어구는 즉시 장착되고, 그 외는 인벤토리에 쌓인다. */
+export async function grantItemSync(characterId: string, itemId: string) {
+  const item = shopItemById(itemId)
+  if (!item) return
+  const pref = playerRef(characterId)
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(pref)
+    if (!snap.exists()) return
+    const data = snap.data() as PlayerDoc
+    if (item.kind === 'weapon') {
+      tx.update(pref, { weaponAtkBonus: item.amount, equippedWeaponId: itemId })
+      return
+    }
+    if (item.kind === 'armor') {
+      tx.update(pref, { armorDefBonus: item.amount, equippedArmorId: itemId })
+      return
+    }
+    const inventory = { ...(data.inventory ?? {}) }
+    inventory[itemId] = (inventory[itemId] ?? 0) + 1
+    tx.update(pref, { inventory })
   })
 }
 
