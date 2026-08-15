@@ -17,6 +17,9 @@ import { db } from '../firebase'
 import { CHARACTERS, DAY4_REVEAL_TEXT, ENDING_SCRIPTS, ROOMS } from '../data/characters'
 import type {
   Broadcast,
+  CardGameState,
+  CardPile,
+  CardRoomId,
   ChatMessage,
   ClassroomState,
   EndingKey,
@@ -26,6 +29,16 @@ import type {
   RoomEventState,
   RoomId,
 } from '../data/types'
+import {
+  CARD_ROOM_CAPACITY,
+  CARD_ROOM_IDS,
+  DRAW_PER_TURN,
+  HAND_SIZE,
+  MIN_PLAY_PER_TURN,
+  hasAnyLegalCardMove,
+  isLegalCardPlay,
+  shuffledCardDeck,
+} from '../data/cardGame'
 import { initialMissionState, type MissionState } from './missionEngine'
 
 const SESSION_ID = 'live'
@@ -76,6 +89,7 @@ export interface SessionDoc {
   shopOpen: boolean
   classroomOpen: boolean
   abilitiesOpen: boolean
+  cardGames: Record<CardRoomId, CardGameState | null>
   hallEvent: HallEventState
   storyDay: 0 | 1 | 2 | 3 | 4
   truthRevealed: boolean
@@ -123,6 +137,8 @@ const INITIAL_OCCUPANCY: Record<RoomId, string[]> = {
   infirmary: [],
   broadcast: [],
   rooftop: [],
+  classroomA: [],
+  classroomB: [],
 }
 
 const INITIAL_ROOM_MESSAGES: Record<RoomId, ChatMessage[]> = {
@@ -130,6 +146,8 @@ const INITIAL_ROOM_MESSAGES: Record<RoomId, ChatMessage[]> = {
   infirmary: [],
   broadcast: [],
   rooftop: [],
+  classroomA: [],
+  classroomB: [],
 }
 
 function initialRoomEvents(): Record<RoomId, RoomEventState> {
@@ -145,6 +163,25 @@ function initialRoomEvents(): Record<RoomId, RoomEventState> {
       investigation: { started: false, logIndex: 0, completed: false },
     }
   }
+  // 카드 게임방(교실 A/B)은 조사·전투 트랙을 쓰지 않지만, Record<RoomId, ...> 타입을
+  // 만족시키기 위해 비어 있는 상태를 채워 둔다.
+  for (const id of CARD_ROOM_IDS) {
+    result[id] = {
+      event: null,
+      cleared: false,
+      clue: null,
+      note: null,
+      combat: null,
+      open: false,
+      investigation: { started: false, logIndex: 0, completed: false },
+    }
+  }
+  return result
+}
+
+function initialCardGames(): Record<CardRoomId, CardGameState | null> {
+  const result = {} as Record<CardRoomId, CardGameState | null>
+  for (const id of CARD_ROOM_IDS) result[id] = null
   return result
 }
 
@@ -163,6 +200,7 @@ export function defaultSessionState(): SessionDoc {
     shopOpen: false,
     classroomOpen: true,
     abilitiesOpen: false,
+    cardGames: initialCardGames(),
     hallEvent: {
       eventId: null,
       logIndex: 0,
@@ -439,6 +477,170 @@ export async function leaveRoomSync(myId: string, roomId: RoomId) {
     const next = { ...occ, [roomId]: (occ[roomId] ?? []).filter((id) => id !== myId) }
     tx.update(sref, { roomOccupancy: next })
   })
+}
+
+export async function joinCardRoomSync(myId: string, roomId: CardRoomId) {
+  const sref = sessionRef()
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(sref)
+    const data = snap.data() as SessionDoc
+    const occ = data.roomOccupancy
+    if ((occ[roomId] ?? []).includes(myId)) return
+    if ((occ[roomId] ?? []).length >= CARD_ROOM_CAPACITY) return
+    const next: Record<RoomId, string[]> = { ...occ }
+    for (const id of CARD_ROOM_IDS) {
+      if (id !== roomId) next[id] = (next[id] ?? []).filter((pid) => pid !== myId)
+    }
+    next[roomId] = [...(next[roomId] ?? []), myId]
+    tx.update(sref, { roomOccupancy: next })
+  })
+}
+
+export async function leaveCardRoomSync(myId: string, roomId: CardRoomId) {
+  const sref = sessionRef()
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(sref)
+    const data = snap.data() as SessionDoc
+    const occ = data.roomOccupancy
+    tx.update(sref, { roomOccupancy: { ...occ, [roomId]: (occ[roomId] ?? []).filter((id) => id !== myId) } })
+  })
+}
+
+/** 정확히 5 명이 모이면(멱등적으로 여러 클라이언트가 동시에 감지해도 한 번만 실행됨) 카드를 나눠 게임을 시작한다. */
+export async function startCardGameSync(roomId: CardRoomId, turnOrder: string[]) {
+  const sref = sessionRef()
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(sref)
+    const data = snap.data() as SessionDoc
+    const occ = data.roomOccupancy[roomId] ?? []
+    if (occ.length !== CARD_ROOM_CAPACITY) return
+    if (data.cardGames[roomId]) return
+    if (turnOrder.length !== occ.length || !turnOrder.every((id) => occ.includes(id))) return
+    const deck = shuffledCardDeck()
+    const hands: Record<string, number[]> = {}
+    for (const id of turnOrder) hands[id] = deck.splice(0, HAND_SIZE)
+    const game: CardGameState = {
+      status: 'playing',
+      hands,
+      drawPile: deck,
+      pileAsc: 1,
+      pileDesc: 100,
+      turnOrder,
+      turnIndex: 0,
+      cardsPlayedThisTurn: 0,
+      log: [{ id: `cg-${Date.now()}`, kind: 'start', atMs: Date.now() }],
+    }
+    tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: game } })
+  })
+}
+
+export async function playCardSync(myId: string, roomId: CardRoomId, pile: CardPile, card: number) {
+  const sref = sessionRef()
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(sref)
+    const data = snap.data() as SessionDoc
+    const game = data.cardGames[roomId]
+    if (!game || game.status !== 'playing') return
+    if (game.turnOrder[game.turnIndex] !== myId) return
+    const hand = game.hands[myId] ?? []
+    if (!hand.includes(card)) return
+    if (!isLegalCardPlay(card, game.pileAsc, game.pileDesc, pile)) return
+    const nextHands = { ...game.hands, [myId]: hand.filter((c) => c !== card) }
+    const nextGame: CardGameState = {
+      ...game,
+      hands: nextHands,
+      pileAsc: pile === 'asc' ? card : game.pileAsc,
+      pileDesc: pile === 'desc' ? card : game.pileDesc,
+      cardsPlayedThisTurn: game.cardsPlayedThisTurn + 1,
+      log: [
+        ...game.log,
+        {
+          id: `cg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          kind: 'play',
+          actorId: myId,
+          card,
+          pile,
+          atMs: Date.now(),
+        },
+      ],
+    }
+    tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
+  })
+}
+
+export async function endCardTurnSync(myId: string, roomId: CardRoomId) {
+  const sref = sessionRef()
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(sref)
+    const data = snap.data() as SessionDoc
+    const game = data.cardGames[roomId]
+    if (!game || game.status !== 'playing') return
+    if (game.turnOrder[game.turnIndex] !== myId) return
+    const requiredMin = game.drawPile.length > 0 ? MIN_PLAY_PER_TURN : 1
+    if (game.cardsPlayedThisTurn < requiredMin) return
+
+    const drawCount = Math.min(DRAW_PER_TURN, game.drawPile.length)
+    const drawn = game.drawPile.slice(0, drawCount)
+    const remainingDeck = game.drawPile.slice(drawCount)
+    const nextHands = { ...game.hands, [myId]: [...(game.hands[myId] ?? []), ...drawn] }
+    const totalHandCards = Object.values(nextHands).reduce((sum, h) => sum + h.length, 0)
+
+    const endLog = {
+      id: `cg-${Date.now()}-end`,
+      kind: 'endTurn' as const,
+      actorId: myId,
+      deckLeft: remainingDeck.length,
+      atMs: Date.now(),
+    }
+
+    if (remainingDeck.length === 0 && totalHandCards === 0) {
+      const winLog = { id: `cg-${Date.now()}-win`, kind: 'win' as const, atMs: Date.now() }
+      const nextGame: CardGameState = {
+        ...game,
+        hands: nextHands,
+        drawPile: remainingDeck,
+        status: 'won',
+        cardsPlayedThisTurn: 0,
+        log: [...game.log, endLog, winLog],
+      }
+      tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
+      return
+    }
+
+    const nextTurnIndex = (game.turnIndex + 1) % game.turnOrder.length
+    const nextPlayerId = game.turnOrder[nextTurnIndex]
+    const nextPlayerHand = nextHands[nextPlayerId] ?? []
+    const stuck = !hasAnyLegalCardMove(nextPlayerHand, game.pileAsc, game.pileDesc)
+
+    if (stuck) {
+      const loseLog = { id: `cg-${Date.now()}-lose`, kind: 'lose' as const, actorId: nextPlayerId, atMs: Date.now() }
+      const nextGame: CardGameState = {
+        ...game,
+        hands: nextHands,
+        drawPile: remainingDeck,
+        status: 'lost',
+        turnIndex: nextTurnIndex,
+        cardsPlayedThisTurn: 0,
+        log: [...game.log, endLog, loseLog],
+      }
+      tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
+      return
+    }
+
+    const nextGame: CardGameState = {
+      ...game,
+      hands: nextHands,
+      drawPile: remainingDeck,
+      turnIndex: nextTurnIndex,
+      cardsPlayedThisTurn: 0,
+      log: [...game.log, endLog],
+    }
+    tx.update(sref, { cardGames: { ...data.cardGames, [roomId]: nextGame } })
+  })
+}
+
+export async function resetCardGameSync(roomId: CardRoomId) {
+  await updateDoc(sessionRef(), { [`cardGames.${roomId}`]: null })
 }
 
 /** 크리처를 쓰러뜨린 뒤 유예 시간이 지나면 방을 비우고 조사 상태를 초기화한다. */

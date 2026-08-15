@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import './RoomsScreen.css'
 import { useGame } from '../state/GameContext'
-import { CHARACTERS, ROOMS } from '../data/characters'
+import { CARD_ROOMS, CHARACTERS, ROOMS } from '../data/characters'
 import { CREATURES } from '../data/creatures'
 import { hallwayInvestigationByRoom } from '../data/hallwayInvestigations'
-import type { RoomId } from '../data/types'
+import { isLegalCardPlay, MIN_PLAY_PER_TURN } from '../data/cardGame'
+import type { CardRoomId, RoomId } from '../data/types'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
 import { EventDispatchSheet, type DispatchSection } from '../components/EventDispatchSheet'
@@ -65,9 +66,18 @@ export function RoomsScreen() {
     incapacitated,
     displayName,
     players,
+    cardGames,
+    joinCardRoom,
+    leaveCardRoom,
+    kickFromCardRoom,
+    playCard,
+    endCardTurn,
+    resetCardGame,
   } = useGame()
   const [openRoom, setOpenRoom] = useState<RoomId | null>(null)
+  const [openCardRoom, setOpenCardRoom] = useState<CardRoomId | null>(null)
   const [draft, setDraft] = useState('')
+  const [selectedCard, setSelectedCard] = useState<number | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [blockedModalOpen, setBlockedModalOpen] = useState(false)
   const [now, setNow] = useState(Date.now())
@@ -76,12 +86,17 @@ export function RoomsScreen() {
   const investigationLogsRef = useRef<HTMLDivElement | null>(null)
   const combatLogRef = useRef<HTMLDivElement | null>(null)
   const chatLogRef = useRef<HTMLDivElement | null>(null)
+  const cardLogRef = useRef<HTMLDivElement | null>(null)
+  const cardPinScrollRef = useRef<HTMLDivElement | null>(null)
+  const cardChatLogRef = useRef<HTMLDivElement | null>(null)
   const currentInvestigationLogIndex = openRoom ? (roomEvents[openRoom]?.investigation?.logIndex ?? 0) : 0
   const currentRoomMsgCount = openRoom ? (roomMessages[openRoom]?.length ?? 0) : 0
   const currentCombatLogCount = openRoom ? (roomEvents[openRoom]?.combat?.log.length ?? 0) : 0
   const currentEventKey = openRoom
     ? `${roomEvents[openRoom]?.event?.title ?? ''}-${roomEvents[openRoom]?.investigation?.completed ?? false}-${roomEvents[openRoom]?.combat?.defeated ?? false}`
     : ''
+  const currentCardRoomMsgCount = openCardRoom ? (roomMessages[openCardRoom]?.length ?? 0) : 0
+  const currentCardLogCount = openCardRoom ? (cardGames[openCardRoom]?.log.length ?? 0) : 0
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
@@ -114,6 +129,26 @@ export function RoomsScreen() {
   useEffect(() => {
     if (openRoom) markRoomRead(openRoom)
   }, [openRoom, roomMessages[openRoom as RoomId]?.length, markRoomRead])
+
+  // 카드 게임 로그는 그 안에서만 맨 아래(가장 최근)로 랜딩한다 — 패/1열·100열 카드는
+  // 항상 보여야 하므로, 바깥 패널 전체를 강제로 스크롤하지는 않는다.
+  useEffect(() => {
+    const el = cardLogRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [openCardRoom, currentCardLogCount])
+
+  useEffect(() => {
+    const el = cardChatLogRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [openCardRoom, currentCardRoomMsgCount])
+
+  useEffect(() => {
+    if (openCardRoom) markRoomRead(openCardRoom)
+  }, [openCardRoom, roomMessages[openCardRoom as CardRoomId]?.length, markRoomRead])
+
+  useEffect(() => {
+    setSelectedCard(null)
+  }, [openCardRoom])
 
   function revealedFor(c: ReturnType<typeof charOf>) {
     return viewer ? isRevealedTo(viewer, c, gmReveal) : gmReveal
@@ -423,6 +458,245 @@ export function RoomsScreen() {
     )
   }
 
+  if (openCardRoom) {
+    const room = CARD_ROOMS.find((r) => r.id === openCardRoom)!
+    const occupants = roomOccupancy[openCardRoom] ?? []
+    const iAmHere = !!viewerId && occupants.includes(viewerId)
+    const game = cardGames[openCardRoom]
+    const requiredMin = game && game.drawPile.length === 0 ? 1 : MIN_PLAY_PER_TURN
+    const myTurn = !!viewerId && !!game && game.status === 'playing' && game.turnOrder[game.turnIndex] === viewerId
+    const myHand = viewerId && game ? [...(game.hands[viewerId] ?? [])].sort((a, b) => a - b) : []
+    const canEndTurn = !!game && game.cardsPlayedThisTurn >= requiredMin
+
+    function submitCardChat() {
+      sendRoomMessage(openCardRoom!, draft)
+      setDraft('')
+    }
+
+    return (
+      <div className="rooms">
+        <div className="rooms__pin">
+          <button
+            className="rooms__back"
+            onClick={() => {
+              setOpenCardRoom(null)
+              setSelectedCard(null)
+            }}
+          >
+            ← 구관 목록
+          </button>
+          <div className="rooms__pin-scroll" ref={cardPinScrollRef}>
+            <div className="rooms__pin-head">
+              <span className="rooms__pin-title">{room.name}</span>
+              {gmReveal && game && (
+                <button className="rooms__pin-reset" onClick={() => resetCardGame(openCardRoom!)}>
+                  게임 초기화
+                </button>
+              )}
+            </div>
+
+            <div className="rooms__pin-occupants">
+              <span className="rooms__pin-count">
+                {occupants.length}/{room.capacity}
+              </span>
+              {occupants.map((id) => {
+                const c = charOf(id)
+                return (
+                  <span key={id} className="rooms__pin-occupant">
+                    <Badge team={c.team} size={18} revealed={revealedFor(c)} />
+                    {isAdmin && (
+                      <button
+                        className="rooms__pin-kick"
+                        onClick={() => kickFromCardRoom(openCardRoom!, id)}
+                        aria-label={`${displayName(id)} 쫓아내기`}
+                        title={`${displayName(id)} 쫓아내기`}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
+                )
+              })}
+              {!isAdmin &&
+                (iAmHere
+                  ? (!game || game.status !== 'playing') && (
+                      <button className="rooms__pin-toggle" onClick={() => leaveCardRoom(openCardRoom!)}>
+                        나가기
+                      </button>
+                    )
+                  : (
+                      <button
+                        className="rooms__pin-toggle"
+                        disabled={occupants.length >= room.capacity}
+                        onClick={() => joinCardRoom(openCardRoom!)}
+                      >
+                        {occupants.length >= room.capacity ? '인원 초과' : '입장'}
+                      </button>
+                    ))}
+            </div>
+
+            <p className="cardgame__rule">
+              게임 방법: 2부터 99까지의 숫자 카드로 진행하는 협동 카드 게임이다....... 1열은 오름차순(현재 숫자보다 큰
+              카드만), 100열은 내림차순(현재 숫자보다 작은 카드만) 낼 수 있다. 다섯 명이 모이면 자동으로 시작되고,
+              참여자 닉네임의 ㄱㄴㄷ 순서대로 차례가 돈다. 손에는 항상 6장을 들고, 자기 차례에는 반드시 2장 이상을
+              내야 한다(덱이 떨어지면 1장만 내도 된다). 카드를 내고 차례를 마치면 남은 덱에서 2장을 새로 받는다.
+              모두의 손패와 덱이 함께 텅 비면 승리, 낼 수 있는 카드가 없어 막히면 패배다.
+            </p>
+
+            {!game && (
+              <p className="rooms__pin-ambient">
+                {occupants.length >= room.capacity
+                  ? '카드를 나눠 가지는 중......'
+                  : `아직 인원이 다 모이지 않았다. (${occupants.length}/${room.capacity}) 다섯 명이 모이면 자동으로 시작된다.`}
+              </p>
+            )}
+
+            {game && (
+              <div className="cardgame">
+                <div className="cardgame__piles">
+                  <div className="cardgame__pile">
+                    <span className="cardgame__pile-label">1열 · 오름차순</span>
+                    <div className="cardcard cardcard--pile">{game.pileAsc}</div>
+                  </div>
+                  <div className="cardgame__pile">
+                    <span className="cardgame__pile-label">100열 · 내림차순</span>
+                    <div className="cardcard cardcard--pile">{game.pileDesc}</div>
+                  </div>
+                </div>
+
+                <div className="cardgame__deck">덱 {game.drawPile.length}장 남음</div>
+
+                <div className="cardgame__order">
+                  {game.turnOrder.map((id, i) => (
+                    <span key={id} className={`cardgame__order-chip ${i === game.turnIndex ? 'is-current' : ''}`}>
+                      {displayName(id)} ({(game.hands[id] ?? []).length})
+                    </span>
+                  ))}
+                </div>
+
+                {game.status === 'playing' && (
+                  <p className="cardgame__turn">
+                    지금 차례: <strong>{displayName(game.turnOrder[game.turnIndex])}</strong> (이번 차례{' '}
+                    {game.cardsPlayedThisTurn}/{requiredMin}장)
+                  </p>
+                )}
+                {game.status === 'won' && <p className="cardgame__result is-win">모두의 손패를 비웠다....... 승리!</p>}
+                {game.status === 'lost' && (
+                  <p className="cardgame__result is-lose">더 이상 낼 수 있는 카드가 없다....... 패배.</p>
+                )}
+
+                <div className="cardgame__log" ref={cardLogRef}>
+                  {game.log.map((entry) => (
+                    <p key={entry.id} className="cardgame__log-line">
+                      {entry.kind === 'start' && '게임을 시작했다....... 카드를 나눠 가졌다.'}
+                      {entry.kind === 'play' &&
+                        `${displayName(entry.actorId!)}이(가) ${entry.pile === 'asc' ? '1열' : '100열'}에 ${entry.card}을(를) 놓았다.`}
+                      {entry.kind === 'endTurn' && `${displayName(entry.actorId!)}의 차례가 끝났다. (덱 ${entry.deckLeft}장 남음)`}
+                      {entry.kind === 'win' && '모두의 손패를 비웠다! 게임 승리.'}
+                      {entry.kind === 'lose' && `${displayName(entry.actorId!)}의 차례에 낼 수 있는 카드가 없다....... 게임 패배.`}
+                    </p>
+                  ))}
+                </div>
+
+                {iAmHere && game.status === 'playing' && myTurn && (
+                  <div className="cardgame__hand-area">
+                    <span className="cardgame__hand-label">내 손패</span>
+                    <div className="cardgame__hand">
+                      {myHand.map((c) => {
+                        const canAsc = isLegalCardPlay(c, game.pileAsc, game.pileDesc, 'asc')
+                        const canDesc = isLegalCardPlay(c, game.pileAsc, game.pileDesc, 'desc')
+                        const selected = selectedCard === c
+                        return (
+                          <button
+                            key={c}
+                            className={`cardcard ${selected ? 'is-selected' : ''} ${!canAsc && !canDesc ? 'is-dead' : ''}`}
+                            disabled={!canAsc && !canDesc}
+                            onClick={() => setSelectedCard(selected ? null : c)}
+                          >
+                            {c}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {selectedCard !== null && (
+                      <div className="cardgame__play-actions">
+                        <button
+                          disabled={!isLegalCardPlay(selectedCard, game.pileAsc, game.pileDesc, 'asc')}
+                          onClick={() => {
+                            playCard(openCardRoom!, 'asc', selectedCard)
+                            setSelectedCard(null)
+                          }}
+                        >
+                          1열에 놓기
+                        </button>
+                        <button
+                          disabled={!isLegalCardPlay(selectedCard, game.pileAsc, game.pileDesc, 'desc')}
+                          onClick={() => {
+                            playCard(openCardRoom!, 'desc', selectedCard)
+                            setSelectedCard(null)
+                          }}
+                        >
+                          100열에 놓기
+                        </button>
+                      </div>
+                    )}
+                    <button className="cardgame__end-turn" disabled={!canEndTurn} onClick={() => endCardTurn(openCardRoom!)}>
+                      {canEndTurn
+                        ? '차례 마치기'
+                        : `차례 마치려면 ${requiredMin}장 이상 내야 한다 (${game.cardsPlayedThisTurn}/${requiredMin})`}
+                    </button>
+                  </div>
+                )}
+                {iAmHere && game.status === 'playing' && !myTurn && (
+                  <p className="rooms__pin-note">
+                    {displayName(game.turnOrder[game.turnIndex])}의 차례를 기다리는 중....... (내 손패 {myHand.length}장)
+                  </p>
+                )}
+                {!iAmHere && !isAdmin && <p className="rooms__pin-note">입장한 사람만 카드를 낼 수 있다.</p>}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {iAmHere || isAdmin ? (
+          <>
+            <div className="rooms__log" ref={cardChatLogRef}>
+              {(roomMessages[openCardRoom] ?? []).map((m) => {
+                const isMe = m.authorId === viewerId
+                const isGm = m.authorId === 'admin'
+                const name = displayName(m.authorId)
+                return (
+                  <div key={m.id} className={`rooms__msg-row ${isMe ? 'is-me' : ''}`}>
+                    {!isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} size={26} />}
+                    <div className={`rooms__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
+                      <span className="rooms__msg-name">{name}</span>
+                      <p className="rooms__msg-text">
+                        <TaggedText text={m.text} names={tagNames} />
+                      </p>
+                    </div>
+                    {isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} size={26} />}
+                  </div>
+                )
+              })}
+            </div>
+            <div className="rooms__composer">
+              <TagPicker names={tagNames} onPick={(name) => setDraft((prev) => `${prev}@${name} `)} />
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submitCardChat()}
+                placeholder={`${room.name}에서 대화하기......`}
+              />
+              <button onClick={submitCardChat}>전송</button>
+            </div>
+          </>
+        ) : (
+          <p className="rooms__locked-note">입장해야 대화를 볼 수 있다.</p>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="rooms">
       <div className="rooms__intro">
@@ -437,7 +711,14 @@ export function RoomsScreen() {
           const investigating = !!roomEvents[room.id].event && !cleared
           const open = roomEvents[room.id].open
           return (
-            <button key={room.id} className={`rooms__card ${!open ? 'is-locked' : ''}`} onClick={() => setOpenRoom(room.id)}>
+            <button
+              key={room.id}
+              className={`rooms__card ${!open ? 'is-locked' : ''}`}
+              onClick={() => {
+                setOpenCardRoom(null)
+                setOpenRoom(room.id)
+              }}
+            >
               <div className="rooms__card-top">
                 <span className="rooms__card-name">
                   {room.name}
@@ -445,6 +726,48 @@ export function RoomsScreen() {
                   {!open && <span className="rooms__card-locked-tag">잠김</span>}
                   {cleared && <span className="rooms__card-clue-tag">단서 발견</span>}
                   {investigating && <span className="rooms__card-active-tag">조사 중</span>}
+                </span>
+                <span className={`rooms__card-count ${full ? 'is-full' : ''}`}>
+                  {occupants.length}/{room.capacity}
+                </span>
+              </div>
+              <p className="rooms__card-desc">{room.description}</p>
+              <div className="rooms__card-avatars">
+                {occupants.map((id) => {
+                  const c = charOf(id)
+                  return <Badge key={id} team={c.team} size={18} revealed={revealedFor(c)} />
+                })}
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="rooms__intro">
+        <span className="rooms__intro-label">카드 게임</span>
+        <p>협동 카드 게임 "더 게임". 다섯 명이 모이면 자동으로 시작된다.</p>
+      </div>
+      <div className="rooms__grid">
+        {CARD_ROOMS.map((room) => {
+          const occupants = roomOccupancy[room.id] ?? []
+          const full = occupants.length >= room.capacity
+          const game = cardGames[room.id]
+          return (
+            <button
+              key={room.id}
+              className="rooms__card"
+              onClick={() => {
+                setOpenRoom(null)
+                setOpenCardRoom(room.id)
+              }}
+            >
+              <div className="rooms__card-top">
+                <span className="rooms__card-name">
+                  {room.name}
+                  {hasUnreadRoom(room.id) && <span className="rooms__card-ping" />}
+                  {game?.status === 'playing' && <span className="rooms__card-active-tag">진행 중</span>}
+                  {game?.status === 'won' && <span className="rooms__card-clue-tag">승리</span>}
+                  {game?.status === 'lost' && <span className="rooms__card-locked-tag">패배</span>}
                 </span>
                 <span className={`rooms__card-count ${full ? 'is-full' : ''}`}>
                   {occupants.length}/{room.capacity}

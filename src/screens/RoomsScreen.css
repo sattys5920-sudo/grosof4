@@ -695,3 +695,213 @@
   background: var(--void-2);
 }
 
+.cardgame__rule {
+  margin: 0;
+  padding: 6px 8px;
+  font-size: 11.5px;
+  color: var(--ward);
+  background: var(--void);
+  border: 1px dashed var(--line);
+  line-height: 1.6;
+}
+
+.cardgame {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cardgame__piles {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.cardgame__pile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.cardgame__pile-label {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--bone-dim);
+}
+
+.cardcard {
+  width: 46px;
+  height: 62px;
+  border-radius: 6px;
+  border: 2px solid var(--line);
+  background: var(--void-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-pixel);
+  font-size: 16px;
+  color: var(--bone-bright);
+  cursor: default;
+  user-select: none;
+}
+
+.cardcard--pile {
+  border-color: var(--sin);
+  background: var(--void-2);
+  font-size: 20px;
+  cursor: default;
+}
+
+button.cardcard {
+  cursor: pointer;
+  transition: transform 0.1s ease, border-color 0.1s ease;
+}
+
+button.cardcard:hover:not(:disabled) {
+  transform: translateY(-3px);
+  border-color: var(--ward);
+}
+
+button.cardcard.is-selected {
+  border-color: var(--ward);
+  background: var(--void);
+  transform: translateY(-3px);
+}
+
+button.cardcard.is-dead {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cardgame__deck {
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--bone-dim);
+}
+
+.cardgame__order {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.cardgame__order-chip {
+  font-size: 11px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  background: var(--void-3);
+  color: var(--bone-dim);
+}
+
+.cardgame__order-chip.is-current {
+  border-color: var(--ward);
+  color: var(--bone-bright);
+  background: var(--void-2);
+}
+
+.cardgame__turn {
+  margin: 0;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--bone-dim);
+}
+
+.cardgame__turn strong {
+  color: var(--bone-bright);
+}
+
+.cardgame__result {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-pixel);
+  font-size: 13px;
+  padding: 8px;
+}
+
+.cardgame__result.is-win {
+  color: var(--ward);
+  border: 1px solid var(--ward);
+}
+
+.cardgame__result.is-lose {
+  color: var(--sin);
+  border: 1px solid var(--sin);
+}
+
+.cardgame__log {
+  max-height: 110px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--void);
+  border: 1px solid var(--line);
+}
+
+.cardgame__log-line {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--bone-dim);
+  line-height: 1.5;
+}
+
+.cardgame__hand-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  padding-top: 4px;
+  border-top: 1px dashed var(--line);
+}
+
+.cardgame__hand-label {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--bone-dim);
+}
+
+.cardgame__hand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.cardgame__play-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.cardgame__play-actions button {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border: 1px solid var(--ward);
+  background: var(--void-2);
+  color: var(--bone-bright);
+}
+
+.cardgame__play-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cardgame__end-turn {
+  font-family: var(--font-pixel);
+  font-size: 11px;
+  padding: 8px 14px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--void-3);
+  color: var(--bone-bright);
+}
+
+.cardgame__end-turn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+

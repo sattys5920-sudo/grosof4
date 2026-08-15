@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import {
   ABILITY_MAX_USES,
   ABILITY_SUMMARY,
+  CARD_ROOMS,
   CHARACTERS,
   ENDING_LABELS,
   ENDING_SCRIPTS,
@@ -19,6 +20,9 @@ import type {
   BaseballGameState,
   Broadcast,
   BroadcastKind,
+  CardGameState,
+  CardPile,
+  CardRoomId,
   ChatMessage,
   ClassroomPuzzle,
   ClassroomState,
@@ -52,12 +56,18 @@ import {
   editFeedPostSync,
   ensureSessionInitialized,
   feedPostToFeedPost,
+  endCardTurnSync,
   forceCloseRoomSync,
   grantCoinsSync,
+  joinCardRoomSync,
   joinRoomSync,
+  leaveCardRoomSync,
   leaveRoomSync,
   openMissionsSync,
   patchPlayer,
+  playCardSync,
+  resetCardGameSync,
+  startCardGameSync,
   patchSession,
   resetAllDataSync,
   revealStoryDaySync,
@@ -282,6 +292,13 @@ interface GameState {
   hasUnreadAnyRoom: boolean
   markRoomRead: (roomId: RoomId) => void
   roomEvents: Record<RoomId, RoomEventState>
+  cardGames: Record<CardRoomId, CardGameState | null>
+  joinCardRoom: (roomId: CardRoomId) => void
+  leaveCardRoom: (roomId: CardRoomId) => void
+  kickFromCardRoom: (roomId: CardRoomId, targetId: string) => void
+  playCard: (roomId: CardRoomId, pile: CardPile, card: number) => void
+  endCardTurn: (roomId: CardRoomId) => void
+  resetCardGame: (roomId: CardRoomId) => void
   closeRoomInvestigation: (roomId: RoomId) => void
   setRoomOpen: (roomId: RoomId, open: boolean) => void
   startHallwayInvestigation: (roomId: RoomId) => void
@@ -762,6 +779,20 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     return () => clearInterval(t)
   }, [session.roomEvents])
 
+  // 교실 A/B(카드 게임방)에 정확히 5 명이 모이면, 누군가의 화면이든 켜져 있는 클라이언트가
+  // 대신 카드를 나눠 게임을 시작한다(멱등적이라 여러 클라이언트가 동시에 감지해도 문제없다).
+  // 차례 순서는 참여자 닉네임의 가나다 순으로 정한다.
+  useEffect(() => {
+    if (!sessionLoaded || !playersLoaded) return
+    for (const room of CARD_ROOMS) {
+      const occ = session.roomOccupancy[room.id] ?? []
+      if (occ.length === room.capacity && !session.cardGames[room.id]) {
+        const turnOrder = [...occ].sort((a, b) => (players[a]?.nickname ?? '').localeCompare(players[b]?.nickname ?? '', 'ko'))
+        void startCardGameSync(room.id, turnOrder)
+      }
+    }
+  }, [session.roomOccupancy, session.cardGames, players, sessionLoaded, playersLoaded])
+
   // 강당 채팅에 새 메시지가 오면 (내가 보낸 게 아니면) 상단바 + 백그라운드 알림을 띄운다.
   // 나를 태그(@닉네임)한 메시지는 더 눈에 띄게 표시한다.
   const classroomMsgInitRef = useRef(false)
@@ -796,10 +827,10 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     if (!sessionLoaded) return
     if (!roomMsgInitRef.current) {
       roomMsgInitRef.current = true
-      for (const room of ROOMS) lastRoomCountsRef.current[room.id] = session.roomMessages[room.id]?.length ?? 0
+      for (const room of [...ROOMS, ...CARD_ROOMS]) lastRoomCountsRef.current[room.id] = session.roomMessages[room.id]?.length ?? 0
       return
     }
-    for (const room of ROOMS) {
+    for (const room of [...ROOMS, ...CARD_ROOMS]) {
       const msgs = session.roomMessages[room.id] ?? []
       const prevCount = lastRoomCountsRef.current[room.id] ?? 0
       if (msgs.length > prevCount) {
@@ -968,6 +999,36 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function kickFromRoom(roomId: RoomId, targetId: string) {
     if (!isAdminFlag) return
     void leaveRoomSync(targetId, roomId)
+  }
+
+  function kickFromCardRoom(roomId: CardRoomId, targetId: string) {
+    if (!isAdminFlag) return
+    void leaveCardRoomSync(targetId, roomId)
+  }
+
+  function joinCardRoom(roomId: CardRoomId) {
+    if (!viewerId) return
+    void joinCardRoomSync(viewerId, roomId)
+  }
+
+  function leaveCardRoom(roomId: CardRoomId) {
+    if (!viewerId) return
+    void leaveCardRoomSync(viewerId, roomId)
+  }
+
+  function playCard(roomId: CardRoomId, pile: CardPile, card: number) {
+    if (!viewerId) return
+    void playCardSync(viewerId, roomId, pile, card)
+  }
+
+  function endCardTurn(roomId: CardRoomId) {
+    if (!viewerId) return
+    void endCardTurnSync(viewerId, roomId)
+  }
+
+  function resetCardGame(roomId: CardRoomId) {
+    if (!isAdminFlag) return
+    void resetCardGameSync(roomId)
   }
 
   function sendRoomMessage(roomId: RoomId, text: string) {
@@ -2461,6 +2522,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       hasUnreadAnyRoom,
       markRoomRead,
       roomEvents: session.roomEvents,
+      cardGames: session.cardGames,
+      joinCardRoom,
+      leaveCardRoom,
+      kickFromCardRoom,
+      playCard,
+      endCardTurn,
+      resetCardGame,
       closeRoomInvestigation,
       setRoomOpen,
       startHallwayInvestigation,
