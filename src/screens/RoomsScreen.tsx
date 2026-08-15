@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import './RoomsScreen.css'
 import { useGame } from '../state/GameContext'
-import { CARD_ROOMS, CHARACTERS, ROOMS } from '../data/characters'
+import { CARD_ROOMS, CHARACTERS, HALLI_ROOMS, ROOMS } from '../data/characters'
 import { CREATURES } from '../data/creatures'
 import { hallwayInvestigationByRoom } from '../data/hallwayInvestigations'
 import {
@@ -12,7 +12,8 @@ import {
   isLegalCardPlay,
   MIN_PLAY_PER_TURN,
 } from '../data/cardGame'
-import type { CardRoomId, RoomId } from '../data/types'
+import { HALLI_COLOR_LABEL, HALLI_ROOM_MIN_PLAYERS } from '../data/halliGame'
+import type { CardRoomId, HalliRoomId, RoomId } from '../data/types'
 import { isRevealedTo } from '../data/reveal'
 import { Badge } from '../components/Badge'
 import { EventDispatchSheet, type DispatchSection } from '../components/EventDispatchSheet'
@@ -37,6 +38,17 @@ function formatRemaining(ms: number) {
 
 // 전투 중 실제로 차례를 진행할 수 있는 사람을 계산한다. 저장된 차례가 이미 방을 나갔거나
 // 빈사(HP 0) 상태라면 (방에 남아 움직일 수 있는 사람 중) 맨 앞 사람으로 자연스럽게 넘어간다.
+// 4명이면 마름모(위/오른쪽/아래/왼쪽), 5명이면 오각형으로 자리를 잡아 준다.
+// 그 외 인원은 그냥 가로로 한 줄 배치한다(부모의 flex-wrap이 처리).
+function halliSlotStyle(index: number, total: number): { top: string; left: string } | undefined {
+  if (total !== 4 && total !== 5) return undefined
+  const angle = (Math.PI * 2 * index) / total - Math.PI / 2
+  const radius = 38
+  const left = 50 + radius * Math.cos(angle)
+  const top = 50 + radius * Math.sin(angle)
+  return { top: `${top}%`, left: `${left}%` }
+}
+
 function effectiveTurnPlayerId(
   occupants: string[],
   turnPlayerId: string | null,
@@ -82,9 +94,22 @@ export function RoomsScreen() {
     playCard,
     endCardTurn,
     resetCardGame,
+    coins,
+    halliGames,
+    joinHalliRoom,
+    leaveHalliRoom,
+    kickFromHalliRoom,
+    startHalliBetting,
+    placeHalliBet,
+    dealHalliGame,
+    flipHalliCard,
+    pressHalliBell,
+    resetHalliGame,
   } = useGame()
   const [openRoom, setOpenRoom] = useState<RoomId | null>(null)
   const [openCardRoom, setOpenCardRoom] = useState<CardRoomId | null>(null)
+  const [openHalliRoom, setOpenHalliRoom] = useState<HalliRoomId | null>(null)
+  const [halliBetDraft, setHalliBetDraft] = useState('')
   const [firstCardPlayerId, setFirstCardPlayerId] = useState('')
   const [draft, setDraft] = useState('')
   const [selectedCard, setSelectedCard] = useState<number | null>(null)
@@ -99,6 +124,7 @@ export function RoomsScreen() {
   const cardLogRef = useRef<HTMLDivElement | null>(null)
   const cardPinScrollRef = useRef<HTMLDivElement | null>(null)
   const cardChatLogRef = useRef<HTMLDivElement | null>(null)
+  const halliChatLogRef = useRef<HTMLDivElement | null>(null)
   const currentInvestigationLogIndex = openRoom ? (roomEvents[openRoom]?.investigation?.logIndex ?? 0) : 0
   const currentRoomMsgCount = openRoom ? (roomMessages[openRoom]?.length ?? 0) : 0
   const currentCombatLogCount = openRoom ? (roomEvents[openRoom]?.combat?.log.length ?? 0) : 0
@@ -107,6 +133,7 @@ export function RoomsScreen() {
     : ''
   const currentCardRoomMsgCount = openCardRoom ? (roomMessages[openCardRoom]?.length ?? 0) : 0
   const currentCardLogCount = openCardRoom ? (cardGames[openCardRoom]?.log.length ?? 0) : 0
+  const currentHalliRoomMsgCount = openHalliRoom ? (roomMessages[openHalliRoom]?.length ?? 0) : 0
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
@@ -161,6 +188,19 @@ export function RoomsScreen() {
     setFirstCardPlayerId('')
   }, [openCardRoom])
 
+  useEffect(() => {
+    const el = halliChatLogRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [openHalliRoom, currentHalliRoomMsgCount])
+
+  useEffect(() => {
+    if (openHalliRoom) markRoomRead(openHalliRoom)
+  }, [openHalliRoom, roomMessages[openHalliRoom as HalliRoomId]?.length, markRoomRead])
+
+  useEffect(() => {
+    setHalliBetDraft('')
+  }, [openHalliRoom])
+
   function revealedFor(c: ReturnType<typeof charOf>) {
     return viewer ? isRevealedTo(viewer, c, gmReveal) : gmReveal
   }
@@ -199,7 +239,7 @@ export function RoomsScreen() {
     return (
       <div className="rooms">
         <div className={`rooms__pin ${roomEvent.cleared ? 'is-cleared' : ''}`}>
-          <button className="rooms__back" onClick={() => setOpenRoom(null)}>
+          <button className="rooms__back" onClick={() => { setOpenRoom(null); setOpenCardRoom(null); setOpenHalliRoom(null) }}>
             ← 구관 목록
           </button>
           <div className="rooms__pin-scroll" ref={pinScrollRef}>
@@ -491,7 +531,9 @@ export function RoomsScreen() {
           <button
             className="rooms__back"
             onClick={() => {
+              setOpenRoom(null)
               setOpenCardRoom(null)
+              setOpenHalliRoom(null)
               setSelectedCard(null)
             }}
           >
@@ -796,6 +838,275 @@ export function RoomsScreen() {
     )
   }
 
+  if (openHalliRoom) {
+    const room = HALLI_ROOMS.find((r) => r.id === openHalliRoom)!
+    const occupants = roomOccupancy[openHalliRoom] ?? []
+    const iAmHere = !!viewerId && occupants.includes(viewerId)
+    const roomEvent = roomEvents[openHalliRoom]
+    const game = halliGames[openHalliRoom]
+    const iAmParticipant = !!viewerId && !!game && game.playerIds.includes(viewerId)
+    const iAmEliminated = !!viewerId && !!game && game.eliminated.includes(viewerId)
+    const myDeckCount = viewerId && game ? (game.decks[viewerId] ?? []).length : 0
+    const allBetsIn = !!game && game.playerIds.every((id) => game.bets[id] !== undefined)
+    const betAmount = Number(halliBetDraft)
+
+    function submitHalliChat() {
+      sendRoomMessage(openHalliRoom!, draft)
+      setDraft('')
+    }
+
+    return (
+      <div className="rooms">
+        <div className="rooms__pin">
+          <button
+            className="rooms__back"
+            onClick={() => {
+              setOpenRoom(null)
+              setOpenCardRoom(null)
+              setOpenHalliRoom(null)
+            }}
+          >
+            ← 구관 목록
+          </button>
+          <div className="rooms__pin-scroll">
+            <div className="rooms__pin-head">
+              <span className="rooms__pin-title">{room.name}</span>
+              {gmReveal && (
+                <div className="rooms__pin-gm">
+                  <button className="rooms__pin-reset" onClick={() => setRoomOpen(openHalliRoom!, !roomEvent.open)}>
+                    구관 {roomEvent.open ? '닫기' : '열기'}
+                  </button>
+                  {!game && (
+                    <button
+                      className="rooms__pin-reset"
+                      disabled={occupants.length < HALLI_ROOM_MIN_PLAYERS || occupants.length > room.capacity}
+                      onClick={() => startHalliBetting(openHalliRoom!)}
+                    >
+                      베팅 시작
+                    </button>
+                  )}
+                  {game && game.status === 'betting' && (
+                    <button className="rooms__pin-reset" disabled={!allBetsIn} onClick={() => dealHalliGame(openHalliRoom!)}>
+                      카드 나눠주기
+                    </button>
+                  )}
+                  {game && (
+                    <button className="rooms__pin-reset" onClick={() => resetHalliGame(openHalliRoom!)}>
+                      게임 초기화
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="rooms__pin-occupants">
+              <span className="rooms__pin-count">
+                {occupants.length}/{room.capacity}
+              </span>
+              {occupants.map((id) => (
+                <span key={id} className="rooms__pin-occupant">
+                  <ChatAvatar authorId={id} name={displayName(id)} photo={players[id]?.photo} size={22} />
+                  {isAdmin && (
+                    <button
+                      className="rooms__pin-kick"
+                      onClick={() => kickFromHalliRoom(openHalliRoom!, id)}
+                      aria-label={`${displayName(id)} 쫓아내기`}
+                      title={`${displayName(id)} 쫓아내기`}
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              ))}
+              {!isAdmin &&
+                (iAmHere
+                  ? !game && (
+                      <button className="rooms__pin-toggle" onClick={() => leaveHalliRoom(openHalliRoom!)}>
+                        나가기
+                      </button>
+                    )
+                  : !roomEvent.open || !!game
+                    ? (
+                        <span className="rooms__pin-locked">잠김</span>
+                      )
+                    : (
+                        <button
+                          className="rooms__pin-toggle"
+                          disabled={occupants.length >= room.capacity}
+                          onClick={() => joinHalliRoom(openHalliRoom!)}
+                        >
+                          {occupants.length >= room.capacity ? '인원 초과' : '입장'}
+                        </button>
+                      ))}
+            </div>
+
+            {!roomEvent.open && !isAdmin && !iAmHere && (
+              <p className="rooms__pin-ambient">이 구관은 아직 잠겨 있다.</p>
+            )}
+            {roomEvent.open && !!game && !isAdmin && !iAmHere && (
+              <p className="rooms__pin-ambient">게임이 진행 중이라 지금은 입장할 수 없다.</p>
+            )}
+
+            <div className="cardgame__rule">
+              <p className="cardgame__rule-line">
+                참여 인원 {HALLI_ROOM_MIN_PLAYERS}~{room.capacity}명. 시작·종료는 모두 불가의 권한이다.
+              </p>
+              <p className="cardgame__rule-line">빨강·파랑·초록·노랑 4색, 숫자 1~5로 이뤄진 카드를 똑같이 나눠 갖는다.</p>
+              <p className="cardgame__rule-line">자기 카드는 볼 수 없고, 남은 장수만 알 수 있다.</p>
+              <p className="cardgame__rule-line">'뒤집기'를 누르면 내 덱 맨 위 카드가 내 자리에 공개된다(다시 누르면 덮어쓴다).</p>
+              <p className="cardgame__rule-line">지금 공개된 카드를 색깔별로 더해 정확히 5가 되면 '누르기'를 눌러야 한다.</p>
+              <p className="cardgame__rule-line">
+                가장 먼저 누른 사람이 그 판의 카드(반납된 벌칙 카드 포함)를 전부 자기 덱 맨 뒤로 가져간다.
+              </p>
+              <p className="cardgame__rule-line">5가 아닐 때 눌렀다면 내 덱 맨 위 카드 한 장을 반납한다(그 판의 승자에게 돌아간다).</p>
+              <p className="cardgame__rule-line">덱이 바닥나면 탈락하고, 마지막까지 남은 한 명이 배팅된 코인을 전부 가져간다.</p>
+            </div>
+
+            {!game && (roomEvent.open || isAdmin || iAmHere) && (
+              <p className="rooms__pin-ambient">
+                {occupants.length < HALLI_ROOM_MIN_PLAYERS
+                  ? `최소 ${HALLI_ROOM_MIN_PLAYERS}명이 모여야 시작할 수 있다. (${occupants.length}/${room.capacity})`
+                  : `불가가 "베팅 시작"을 누르면 시작된다. (${occupants.length}/${room.capacity})`}
+              </p>
+            )}
+
+            {game && game.status === 'betting' && (
+              <div className="hallibet">
+                <p className="rooms__pin-ambient">참가자 전원이 코인을 걸어야 카드를 나눠줄 수 있다.</p>
+                {game.playerIds.map((id) => (
+                  <div key={id} className="hallibet__row">
+                    <ChatAvatar authorId={id} name={displayName(id)} photo={players[id]?.photo} size={20} />
+                    <span>{displayName(id)}</span>
+                    <span className="hallibet__status">
+                      {game.bets[id] !== undefined ? `코인 ${game.bets[id]} 배팅함` : '아직 배팅 안 함'}
+                    </span>
+                  </div>
+                ))}
+                {iAmParticipant && viewerId && game.bets[viewerId] === undefined && (
+                  <div className="hallibet__form">
+                    <input
+                      type="number"
+                      value={halliBetDraft}
+                      onChange={(e) => setHalliBetDraft(e.target.value)}
+                      placeholder={`걸 코인 (보유 ${coins})`}
+                    />
+                    <button
+                      disabled={!halliBetDraft.trim() || Number.isNaN(betAmount) || betAmount < 1 || betAmount > coins}
+                      onClick={() => {
+                        placeHalliBet(openHalliRoom!, betAmount)
+                        setHalliBetDraft('')
+                      }}
+                    >
+                      배팅하기
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {game && game.status !== 'betting' && (
+              <div className="hallicards-wrap">
+                <div className={`hallicards hallicards--n${game.playerIds.length}`}>
+                  {game.playerIds.map((id, i) => {
+                    const card = game.revealed[id]
+                    const eliminated = game.eliminated.includes(id)
+                    const style = halliSlotStyle(i, game.playerIds.length)
+                    return (
+                      <div key={id} className={`halli-slot ${eliminated ? 'is-eliminated' : ''}`} style={style}>
+                        <span className="halli-slot__name">{displayName(id)}</span>
+                        <span className="halli-slot__count">{(game.decks[id] ?? []).length}장</span>
+                        {card ? (
+                          <div className={`hallicard hallicard--${card.color}`}>{card.value}</div>
+                        ) : (
+                          <div className="hallicard hallicard--empty" />
+                        )}
+                        {eliminated && <span className="halli-slot__out">탈락</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {game.status === 'playing' && (
+                  <div className="halliactions">
+                    {iAmParticipant && !iAmEliminated && (
+                      <button className="halliactions__flip" disabled={myDeckCount === 0} onClick={() => flipHalliCard(openHalliRoom!)}>
+                        뒤집기
+                      </button>
+                    )}
+                    {iAmParticipant && !iAmEliminated && (
+                      <button className="halliactions__bell" onClick={() => pressHalliBell(openHalliRoom!)}>
+                        누르기!
+                      </button>
+                    )}
+                    {!iAmParticipant && !isAdmin && <p className="rooms__pin-note">참가자만 뒤집기·누르기를 할 수 있다.</p>}
+                    {iAmEliminated && <p className="rooms__pin-note">카드가 다 떨어져 탈락했다.</p>}
+                  </div>
+                )}
+
+                {game.status === 'ended' && game.winnerId && (
+                  <p className="cardgame__result is-win">
+                    {displayName(game.winnerId)}의 승리....... 배팅된 코인 {game.pot}개를 전부 가져갔다.
+                  </p>
+                )}
+
+                <div className="cardgame__log">
+                  {game.log.length === 0 && <p className="cardgame__log-line">아직 아무 일도 없었다.</p>}
+                  {game.log.slice(-30).map((entry) => (
+                    <p key={entry.id} className="cardgame__log-line">
+                      {entry.kind === 'start' && '게임을 시작했다....... 카드를 나눠 가졌다.'}
+                      {entry.kind === 'win' &&
+                        entry.actorId &&
+                        entry.color &&
+                        `${displayName(entry.actorId)}이(가) ${HALLI_COLOR_LABEL[entry.color]} 합 5를 맞혀 카드 ${entry.collected}장을 가져갔다.`}
+                      {entry.kind === 'miss' && entry.actorId && `${displayName(entry.actorId)}이(가) 잘못 눌러 카드 한 장을 반납했다.`}
+                      {entry.kind === 'gameover' && entry.actorId && `${displayName(entry.actorId)}이(가) 최종 승리했다!`}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {iAmHere || isAdmin ? (
+          <>
+            <div className="rooms__log" ref={halliChatLogRef}>
+              {(roomMessages[openHalliRoom] ?? []).map((m) => {
+                const isMe = m.authorId === viewerId
+                const isGm = m.authorId === 'admin'
+                const name = displayName(m.authorId)
+                return (
+                  <div key={m.id} className={`rooms__msg-row ${isMe ? 'is-me' : ''}`}>
+                    {!isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} size={26} />}
+                    <div className={`rooms__msg ${isMe ? 'is-me' : ''} ${isGm ? 'is-gm' : ''}`}>
+                      <span className="rooms__msg-name">{name}</span>
+                      <p className="rooms__msg-text">
+                        <TaggedText text={m.text} names={tagNames} />
+                      </p>
+                    </div>
+                    {isMe && <ChatAvatar authorId={m.authorId} name={name} photo={players[m.authorId]?.photo} size={26} />}
+                  </div>
+                )
+              })}
+            </div>
+            <div className="rooms__composer">
+              <TagPicker names={tagNames} onPick={(name) => setDraft((prev) => `${prev}@${name} `)} />
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && submitHalliChat()}
+                placeholder={`${room.name}에서 대화하기......`}
+              />
+              <button onClick={submitHalliChat}>전송</button>
+            </div>
+          </>
+        ) : (
+          <p className="rooms__locked-note">입장해야 대화를 볼 수 있다.</p>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="rooms">
       <div className="rooms__intro">
@@ -815,6 +1126,7 @@ export function RoomsScreen() {
               className={`rooms__card ${!open ? 'is-locked' : ''}`}
               onClick={() => {
                 setOpenCardRoom(null)
+                setOpenHalliRoom(null)
                 setOpenRoom(room.id)
               }}
             >
@@ -851,6 +1163,7 @@ export function RoomsScreen() {
               className={`rooms__card ${!open ? 'is-locked' : ''}`}
               onClick={() => {
                 setOpenRoom(null)
+                setOpenHalliRoom(null)
                 setOpenCardRoom(room.id)
               }}
             >
@@ -862,6 +1175,43 @@ export function RoomsScreen() {
                   {game?.status === 'playing' && <span className="rooms__card-active-tag">진행 중</span>}
                   {game?.status === 'won' && <span className="rooms__card-clue-tag">승리</span>}
                   {game?.status === 'lost' && <span className="rooms__card-locked-tag">패배</span>}
+                </span>
+                <span className={`rooms__card-count ${full ? 'is-full' : ''}`}>
+                  {occupants.length}/{room.capacity}
+                </span>
+              </div>
+              <p className="rooms__card-desc">{room.description}</p>
+              <div className="rooms__card-avatars">
+                {occupants.map((id) => (
+                  <ChatAvatar key={id} authorId={id} name={displayName(id)} photo={players[id]?.photo} size={18} />
+                ))}
+              </div>
+            </button>
+          )
+        })}
+        {HALLI_ROOMS.map((room) => {
+          const occupants = roomOccupancy[room.id] ?? []
+          const full = occupants.length >= room.capacity
+          const game = halliGames[room.id]
+          const open = roomEvents[room.id].open
+          return (
+            <button
+              key={room.id}
+              className={`rooms__card ${!open ? 'is-locked' : ''}`}
+              onClick={() => {
+                setOpenRoom(null)
+                setOpenCardRoom(null)
+                setOpenHalliRoom(room.id)
+              }}
+            >
+              <div className="rooms__card-top">
+                <span className="rooms__card-name">
+                  {room.name}
+                  {hasUnreadRoom(room.id) && <span className="rooms__card-ping" />}
+                  {!open && <span className="rooms__card-locked-tag">잠김</span>}
+                  {game?.status === 'betting' && <span className="rooms__card-active-tag">배팅 중</span>}
+                  {game?.status === 'playing' && <span className="rooms__card-active-tag">진행 중</span>}
+                  {game?.status === 'ended' && <span className="rooms__card-clue-tag">종료</span>}
                 </span>
                 <span className={`rooms__card-count ${full ? 'is-full' : ''}`}>
                   {occupants.length}/{room.capacity}

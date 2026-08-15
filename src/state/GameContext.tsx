@@ -11,6 +11,7 @@ import {
   leakerRevealText,
 } from '../data/characters'
 import { CARD_ROOM_CAPACITY, CARD_ROOM_MIN_PLAYERS, CARD_TURN_TIME_LIMIT_MS } from '../data/cardGame'
+import { HALLI_ROOM_CAPACITY, HALLI_ROOM_MIN_PLAYERS } from '../data/halliGame'
 import { creatureById } from '../data/creatures'
 import { shopItemById } from '../data/shop'
 import { hallEventById } from '../data/hallEvents'
@@ -38,6 +39,8 @@ import type {
   HallGameState,
   HallMinigameKind,
   HallObjectResult,
+  HalliGameState,
+  HalliRoomId,
   RoomEventState,
   RoomId,
 } from '../data/types'
@@ -63,16 +66,24 @@ import {
   grantCoinsSync,
   grantItemSync,
   joinCardRoomSync,
+  joinHalliRoomSync,
   joinRoomSync,
   leaveCardRoomSync,
+  leaveHalliRoomSync,
   leaveRoomSync,
   openMissionsSync,
   patchPlayer,
+  placeHalliBetSync,
   playCardSync,
+  dealHalliGameSync,
+  flipHalliCardSync,
   forceEndCardTurnSync,
+  pressHalliBellSync,
   resetCardGameSync,
+  resetHalliGameSync,
   setCardFirstPlayerSync,
   startCardGameSync,
+  startHalliBettingSync,
   patchSession,
   resetAllDataSync,
   revealStoryDaySync,
@@ -306,6 +317,16 @@ interface GameState {
   playCard: (roomId: CardRoomId, pile: CardPile, card: number) => void
   endCardTurn: (roomId: CardRoomId) => void
   resetCardGame: (roomId: CardRoomId) => void
+  halliGames: Record<HalliRoomId, HalliGameState | null>
+  joinHalliRoom: (roomId: HalliRoomId) => void
+  leaveHalliRoom: (roomId: HalliRoomId) => void
+  kickFromHalliRoom: (roomId: HalliRoomId, targetId: string) => void
+  startHalliBetting: (roomId: HalliRoomId) => void
+  placeHalliBet: (roomId: HalliRoomId, amount: number) => void
+  dealHalliGame: (roomId: HalliRoomId) => void
+  flipHalliCard: (roomId: HalliRoomId) => void
+  pressHalliBell: (roomId: HalliRoomId) => void
+  resetHalliGame: (roomId: HalliRoomId) => void
   closeRoomInvestigation: (roomId: RoomId) => void
   setRoomOpen: (roomId: RoomId, open: boolean) => void
   startHallwayInvestigation: (roomId: RoomId) => void
@@ -1054,6 +1075,55 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   function resetCardGame(roomId: CardRoomId) {
     if (!isAdminFlag) return
     void resetCardGameSync(roomId)
+  }
+
+  function joinHalliRoom(roomId: HalliRoomId) {
+    if (!viewerId) return
+    void joinHalliRoomSync(viewerId, roomId)
+  }
+
+  function leaveHalliRoom(roomId: HalliRoomId) {
+    if (!viewerId) return
+    void leaveHalliRoomSync(viewerId, roomId)
+  }
+
+  function kickFromHalliRoom(roomId: HalliRoomId, targetId: string) {
+    if (!isAdminFlag) return
+    void leaveHalliRoomSync(targetId, roomId)
+  }
+
+  function startHalliBetting(roomId: HalliRoomId) {
+    if (!isAdminFlag) return
+    const occ = session.roomOccupancy[roomId] ?? []
+    if (occ.length < HALLI_ROOM_MIN_PLAYERS || occ.length > HALLI_ROOM_CAPACITY) return
+    if (session.halliGames[roomId]) return
+    void startHalliBettingSync(roomId)
+  }
+
+  function placeHalliBet(roomId: HalliRoomId, amount: number) {
+    if (!viewerId || !Number.isFinite(amount) || amount < 1) return
+    if (amount > coins) return
+    void placeHalliBetSync(viewerId, roomId, Math.round(amount))
+  }
+
+  function dealHalliGame(roomId: HalliRoomId) {
+    if (!isAdminFlag) return
+    void dealHalliGameSync(roomId)
+  }
+
+  function flipHalliCard(roomId: HalliRoomId) {
+    if (!viewerId) return
+    void flipHalliCardSync(viewerId, roomId)
+  }
+
+  function pressHalliBell(roomId: HalliRoomId) {
+    if (!viewerId) return
+    void pressHalliBellSync(viewerId, roomId)
+  }
+
+  function resetHalliGame(roomId: HalliRoomId) {
+    if (!isAdminFlag) return
+    void resetHalliGameSync(roomId)
   }
 
   function sendRoomMessage(roomId: RoomId, text: string) {
@@ -2623,6 +2693,16 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       playCard,
       endCardTurn,
       resetCardGame,
+      halliGames: session.halliGames,
+      joinHalliRoom,
+      leaveHalliRoom,
+      kickFromHalliRoom,
+      startHalliBetting,
+      placeHalliBet,
+      dealHalliGame,
+      flipHalliCard,
+      pressHalliBell,
+      resetHalliGame,
       closeRoomInvestigation,
       setRoomOpen,
       startHallwayInvestigation,

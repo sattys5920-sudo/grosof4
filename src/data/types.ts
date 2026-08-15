@@ -12,9 +12,19 @@ export type Role =
   | '망각자'
   | '복수자'
 
-export type RoomId = 'library' | 'infirmary' | 'broadcast' | 'rooftop' | 'classroomA' | 'classroomB'
+export type RoomId =
+  | 'library'
+  | 'infirmary'
+  | 'broadcast'
+  | 'rooftop'
+  | 'classroomA'
+  | 'classroomB'
+  | 'classroomC'
+  | 'classroomD'
 
 export type CardRoomId = 'classroomA' | 'classroomB'
+
+export type HalliRoomId = 'classroomC' | 'classroomD'
 
 export interface Character {
   id: string
@@ -326,4 +336,42 @@ export interface CardGameState {
   turnStartedAtMs: number
   timeoutCount: number
   log: CardLogEntry[]
+}
+
+export type HalliColor = 'red' | 'blue' | 'green' | 'yellow'
+
+export interface HalliCard {
+  color: HalliColor
+  value: number
+}
+
+export interface HalliLogEntry {
+  id: string
+  kind: 'start' | 'flip' | 'win' | 'miss' | 'eliminate' | 'gameover'
+  actorId?: string
+  card?: HalliCard
+  color?: HalliColor
+  collected?: number
+  atMs: number
+}
+
+// 할리갈리 변형 카드 게임. 색깔 4종 × 숫자 1~5(색깔별 장수는 1:5, 2:3, 3:3, 4:2, 5:1)로
+// 이뤄진 56장 덱을 참가자에게 고르게 나눈다. 각자 자기 카드는 볼 수 없고 남은 장수만 안다.
+// '뒤집기'를 누르면 자기 덱 맨 위 카드가 자기 자리에 공개되고, 다시 누르면 이전 걸 덮어쓴다.
+// 지금 공개된 카드들을 색깔별로 더해서 정확히 5가 되는 색이 있으면 '누르기'를 눌러야 하고,
+// 가장 먼저 누른 사람이 그 판에 나온 카드(반납된 벌칙 카드 포함)를 전부 자기 덱 맨 뒤로 가져간다.
+// 아닌데 눌렀다면 자기 덱 맨 위 카드 한 장을 반납해야 한다(그 판을 이긴 사람에게 돌아간다).
+// 덱이 바닥나면 탈락하고, 마지막까지 남은 한 명이 배팅된 코인을 전부 가져간다.
+export interface HalliGameState {
+  status: 'betting' | 'playing' | 'ended'
+  playerIds: string[]
+  bets: Record<string, number>
+  decks: Record<string, HalliCard[]>
+  revealed: Record<string, HalliCard | null>
+  roundCards: { playerId: string; card: HalliCard }[]
+  penaltyCards: HalliCard[]
+  eliminated: string[]
+  winnerId: string | null
+  pot: number
+  log: HalliLogEntry[]
 }

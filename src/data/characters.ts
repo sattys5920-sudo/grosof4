@@ -1,4 +1,4 @@
-import type { CardRoomId, Character, EndingKey, Room } from './types'
+import type { CardRoomId, Character, EndingKey, HalliRoomId, Room } from './types'
 
 export const SCHOOL_NAME = '고운고등학교'
 export const CLUB_NAME = '괴담연구회'
@@ -272,6 +272,21 @@ export const CARD_ROOMS: { id: CardRoomId; name: string; capacity: number; descr
     name: '교실 B',
     capacity: 5,
     description: '먼지 쌓인 책상 위에 낡은 카드 뭉치가 놓여 있다....... 다섯 명이 모이면 시작할 수 있다.',
+  },
+]
+
+export const HALLI_ROOMS: { id: HalliRoomId; name: string; capacity: number; description: string }[] = [
+  {
+    id: 'classroomC',
+    name: '교실 C',
+    capacity: 5,
+    description: '색색의 낡은 카드 뭉치가 책상 위에 흩어져 있다....... 코인을 걸고 벌이는 반사 신경 승부다.',
+  },
+  {
+    id: 'classroomD',
+    name: '교실 D',
+    capacity: 5,
+    description: '색색의 낡은 카드 뭉치가 책상 위에 흩어져 있다....... 코인을 걸고 벌이는 반사 신경 승부다.',
   },
 ]
 
