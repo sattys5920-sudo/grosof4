@@ -308,6 +308,7 @@ export function ProfileScreen() {
     grantItem,
     fixCctvMissionRecord,
     rollbackMission,
+    trimChatHistory,
     diagnoseSessionSize,
     fixRecordBookLabel,
     resetAllData,
@@ -348,6 +349,7 @@ export function ProfileScreen() {
   const [cctvCorrectCount, setCctvCorrectCount] = useState('')
   const [rollbackMissionPick, setRollbackMissionPick] = useState(1)
   const [rollbackLeaderId, setRollbackLeaderId] = useState('')
+  const [trimKeepCount, setTrimKeepCount] = useState('30')
   const [recordBookTarget, setRecordBookTarget] = useState('')
   const [openClueId, setOpenClueId] = useState<string | null>(null)
   const [abilityModalOpen, setAbilityModalOpen] = useState(false)
@@ -1438,6 +1440,30 @@ export function ProfileScreen() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="profile__gm">
+            <span className="profile__section-label">불가 전용 — 채팅 기록 정리</span>
+            <p className="profile__gm-note">
+              강당·구관·조사 채팅을 채널마다 최근 메시지만 남기고 오래된 것을 지워 저장 용량을
+              줄인다. 단서·귓속말(불가 DM)·능력 사용 기록은 건드리지 않는다 — 게임 진행에
+              필요한 정보라 그대로 남는다. 지운 채팅은 되돌릴 수 없다.
+            </p>
+            <input
+              className="profile__gm-input"
+              type="number"
+              min={0}
+              value={trimKeepCount}
+              onChange={(e) => setTrimKeepCount(e.target.value)}
+              placeholder="채널당 남길 최근 메시지 수 (예: 30)"
+            />
+            <button
+              className="profile__gm-send"
+              disabled={!trimKeepCount.trim() || Number.isNaN(Number(trimKeepCount)) || Number(trimKeepCount) < 0}
+              onClick={() => trimChatHistory(Number(trimKeepCount))}
+            >
+              오래된 채팅 정리하기
+            </button>
           </div>
 
           <div className="profile__gm">

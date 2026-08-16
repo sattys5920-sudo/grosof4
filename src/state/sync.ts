@@ -291,6 +291,28 @@ export async function diagnoseSessionSizeSync(): Promise<{
   return { totalBytes, fields }
 }
 
+/**
+ * 불가 전용: 강당/구관/조사 채팅을 채널별로 최근 keepPerChannel 개만 남기고 오래된 것을
+ * 지운다. sessions/live 문서 하나에 모든 채팅이 배열로 들어 있다 보니, 이게 커질수록
+ * 아주 작은 변경 하나에도 접속한 전원의 화면이 문서 전체를 다시 받아야 해서 느려진다.
+ * 단서·DM·능력 로그는 건드리지 않는다 — 게임 진행에 필요한 정보라 지우면 안 되기 때문이다.
+ */
+export async function trimChatHistorySync(keepPerChannel: number): Promise<void> {
+  const sref = sessionRef()
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(sref)
+    if (!snap.exists()) return
+    const data = snap.data() as SessionDoc
+    const classroomMessages = (data.classroomMessages ?? []).slice(-keepPerChannel)
+    const missionMessages = (data.missionMessages ?? []).slice(-keepPerChannel)
+    const roomMessages = { ...data.roomMessages }
+    for (const roomId of Object.keys(roomMessages) as (keyof typeof roomMessages)[]) {
+      roomMessages[roomId] = (roomMessages[roomId] ?? []).slice(-keepPerChannel)
+    }
+    tx.update(sref, { classroomMessages, missionMessages, roomMessages })
+  })
+}
+
 function feedCol() {
   return collection(requireDb(), 'sessions', SESSION_ID, 'feedPosts')
 }
