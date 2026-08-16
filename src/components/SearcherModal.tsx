@@ -82,7 +82,7 @@ export function SearcherModal({ onClose }: { onClose: () => void }) {
           <div className="searcher__notice">
             <p className="searcher__notice-title">※ 검색 시 주의사항</p>
             <p>· 모르는 것은 답해 주지 않는다.</p>
-            <p>· 고운고 DB 속 정보만 나온다. 의심하지 말도록.</p>
+            <p>· 교학등고운고 DB 속 정보만 나온다. 의심하지 말도록.</p>
             <p>· 결과가 없어도 횟수는 차감된다. 1 개당 2 회.</p>
           </div>
         </div>
