@@ -299,6 +299,17 @@ export const SHOP_ITEMS: ShopItem[] = [
       palette: { M: '#8a8fa0', D: '#5b7a9e' },
     },
   },
+  {
+    id: 'sh-tool-0',
+    name: '검색기',
+    kind: 'tool',
+    amount: 2,
+    price: 150,
+    art: {
+      pixels: ['..MMMM..', '.MGGGGM.', 'MG....GM', 'MG....GM', 'MG....GM', '.MGGGGM.', '..MM.H..', '....HH..'],
+      palette: { M: '#c9c9d9', G: '#1c1815', H: '#8a5a2f' },
+    },
+  },
 ]
 
 export const SHOP_KIND_LABEL: Record<ShopItem['kind'], string> = {
@@ -306,6 +317,7 @@ export const SHOP_KIND_LABEL: Record<ShopItem['kind'], string> = {
   armor: '방어구',
   food: '음식',
   medicine: '약',
+  tool: '도구',
 }
 
 export function shopItemById(id: string): ShopItem | undefined {

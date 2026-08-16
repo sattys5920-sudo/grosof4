@@ -582,6 +582,34 @@
   line-height: 1.5;
 }
 
+.profile__search-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile__search-queue-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--void-3);
+  border: 1px solid var(--line);
+}
+
+.profile__search-queue-who {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--veil);
+}
+
+.profile__search-queue-q {
+  margin: 0;
+  font-size: 13px;
+  color: var(--bone-bright);
+  line-height: 1.5;
+}
+
 .profile__leak-log {
   display: flex;
   flex-direction: column;

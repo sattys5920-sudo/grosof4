@@ -6,7 +6,7 @@ import { SHOP_ITEMS, SHOP_KIND_LABEL } from '../data/shop'
 import { PixelArt } from '../components/PixelArt'
 import type { ShopItemKind } from '../data/types'
 
-const KINDS: ShopItemKind[] = ['weapon', 'armor', 'food', 'medicine']
+const KINDS: ShopItemKind[] = ['weapon', 'armor', 'food', 'medicine', 'tool']
 
 export function ShopScreen() {
   const { viewerId, gmReveal, coins, shopOpen, setShopOpen, buyItem, giftItem, displayName } = useGame()
@@ -57,6 +57,7 @@ export function ShopScreen() {
                     {item.kind === 'armor' && `방어력 +${item.amount}`}
                     {item.kind === 'food' && `스태미나 +${item.amount}`}
                     {item.kind === 'medicine' && `HP +${item.amount}`}
+                    {item.kind === 'tool' && `검색 ${item.amount} 회 충전`}
                     {' · '}
                     {item.price} 코인
                   </span>

@@ -44,6 +44,8 @@ import type {
   HalliRoomId,
   RoomEventState,
   RoomId,
+  SearchQuery,
+  ShopItemKind,
 } from '../data/types'
 import { initialMissionState, missionReducer, resolvedTeam, type MissionState } from './missionEngine'
 import { firebaseConfigured } from '../firebase'
@@ -239,7 +241,7 @@ function generateDavinciTiles(): number[] {
 }
 
 function applyItemEffect(
-  item: { kind: 'weapon' | 'armor' | 'food' | 'medicine'; amount: number },
+  item: { kind: ShopItemKind; amount: number },
   target: PlayerDoc,
 ): Partial<PlayerDoc> {
   switch (item.kind) {
@@ -251,11 +253,13 @@ function applyItemEffect(
       return { weaponAtkBonus: item.amount }
     case 'armor':
       return { armorDefBonus: item.amount }
+    case 'tool':
+      return {}
   }
 }
 
 // 무기/방어구는 인벤토리를 거치지 않고 구매·선물 즉시 장착되어 기존 장비를 대체한다.
-function equipPatch(itemId: string, item: { kind: 'weapon' | 'armor' | 'food' | 'medicine'; amount: number }): Partial<PlayerDoc> | null {
+function equipPatch(itemId: string, item: { kind: ShopItemKind; amount: number }): Partial<PlayerDoc> | null {
   if (item.kind === 'weapon') return { weaponAtkBonus: item.amount, equippedWeaponId: itemId }
   if (item.kind === 'armor') return { armorDefBonus: item.amount, equippedArmorId: itemId }
   return null
@@ -437,6 +441,10 @@ interface GameState {
   useItem: (itemId: string) => void
   giftItem: (itemId: string, targetId: string) => void
   inventory: Record<string, number>
+  searcherUses: number
+  searchQueries: SearchQuery[]
+  submitSearchQuery: (query: string) => void
+  answerSearchQuery: (targetId: string, queryId: string, answer: string) => void
   createFeedPost: (title: string, body: string, commentsEnabled: boolean, imageDataUrl?: string) => void
   editFeedPost: (postId: string, title: string, body: string) => void
   deleteFeedPost: (postId: string) => void
@@ -678,6 +686,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const stamina = myPlayer?.stamina ?? 100
   const coins = myPlayer?.coins ?? 0
   const inventory = myPlayer?.inventory ?? {}
+  const searcherUses = myPlayer?.searcherUses ?? 0
+  const searchQueries = myPlayer?.searchQueries ?? []
   const atk = BASE_ATK + (myPlayer?.weaponAtkBonus ?? 0)
   const def = myPlayer?.armorDefBonus ?? 0
   const equippedWeaponId = myPlayer?.equippedWeaponId ?? null
@@ -2127,6 +2137,20 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void fixRecordBookLabelSync(displayName(targetId))
   }
 
+  // 검색기 답변은 불가가 직접 적어 보낸다 — 이세계 데이터베이스 판정을 흉내 내는
+  // 자동 응답이 아니라, 불가가 그 자리에서 판단해 결과를 만들어 주는 방식이다.
+  function answerSearchQuery(targetId: string, queryId: string, answer: string) {
+    if (!isAdminFlag) return
+    const trimmed = answer.trim()
+    if (!trimmed) return
+    const target = players[targetId]
+    if (!target) return
+    const searchQueries = (target.searchQueries ?? []).map((q) =>
+      q.id === queryId ? { ...q, answer: trimmed, answeredAtMs: Date.now() } : q,
+    )
+    void patchPlayer(targetId, { searchQueries })
+  }
+
   function resetAllData() {
     if (!isAdminFlag) return
     void resetAllDataSync()
@@ -2549,6 +2573,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         if (me.coins < item.price) return {}
         const equip = equipPatch(itemId, item)
         if (equip) return { me: { coins: me.coins - item.price, ...equip } }
+        if (item.kind === 'tool') {
+          return { me: { coins: me.coins - item.price, searcherUses: (me.searcherUses ?? 0) + item.amount } }
+        }
         const inventory = { ...(me.inventory ?? {}) }
         inventory[itemId] = (inventory[itemId] ?? 0) + 1
         return { me: { coins: me.coins - item.price, inventory } }
@@ -2590,12 +2617,42 @@ function GameProviderInner({ children }: { children: ReactNode }) {
             target: equip,
           }
         }
+        if (item.kind === 'tool') {
+          return {
+            me: { coins: me.coins - item.price },
+            target: { searcherUses: (target.searcherUses ?? 0) + item.amount },
+          }
+        }
         const inventory = { ...(target.inventory ?? {}) }
         inventory[itemId] = (inventory[itemId] ?? 0) + 1
         return {
           me: { coins: me.coins - item.price },
           target: { inventory },
         }
+      },
+    )
+  }
+
+  // 검색은 결과가 나오든 안 나오든 즉시 1 회가 차감된다 — 질문이 접수된 시점에
+  // 이미 소비된 것으로 취급한다. 답은 불가가 검색 요청 응답 UI에서 나중에 적어 준다.
+  function submitSearchQuery(query: string) {
+    if (!viewerId) return
+    const trimmed = query.trim()
+    if (!trimmed) return
+    void runCombatTransaction(
+      viewerId,
+      () => null,
+      (_sess, me) => {
+        const uses = me.searcherUses ?? 0
+        if (uses <= 0) return {}
+        const entry: SearchQuery = {
+          id: `sq-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          query: trimmed,
+          answer: null,
+          askedAtMs: Date.now(),
+          answeredAtMs: null,
+        }
+        return { me: { searcherUses: uses - 1, searchQueries: [...(me.searchQueries ?? []), entry] } }
       },
     )
   }
@@ -2868,6 +2925,10 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       useItem,
       giftItem,
       inventory,
+      searcherUses,
+      searchQueries,
+      submitSearchQuery,
+      answerSearchQuery,
     }),
     [
       viewerId,
@@ -2897,6 +2958,8 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       equippedArmorId,
       incapacitated,
       inventory,
+      searcherUses,
+      searchQueries,
       players,
       myPlayer,
       notifyRoomEvents,

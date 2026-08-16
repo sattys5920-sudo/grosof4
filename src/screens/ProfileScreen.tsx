@@ -11,11 +11,12 @@ import {
   roleLabel,
 } from '../data/characters'
 import { HALL_EVENTS } from '../data/hallEvents'
-import { SHOP_ITEMS, shopItemById } from '../data/shop'
+import { SHOP_ITEMS, SHOP_KIND_LABEL, shopItemById } from '../data/shop'
 import { MISSION_SIZES, resolvedTeam } from '../state/missionEngine'
 import { compressImageFile } from '../lib/image'
 import { Badge } from '../components/Badge'
 import { AbilityUseModal } from '../components/AbilityUseModal'
+import { SearcherModal } from '../components/SearcherModal'
 import { PixelIcon } from '../components/PixelIcon'
 import { PixelArt } from '../components/PixelArt'
 import type { BroadcastKind, EndingKey } from '../data/types'
@@ -84,6 +85,56 @@ function AdminAbilityLogPanel() {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+function SearchQueryQueue() {
+  const { players, displayName, answerSearchQuery } = useGame()
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+
+  const pending = Object.entries(players)
+    .flatMap(([playerId, p]) => (p.searchQueries ?? []).filter((q) => q.answer === null).map((query) => ({ playerId, query })))
+    .sort((a, b) => a.query.askedAtMs - b.query.askedAtMs)
+
+  return (
+    <div className="profile__gm">
+      <span className="profile__section-label">불가 전용 — 검색기 요청 응답</span>
+      <p className="profile__gm-note">
+        플레이어가 검색기로 보낸 질문에 직접 답을 적어 보낸다. 보낸 답은 그 플레이어의 검색창에 검색 결과로 뜬다.
+        모르는 내용이면 "검색 결과 없음" 같은 문구로 자유롭게 답해도 된다.
+      </p>
+      {pending.length === 0 ? (
+        <p className="profile__dm-empty">대기 중인 요청이 없다.</p>
+      ) : (
+        <div className="profile__search-queue">
+          {pending.map(({ playerId, query }) => (
+            <div key={query.id} className="profile__search-queue-item">
+              <span className="profile__search-queue-who">
+                {displayName(playerId)} · {formatLogTime(query.askedAtMs)}
+              </span>
+              <p className="profile__search-queue-q">“{query.query}”</p>
+              <textarea
+                className="profile__gm-textarea"
+                rows={2}
+                placeholder="검색 결과로 보낼 답을 입력..."
+                value={drafts[query.id] ?? ''}
+                onChange={(e) => setDrafts((d) => ({ ...d, [query.id]: e.target.value }))}
+              />
+              <button
+                className="profile__gm-send"
+                disabled={!(drafts[query.id] ?? '').trim()}
+                onClick={() => {
+                  answerSearchQuery(playerId, query.id, drafts[query.id] ?? '')
+                  setDrafts((d) => ({ ...d, [query.id]: '' }))
+                }}
+              >
+                답변 보내기
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -248,6 +299,7 @@ export function ProfileScreen() {
     incapacitated,
     inventory,
     useItem,
+    searcherUses,
     mission,
     players,
     collectedClues,
@@ -266,6 +318,7 @@ export function ProfileScreen() {
     sendEnding,
   } = useGame()
   const viewer = viewerId ? CHARACTERS.find((c) => c.id === viewerId)! : null
+  const searcherArt = shopItemById('sh-tool-0')?.art
   // 서버에서 되돌아오는 값을 곧바로 입력창에 반영하면, Firestore 왕복 시간 동안
   // 타자가 빨라졌을 때 방금 입력한 글자가 지워지거나 깨지는 문제가 있었다.
   // 그래서 입력 중에는 이 로컬 드래프트만 신뢰하고, 신원(viewerId)이 바뀔 때만 다시 동기화한다.
@@ -295,6 +348,7 @@ export function ProfileScreen() {
   const [recordBookTarget, setRecordBookTarget] = useState('')
   const [openClueId, setOpenClueId] = useState<string | null>(null)
   const [abilityModalOpen, setAbilityModalOpen] = useState(false)
+  const [searcherModalOpen, setSearcherModalOpen] = useState(false)
   const [masterListOpen, setMasterListOpen] = useState(false)
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
   const [sizeReport, setSizeReport] = useState<{ totalBytes: number; fields: { key: string; bytes: number }[] } | null>(
@@ -428,6 +482,20 @@ export function ProfileScreen() {
                     <button onClick={() => useItem(item.id)}>사용</button>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {searcherUses > 0 && (
+            <div className="profile__section profile__inventory">
+              <span className="profile__section-label">검색기</span>
+              <div className="profile__inventory-item">
+                {searcherArt && <PixelArt pixels={searcherArt.pixels} palette={searcherArt.palette} size={36} />}
+                <div className="profile__inventory-body">
+                  <span className="profile__clue-title">검색기 · 남은 횟수 {searcherUses} 회</span>
+                  <span className="profile__clue-source">궁금한 것을 검색해 볼 수 있다.</span>
+                </div>
+                <button onClick={() => setSearcherModalOpen(true)}>열기</button>
               </div>
             </div>
           )}
@@ -759,6 +827,8 @@ export function ProfileScreen() {
         </AbilityUseModal>
       )}
 
+      {searcherModalOpen && <SearcherModal onClose={() => setSearcherModalOpen(false)} />}
+
       {!viewer && (
         <div className="profile__card">
           <div className="profile__card-head">
@@ -1045,7 +1115,7 @@ export function ProfileScreen() {
                 <option value="">보낼 아이템 고르기</option>
                 {SHOP_ITEMS.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.name} ({item.kind === 'weapon' ? '무기' : item.kind === 'armor' ? '방어구' : item.kind === 'food' ? '음식' : '약'})
+                    {item.name} ({SHOP_KIND_LABEL[item.kind]})
                   </option>
                 ))}
               </select>
@@ -1125,6 +1195,8 @@ export function ProfileScreen() {
               ???로 보정하기
             </button>
           </div>
+
+          <SearchQueryQueue />
 
           <div className="profile__gm">
             <span className="profile__section-label">불가 전용 — 조사</span>

@@ -33,6 +33,7 @@ import type {
   HalliRoomId,
   RoomEventState,
   RoomId,
+  SearchQuery,
 } from '../data/types'
 import {
   CARD_GAME_WIN_COINS,
@@ -136,6 +137,8 @@ export interface PlayerDoc {
   inventory: Record<string, number>
   leakLog: LeakEntry[]
   leakRevealShown: boolean
+  searcherUses: number
+  searchQueries: SearchQuery[]
 }
 
 export interface FeedPostDoc {
@@ -431,6 +434,8 @@ export async function registerAccountSync(username: string, password: string): P
       inventory: {},
       leakLog: [],
       leakRevealShown: false,
+      searcherUses: 0,
+      searchQueries: [],
     })
     const account: AccountDoc = { passwordHash, characterId: assigned.id, createdAtMs: Date.now() }
     tx.set(aref, account)
@@ -486,6 +491,8 @@ export async function assignRoleManuallySync(characterId: string, nickname: stri
       inventory: {},
       leakLog: [],
       leakRevealShown: false,
+      searcherUses: 0,
+      searchQueries: [],
     })
   })
 }
@@ -519,6 +526,10 @@ export async function grantItemSync(characterId: string, itemId: string) {
     }
     if (item.kind === 'armor') {
       tx.update(pref, { armorDefBonus: item.amount, equippedArmorId: itemId })
+      return
+    }
+    if (item.kind === 'tool') {
+      tx.update(pref, { searcherUses: (data.searcherUses ?? 0) + item.amount })
       return
     }
     const inventory = { ...(data.inventory ?? {}) }

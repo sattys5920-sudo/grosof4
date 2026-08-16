@@ -89,7 +89,7 @@ export interface Creature {
   art: { pixels: string[]; palette: Record<string, string> }
 }
 
-export type ShopItemKind = 'weapon' | 'armor' | 'food' | 'medicine'
+export type ShopItemKind = 'weapon' | 'armor' | 'food' | 'medicine' | 'tool'
 
 export interface ShopItem {
   id: string
@@ -99,6 +99,16 @@ export interface ShopItem {
   price: number
   icon?: string
   art: { pixels: string[]; palette: Record<string, string> }
+}
+
+// 검색기(도구) 아이템으로 보낸 질문 1건. 답은 불가가 직접 입력해서 보낸다 —
+// 자동 응답이 아니라, 이 세계(이세계) 데이터베이스 기준으로 불가가 판단해 답한다.
+export interface SearchQuery {
+  id: string
+  query: string
+  answer: string | null
+  askedAtMs: number
+  answeredAtMs: number | null
 }
 
 export interface CombatLogEntry {
