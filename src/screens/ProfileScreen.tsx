@@ -13,6 +13,7 @@ import {
 import { HALL_EVENTS } from '../data/hallEvents'
 import { SHOP_ITEMS, shopItemById } from '../data/shop'
 import { MISSION_SIZES, resolvedTeam } from '../state/missionEngine'
+import { compressImageFile } from '../lib/image'
 import { Badge } from '../components/Badge'
 import { AbilityUseModal } from '../components/AbilityUseModal'
 import { PixelIcon } from '../components/PixelIcon'
@@ -276,6 +277,8 @@ export function ProfileScreen() {
   const [kind, setKind] = useState<BroadcastKind>('event')
   const [title, setTitle] = useState(PRESETS[0].title)
   const [body, setBody] = useState(PRESETS[0].body)
+  const [broadcastImage, setBroadcastImage] = useState<string | null>(null)
+  const [broadcastImageError, setBroadcastImageError] = useState(false)
   const [targetId, setTargetId] = useState('')
   const [recordTargetAId, setRecordTargetAId] = useState('')
   const [recordTargetBId, setRecordTargetBId] = useState('')
@@ -325,7 +328,21 @@ export function ProfileScreen() {
   }
 
   function send() {
-    sendBroadcast(kind, title, body)
+    sendBroadcast(kind, title, body, undefined, undefined, broadcastImage ?? undefined)
+    setBroadcastImage(null)
+    setBroadcastImageError(false)
+  }
+
+  async function onBroadcastImagePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setBroadcastImageError(false)
+    try {
+      setBroadcastImage(await compressImageFile(file))
+    } catch {
+      setBroadcastImageError(true)
+    }
   }
 
   function onPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -900,6 +917,22 @@ export function ProfileScreen() {
               placeholder="쪽지 내용"
               rows={3}
             />
+            {broadcastImageError && (
+              <p className="profile__gm-note">사진을 불러오지 못했다....... 다시 시도해 보자.</p>
+            )}
+            {broadcastImage ? (
+              <div className="profile__gm-image-preview">
+                <img src={broadcastImage} alt="첨부한 사진" />
+                <button type="button" className="profile__gm-preset" onClick={() => setBroadcastImage(null)}>
+                  사진 빼기
+                </button>
+              </div>
+            ) : (
+              <label className="profile__gm-image-pick">
+                <input type="file" accept="image/*" onChange={onBroadcastImagePick} hidden />
+                사진첩에서 사진 추가
+              </label>
+            )}
             <button className="profile__gm-send" onClick={send}>
               전원에게 쪽지 보내기
             </button>

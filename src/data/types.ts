@@ -181,6 +181,7 @@ export interface Broadcast {
   kind: BroadcastKind
   title: string
   body: string
+  imageDataUrl?: string
   variant?: string
   footer?: string
 }

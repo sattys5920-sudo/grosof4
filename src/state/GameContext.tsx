@@ -369,6 +369,7 @@ interface GameState {
     body: string,
     variant?: string,
     footer?: string,
+    imageDataUrl?: string,
   ) => void
   dismissBroadcast: () => void
   clearBroadcastForAll: () => void
@@ -1972,6 +1973,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     body: string,
     variant?: string,
     footer?: string,
+    imageDataUrl?: string,
   ) {
     if (!title.trim() || !body.trim()) return
     const id = `bc-${Date.now()}`
@@ -1982,6 +1984,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       body: body.trim(),
       ...(variant ? { variant } : {}),
       ...(footer ? { footer } : {}),
+      ...(imageDataUrl ? { imageDataUrl } : {}),
     }
     void sendBroadcastSync(bc)
   }

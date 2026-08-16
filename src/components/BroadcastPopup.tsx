@@ -28,6 +28,7 @@ export function BroadcastPopup() {
       >
         <span className="bcpopup__kind">{KIND_LABEL[broadcast.kind]}</span>
         <h3 className="bcpopup__title">{broadcast.title}</h3>
+        {broadcast.imageDataUrl && <img className="bcpopup__image" src={broadcast.imageDataUrl} alt="" />}
         <p className="bcpopup__body">{broadcast.body}</p>
         {broadcast.footer && <p className="bcpopup__footer">{broadcast.footer}</p>}
         <button className="bcpopup__dismiss" onClick={dismissBroadcast}>

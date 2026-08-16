@@ -418,6 +418,36 @@
   border-color: var(--sin);
 }
 
+.profile__gm-image-pick {
+  display: inline-block;
+  align-self: flex-start;
+  background: var(--void-3);
+  border: 1px dashed var(--line);
+  color: var(--bone-dim);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.profile__gm-image-pick:hover {
+  color: var(--bone-bright);
+  border-color: var(--sin);
+}
+
+.profile__gm-image-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.profile__gm-image-preview img {
+  max-width: 100%;
+  max-height: 220px;
+  border: 1px solid var(--line);
+  object-fit: contain;
+}
+
 .profile__gm-send {
   align-self: flex-start;
   font-family: var(--font-pixel);
