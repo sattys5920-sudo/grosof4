@@ -37,6 +37,15 @@
       // 두 번 겹쳐 줄어들어(브라우저가 한 번, 우리가 또 한 번) 입력창이
       // 필요 이상으로 위로 밀려 보인다.
       ;(function () {
+        // iOS(사파리/홈화면 앱)는 포커스된 입력창을 키보드 위로 자체적으로
+        // 스크롤/패닝해서 올려 준다(OS 레벨 동작이라 body의 overflow:hidden으로도
+        // 못 막는다). 이 상태에서 안드로이드용으로 만든 --kb-inset 패딩까지 얹으면
+        // iOS가 이미 올려놓은 화면 위에 우리가 또 한 번 밀어 올리는 셈이 되어,
+        // 입력창이 필요 이상으로 위로 붕 뜨고 그 아래에 빈 공간이 남는다. 그래서
+        // iOS에서는 --kb-inset을 항상 0으로 두고 iOS의 자체 동작에 맡긴다.
+        var isIOS =
+          /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
         var maxHeight = window.innerHeight
         function setAppHeight(h) {
           document.documentElement.style.setProperty('--app-height', h + 'px')
@@ -45,6 +54,7 @@
           document.documentElement.style.setProperty('--kb-inset', px + 'px')
         }
         function syncKbInset() {
+          if (isIOS) return
           var vv = window.visualViewport
           if (!vv) return
           // 키보드 높이는 반드시 "고정해 둔" maxHeight 기준으로 재야 한다. 일부 안드로이드
