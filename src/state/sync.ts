@@ -57,7 +57,7 @@ import {
   findMatchingColor,
   settleHalliTurn,
 } from '../data/halliGame'
-import { initialMissionState, type MissionState } from './missionEngine'
+import { initialMissionState, missionReducer, type MissionState } from './missionEngine'
 import { shopItemById } from '../data/shop'
 
 const SESSION_ID = 'live'
@@ -1363,6 +1363,66 @@ export async function updateMissionSync(updater: (state: MissionState) => Missio
     const data = snap.data() as SessionDoc
     const next = updater(deserializeMission(data.mission))
     tx.update(sref, { mission: serializeMission(next) })
+  })
+}
+
+// 5 차(마지막) 조사, 0-based 인덱스.
+const FINALE_MISSION_INDEX = 4
+// 원희 — 이 인물이 마지막 조사대에 있었는지가 괴이 단절 성공/실패 결말 문구를 가른다.
+const FINALE_BREAKER_ID = 'ayoung'
+
+/**
+ * GM 전용: 조사 실행(카드 제출) 마감을 처리한다. 평소에는 그냥 CLOSE_EXECUTE를 적용할
+ * 뿐이지만, 지금이 5 차(마지막) 조사이고 이번에 결과가 확정되는 순간이면 결과에 맞는
+ * 결말 팝업을 같은 트랜잭션 안에서 함께 띄운다.
+ * - 실패: 그 조사에서 실제로 실패 카드를 낸 사람들의 닉네임을 담은 문구.
+ * - 성공: 원희가 그 조사대에 있었는지에 따라 "괴이를 끊었다" / "못 끊었다" 문구가 갈린다.
+ */
+export async function closeExecuteFinaleSync(): Promise<void> {
+  const sref = sessionRef()
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(sref)
+    if (!snap.exists()) return
+    const data = snap.data() as SessionDoc
+    const before = deserializeMission(data.mission)
+    const wasFinaleExecute = before.missionIndex === FINALE_MISSION_INDEX && before.phase === 'execute'
+    const next = missionReducer(before, { type: 'CLOSE_EXECUTE' })
+    const isFinaleResult = wasFinaleExecute && next.phase === 'result'
+    const finaleResult = isFinaleResult ? next.missionResults[FINALE_MISSION_INDEX] : null
+
+    const failerIds = finaleResult === 'fail' ? next.proposedTeam.filter((id) => next.cards[id] === 'fail') : []
+    // 트랜잭션 규칙상 모든 get()은 첫 write보다 먼저 끝나야 한다.
+    const failerSnaps = await Promise.all(failerIds.map((id) => tx.get(playerRef(id))))
+
+    const patch: Record<string, unknown> = { mission: serializeMission(next) }
+
+    if (finaleResult === 'fail') {
+      const names = failerSnaps.map((s, i) => {
+        const d = s.exists() ? (s.data() as PlayerDoc) : null
+        return d?.nickname || CHARACTERS.find((c) => c.id === failerIds[i])?.name || '누군가'
+      })
+      const nameText = names.length > 0 ? names.join('과 ') : '누군가'
+      const pronoun = names.length > 1 ? '그들' : '그 사람'
+      const turnPhrase = names.length > 1 ? '모두 천천히 뒤돌아섰다' : '천천히 뒤돌아섰다'
+      patch.broadcast = {
+        id: `bc-${Date.now()}`,
+        kind: 'sin',
+        title: '마지막 문턱',
+        body: `드디어 마지막 조사. 해치워야 할 괴이가 저기...... 응? ${nameText}이(가) 괴이 앞을 막아섰다. 그런데 ${pronoun}의 눈이 이상하다. 이쪽을 보고 있지도 않다. 검게 가라앉은 눈동자, 웃는 것도 우는 것도 아닌 얼굴. 괴이가 된 모습으로, ${turnPhrase}. 결계는 무너지지 않았다. 우리는 영원히 갇힌 거다.`,
+      }
+    } else if (finaleResult === 'success') {
+      const broke = next.proposedTeam.includes(FINALE_BREAKER_ID)
+      patch.broadcast = {
+        id: `bc-${Date.now()}`,
+        kind: 'event',
+        title: broke ? '결계가 걷히다' : '흔들리는 결계',
+        body: broke
+          ? '드디어 마지막 조사. 익숙해진 실력으로 괴이를 해치웠다. 조사는 성공했다. 그토록 어두웠던 결계들이 하나씩 사라진다. 발밑이 흔들리는 것 같기도, 붕 뜨는 것 같기도 하다. 정신이 아득해진다……. 마지막으로 눈에 들어온 건, 비명을 지르며 흐느끼는 누군가의 모습이었다.'
+          : '드디어 마지막 조사. 익숙해진 실력으로 괴이를 해치웠다. 조사는 성공했다. 그토록 어두웠던 결계들이 하나씩 사라진다. 발밑이 흔들리는 것 같기도, 붕 뜨는 것 같기도 하다. 정신이 아득해진다……. 그런데 결계가 있던 자리, 완전히 사라지지는 않았다. 희미하게, 다시 차오르고 있었다.',
+      }
+    }
+
+    tx.update(sref, patch)
   })
 }
 

@@ -71,6 +71,7 @@ import {
   rollbackMissionSync,
   trimChatHistorySync,
   applyTeamOverrideSync,
+  closeExecuteFinaleSync,
   fixRecordBookLabelSync,
   grantCoinsSync,
   grantItemSync,
@@ -2081,7 +2082,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   }
   function closeExecute() {
     if (!isAdminFlag) return
-    void updateMissionSync((m) => missionReducer(m, { type: 'CLOSE_EXECUTE' }))
+    void closeExecuteFinaleSync()
   }
   function continueMission() {
     void updateMissionSync((m) => missionReducer(m, { type: 'CONTINUE' }))
