@@ -1625,6 +1625,48 @@ export async function fixCctvMissionRecordSync(missionIndex: number, correctCoun
 }
 
 /**
+ * GM 전용 일회성 보정: 출석부(기록자 능력)가 독립 역할(학생도 괴이도 아님)을 무조건
+ * "괴이"로 잘못 표시하던 버그로 이미 나가 있는 과거 결과 텍스트를, 지정한 인물 이름에
+ * 한해 "???"로 소급 정정한다. 《출석부》가 포함된 텍스트 안에서만 치환하므로 다른
+ * 능력 로그는 건드리지 않는다.
+ */
+export async function fixRecordBookLabelSync(targetName: string): Promise<void> {
+  const database = requireDb()
+  const escaped = targetName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const pattern = new RegExp(`(${escaped} = )(학생|괴이)`, 'g')
+  const replace = (text: string) => (text.includes('《출석부》') ? text.replace(pattern, '$1???') : text)
+
+  const sref = sessionRef()
+  const sSnap = await getDoc(sref)
+  if (sSnap.exists()) {
+    const data = sSnap.data() as SessionDoc
+    const abilityLog = (data.abilityLog ?? []).map((entry) =>
+      entry.abilityName === '출석부' ? { ...entry, resultText: replace(entry.resultText) } : entry,
+    )
+    await updateDoc(sref, { abilityLog })
+  }
+
+  const playersSnap = await getDocs(playersCol())
+  const batch = writeBatch(database)
+  for (const d of playersSnap.docs) {
+    const data = d.data() as PlayerDoc
+    let changed = false
+    const personalClues = (data.personalClues ?? []).map((c) => {
+      const next = replace(c)
+      if (next !== c) changed = true
+      return next
+    })
+    const gmDmMessages = (data.gmDmMessages ?? []).map((m) => {
+      const next = replace(m.text)
+      if (next !== m.text) changed = true
+      return next === m.text ? m : { ...m, text: next }
+    })
+    if (changed) batch.update(d.ref, { personalClues, gmDmMessages })
+  }
+  await batch.commit()
+}
+
+/**
  * GM 전용: N 일차가 지났다고 선언하고, 가입한 모든 플레이어에게 그날의 개인 서사를 한 번에 전달한다.
  * 1~4 일차 모두 각자 캐릭터의 개인화된 기억이며, 전체 전말 공개는 revealTruthSync가 별도로 담당한다.
  */

@@ -255,6 +255,7 @@ export function ProfileScreen() {
     grantItem,
     fixCctvMissionRecord,
     diagnoseSessionSize,
+    fixRecordBookLabel,
     resetAllData,
     storyDay,
     revealStoryDay,
@@ -288,6 +289,7 @@ export function ProfileScreen() {
   const [itemSelectId, setItemSelectId] = useState('')
   const [cctvMissionPick, setCctvMissionPick] = useState(1)
   const [cctvCorrectCount, setCctvCorrectCount] = useState('')
+  const [recordBookTarget, setRecordBookTarget] = useState('')
   const [openClueId, setOpenClueId] = useState<string | null>(null)
   const [abilityModalOpen, setAbilityModalOpen] = useState(false)
   const [masterListOpen, setMasterListOpen] = useState(false)
@@ -1061,6 +1063,33 @@ export function ProfileScreen() {
               }}
             >
               CCTV 기록 보정하기
+            </button>
+          </div>
+
+          <div className="profile__gm">
+            <span className="profile__section-label">불가 전용 — 출석부 표기 보정</span>
+            <p className="profile__gm-note">
+              독립 역할(학생도 괴이도 아닌 인물)이 출석부 결과에 "괴이"로 잘못 뜬 적이 있을 때,
+              해당 인물의 표기만 골라 "???"로 소급 정정한다. 《출석부》가 포함된 결과 문구(공용
+              로그·개인 단서·불가 DM)에서 그 인물 이름이 나온 부분만 바뀐다.
+            </p>
+            <select value={recordBookTarget} onChange={(e) => setRecordBookTarget(e.target.value)}>
+              <option value="">보정할 인물 선택</option>
+              {CHARACTERS.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {displayName(c.id)}
+                </option>
+              ))}
+            </select>
+            <button
+              className="profile__gm-send"
+              disabled={!recordBookTarget}
+              onClick={() => {
+                fixRecordBookLabel(recordBookTarget)
+                setRecordBookTarget('')
+              }}
+            >
+              ???로 보정하기
             </button>
           </div>
 

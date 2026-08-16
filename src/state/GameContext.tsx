@@ -65,6 +65,7 @@ import {
   diagnoseSessionSizeSync,
   forceCloseRoomSync,
   fixCctvMissionRecordSync,
+  fixRecordBookLabelSync,
   grantCoinsSync,
   grantItemSync,
   joinCardRoomSync,
@@ -458,6 +459,7 @@ interface GameState {
   grantItem: (characterId: string, itemId: string) => void
   fixCctvMissionRecord: (missionIndex: number, correctCount: number) => void
   diagnoseSessionSize: () => Promise<{ totalBytes: number; fields: { key: string; bytes: number }[] }>
+  fixRecordBookLabel: (targetId: string) => void
   resetAllData: () => void
   shopOpen: boolean
   setShopOpen: (open: boolean) => void
@@ -2117,6 +2119,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     return diagnoseSessionSizeSync()
   }
 
+  function fixRecordBookLabel(targetId: string) {
+    if (!isAdminFlag) return
+    void fixRecordBookLabelSync(displayName(targetId))
+  }
+
   function resetAllData() {
     if (!isAdminFlag) return
     void resetAllDataSync()
@@ -2158,7 +2165,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       const trueB = resolveTeamCheckPure(sess.disguiseArmedUntilMs, b.id).team
       const shownA = lieOnA ? (trueA === 'ward' ? 'sin' : 'ward') : trueA
       const shownB = !lieOnA ? (trueB === 'ward' ? 'sin' : 'ward') : trueB
-      const text = `《출석부》 ${displayName(a.id)} = ${teamLabel(shownA)}, ${displayName(b.id)} = ${teamLabel(shownB)} — 둘 중 하나는 거짓이다.`
+      // 독립 역할(a.team === 'veil')은 학생도 괴이도 아니므로, 거짓말 여부와 무관하게
+      // 항상 ???로만 보여준다(단정적으로 괴이라고 속이지 않는다).
+      const labelA = a.team === 'veil' ? '???' : teamLabel(shownA)
+      const labelB = b.team === 'veil' ? '???' : teamLabel(shownB)
+      const text = `《출석부》 ${displayName(a.id)} = ${labelA}, ${displayName(b.id)} = ${labelB} — 둘 중 하나는 거짓이다.`
       return {
         session: {
           abilityLog: [...(sess.abilityLog ?? []), makeAbilityLogEntry(viewerId, '출석부', text, [targetAId, targetBId])],
@@ -2771,6 +2782,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       grantItem,
       fixCctvMissionRecord,
       diagnoseSessionSize,
+      fixRecordBookLabel,
       resetAllData,
       shopOpen: session.shopOpen,
       setShopOpen,
