@@ -100,48 +100,78 @@
   mix-blend-mode: screen;
 }
 
-.searcher__results {
-  min-height: 64px;
-  max-height: 34vh;
-  overflow-y: auto;
-  border: 1px solid var(--sin-dim);
-  background: var(--void);
-  padding: 10px;
+.searcher__monitor {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  background: linear-gradient(180deg, #2b241f, #18130f);
+  border: 1px solid var(--line);
+  padding: 8px 8px 0;
+}
+
+.searcher__screen {
+  position: relative;
+  min-height: 190px;
+  max-height: 48vh;
+  overflow-y: auto;
+  background: #050302;
+  border: 1px solid #000;
+  box-shadow: inset 0 0 30px rgba(168, 56, 47, 0.18), inset 0 0 3px rgba(0, 0, 0, 0.9);
+  padding: 12px;
+}
+
+.searcher__scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.04) 0px,
+    rgba(255, 255, 255, 0.04) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: overlay;
+}
+
+.searcher__screen-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .searcher__empty {
   margin: 0;
-  font-size: 12px;
+  font-family: var(--font-pixel);
+  font-size: 11px;
   color: var(--bone-dim);
-  line-height: 1.6;
+  line-height: 1.8;
 }
 
 .searcher__result {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .searcher__result + .searcher__result {
-  border-top: 1px dashed var(--line);
-  padding-top: 10px;
+  border-top: 1px dashed rgba(168, 56, 47, 0.3);
+  padding-top: 11px;
 }
 
 .searcher__result-q {
   margin: 0;
   font-family: var(--font-pixel);
-  font-size: 10px;
-  color: var(--veil);
+  font-size: 10.5px;
+  color: var(--sin);
   letter-spacing: 0.2px;
 }
 
 .searcher__result-a {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.6;
+  font-family: var(--font-pixel);
+  font-size: 11.5px;
+  line-height: 1.9;
   color: var(--bone-bright);
 }
 
@@ -150,6 +180,29 @@
   font-family: var(--font-pixel);
   font-size: 10px;
   color: var(--bone-dim);
+}
+
+.searcher__monitor-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 4px;
+}
+
+.searcher__monitor-led {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--sin);
+  box-shadow: 0 0 4px var(--sin);
+}
+
+.searcher__monitor-label {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--bone-dim);
+  letter-spacing: 1px;
 }
 
 .searcher__uses {

@@ -32,20 +32,29 @@ export function SearcherModal({ onClose }: { onClose: () => void }) {
         <div className="searcher__body">
           <div className="searcher__noise" />
 
-          <div className="searcher__results">
-            {sorted.length === 0 && (
-              <p className="searcher__empty">검색 기록이 없다....... 알고 싶은 것을 검색해 보자.</p>
-            )}
-            {sorted.map((q) => (
-              <div key={q.id} className="searcher__result">
-                <p className="searcher__result-q">Q. {q.query}</p>
-                {q.answer ? (
-                  <p className="searcher__result-a">{q.answer}</p>
-                ) : (
-                  <p className="searcher__result-pending">검색 중.......</p>
+          <div className="searcher__monitor">
+            <div className="searcher__screen">
+              <div className="searcher__scanlines" />
+              <div className="searcher__screen-content">
+                {sorted.length === 0 && (
+                  <p className="searcher__empty">검색 기록이 없다....... 알고 싶은 것을 검색해 보자.</p>
                 )}
+                {sorted.map((q) => (
+                  <div key={q.id} className="searcher__result">
+                    <p className="searcher__result-q">&gt; Q. {q.query}</p>
+                    {q.answer ? (
+                      <p className="searcher__result-a">{q.answer}</p>
+                    ) : (
+                      <p className="searcher__result-pending">검색 중.......</p>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+            <div className="searcher__monitor-bar">
+              <span className="searcher__monitor-led" />
+              <span className="searcher__monitor-label">RESULT.CRT</span>
+            </div>
           </div>
 
           <div className="searcher__uses">
@@ -73,12 +82,8 @@ export function SearcherModal({ onClose }: { onClose: () => void }) {
           <div className="searcher__notice">
             <p className="searcher__notice-title">※ 검색 시 주의사항</p>
             <p>· 모르는 것은 답해 주지 않는다.</p>
-            <p>
-              · 고운고등학교 데이터베이스에 있는 정보만 나오며, 당신이 알던 사실과 다를 수 있다.
-              (이 곳은 현실에서 잊힌 존재들이 다시 기억되는 공간이기 때문이다.)
-            </p>
-            <p>· 결과가 나오지 않아도 검색 횟수는 차감된다.</p>
-            <p>· 검색기 1 개당 2 회까지 사용할 수 있다.</p>
+            <p>· 고운고 DB 속 정보만 나온다. 의심하지 말도록.</p>
+            <p>· 결과가 없어도 횟수는 차감된다. 1 개당 2 회.</p>
           </div>
         </div>
       </div>
