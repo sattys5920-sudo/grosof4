@@ -300,6 +300,7 @@ export function ProfileScreen() {
     inventory,
     useItem,
     searcherUses,
+    searchQueries,
     mission,
     players,
     collectedClues,
@@ -498,14 +499,18 @@ export function ProfileScreen() {
             </div>
           )}
 
-          {searcherUses > 0 && (
+          {(searcherUses > 0 || searchQueries.length > 0) && (
             <div className="profile__section profile__inventory">
               <span className="profile__section-label">검색기</span>
               <div className="profile__inventory-item">
                 {searcherArt && <PixelArt pixels={searcherArt.pixels} palette={searcherArt.palette} size={36} />}
                 <div className="profile__inventory-body">
-                  <span className="profile__clue-title">검색기 · 남은 횟수 {searcherUses} 회</span>
-                  <span className="profile__clue-source">궁금한 것을 검색해 볼 수 있다.</span>
+                  <span className="profile__clue-title">
+                    검색기 · {searcherUses > 0 ? `남은 횟수 ${searcherUses} 회` : '횟수 소진'}
+                  </span>
+                  <span className="profile__clue-source">
+                    {searcherUses > 0 ? '궁금한 것을 검색해 볼 수 있다.' : '지난 검색 기록은 계속 볼 수 있다.'}
+                  </span>
                 </div>
                 <button onClick={() => setSearcherModalOpen(true)}>열기</button>
               </div>
