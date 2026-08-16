@@ -1405,14 +1405,14 @@ export async function closeExecuteFinaleSync(): Promise<void> {
       const pronoun = names.length > 1 ? '그들' : '그 사람'
       const turnPhrase = names.length > 1 ? '모두 천천히 뒤돌아섰다' : '천천히 뒤돌아섰다'
       const broke = next.proposedTeam.includes(FINALE_BREAKER_ID)
-      const opening = `드디어 마지막 조사. 해치워야 할 괴이가 저기...... 응? ${nameText}이(가) 괴이 앞을 막아섰다. 그런데 ${pronoun}의 눈이 이상하다. 이쪽을 보고 있지도 않다. 검게 가라앉은 눈동자, 웃는 것도 우는 것도 아닌 얼굴. 괴이가 된 모습으로, ${turnPhrase}. 결계는 무너지지 않았다.`
+      const opening = `드디어 마지막 조사. 해치워야 할 괴이가 저기…… 응? ${nameText}이(가) 괴이 앞을 막아섰다. 그런데 ${pronoun}의 눈이 이상하다. 이쪽을 보고 있지도 않다. 검게 가라앉은 눈동자, 웃는 것도 우는 것도 아닌 얼굴. 괴이가 된 모습으로, ${turnPhrase}. 결계는 무너지지 않았다. 우리는 이 공간에 갇혔다.`
       patch.broadcast = {
         id: `bc-${Date.now()}`,
         kind: 'sin',
         title: broke ? '마지막 문턱' : '또 다른 십 년',
         body: broke
-          ? `${opening} 그래도, 우리가 더 큰 희생을 막은 것 같기도 하다.`
-          : `${opening} 또 십 년을 기다려야 하나....... 웃고 있는 민서의 깔깔대는 소리가 들려온다.`,
+          ? `${opening} 그래도, 부여할 의미가 있다면.......`
+          : `${opening} 이제 또 십 년이다. 웃고 있는 민서의 깔깔대는 소리가 들려온다.`,
       }
     } else if (finaleResult === 'success') {
       const broke = next.proposedTeam.includes(FINALE_BREAKER_ID)
@@ -1421,8 +1421,8 @@ export async function closeExecuteFinaleSync(): Promise<void> {
         kind: 'event',
         title: broke ? '결계가 걷히다' : '흔들리는 결계',
         body: broke
-          ? '드디어 마지막 조사. 익숙해진 실력으로 괴이를 해치웠다. 조사는 성공했다. 그토록 어두웠던 결계들이 하나씩 사라진다. 발밑이 흔들리는 것 같기도, 붕 뜨는 것 같기도 하다. 정신이 아득해진다……. 마지막으로 눈에 들어온 건, 비명을 지르며 흐느끼는 누군가의 모습이었다.'
-          : '드디어 마지막 조사. 익숙해진 실력으로 괴이를 해치웠다. 조사는 성공했다. 그토록 어두웠던 결계들이 하나씩 사라진다. 발밑이 흔들리는 것 같기도, 붕 뜨는 것 같기도 하다. 정신이 아득해진다……. 그런데 결계가 있던 자리, 완전히 사라지지는 않았다. 희미하게, 다시 차오르고 있었다.',
+          ? '드디어 마지막 조사. 익숙해진 실력으로 괴이를 해치웠다. 조사는 성공했다. 그토록 어두웠던 결계들이 하나씩 사라진다. 발밑이 흔들리는 것 같기도, 붕 뜨는 것 같기도 하다. 정신이 아득해진다……. 마지막으로 눈에 들어온 것은, 비명을 지르며 흐느끼는 누군가의 모습이었다.'
+          : '드디어 마지막 조사. 익숙해진 실력으로 괴이를 해치웠다. 조사는 성공했다. 그토록 어두웠던 결계들이 하나씩 사라진다. 발밑이 흔들리는 것 같기도, 붕 뜨는 것 같기도 하다. 정신이 아득해진다……. 마지막으로 시야에 들어온 것은, 우리를 노려보는 누군가의 모습이었다.',
       }
     }
 
