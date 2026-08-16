@@ -307,6 +307,7 @@ export function ProfileScreen() {
     grantCoins,
     grantItem,
     fixCctvMissionRecord,
+    rollbackMission,
     diagnoseSessionSize,
     fixRecordBookLabel,
     resetAllData,
@@ -345,6 +346,8 @@ export function ProfileScreen() {
   const [itemSelectId, setItemSelectId] = useState('')
   const [cctvMissionPick, setCctvMissionPick] = useState(1)
   const [cctvCorrectCount, setCctvCorrectCount] = useState('')
+  const [rollbackMissionPick, setRollbackMissionPick] = useState(1)
+  const [rollbackLeaderId, setRollbackLeaderId] = useState('')
   const [recordBookTarget, setRecordBookTarget] = useState('')
   const [openClueId, setOpenClueId] = useState<string | null>(null)
   const [abilityModalOpen, setAbilityModalOpen] = useState(false)
@@ -1258,6 +1261,47 @@ export function ProfileScreen() {
               강당·구관의 문제 발동은 각 채팅 화면 안의 + 버튼에서 진행한다.
             </p>
           </div>
+
+          {!missionFresh && (
+            <div className="profile__gm">
+              <span className="profile__section-label">불가 전용 — 조사 되돌리기</span>
+              <p className="profile__gm-note">
+                지정한 차수부터 다시 진행하도록 되돌린다. 그 차수부터 지금까지 기록된 성공/실패
+                결과와 승수가 전부 지워지고, 고른 사람이 그 차수의 조사대장이 되어 조사대 구성부터
+                다시 시작한다.
+              </p>
+              <div className="profile__gm-presets">
+                {MISSION_SIZES.map((_, i) => (
+                  <button
+                    key={i}
+                    className={`profile__gm-preset ${rollbackMissionPick === i ? 'is-active' : ''}`}
+                    disabled={i > mission.missionIndex}
+                    onClick={() => setRollbackMissionPick(i)}
+                  >
+                    {i + 1} 차 조사
+                  </button>
+                ))}
+              </div>
+              <select value={rollbackLeaderId} onChange={(e) => setRollbackLeaderId(e.target.value)}>
+                <option value="">이번 조사대장 선택</option>
+                {sortedPlayerEntries.map(([id, p]) => (
+                  <option key={id} value={id}>
+                    {p.nickname}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="profile__gm-send"
+                disabled={!rollbackLeaderId}
+                onClick={() => {
+                  rollbackMission(rollbackMissionPick, rollbackLeaderId)
+                  setRollbackLeaderId('')
+                }}
+              >
+                {rollbackMissionPick + 1} 차 조사로 되돌리기
+              </button>
+            </div>
+          )}
 
           <div className="profile__gm">
             <span className="profile__section-label">불가 전용 — 강당 조사 10 종 (스포일러)</span>

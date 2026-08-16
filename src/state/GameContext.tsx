@@ -67,6 +67,7 @@ import {
   diagnoseSessionSizeSync,
   forceCloseRoomSync,
   fixCctvMissionRecordSync,
+  rollbackMissionSync,
   fixRecordBookLabelSync,
   grantCoinsSync,
   grantItemSync,
@@ -467,6 +468,7 @@ interface GameState {
   grantCoins: (characterId: string, amount: number) => void
   grantItem: (characterId: string, itemId: string) => void
   fixCctvMissionRecord: (missionIndex: number, correctCount: number) => void
+  rollbackMission: (targetMissionIndex: number, leaderId: string) => void
   diagnoseSessionSize: () => Promise<{ totalBytes: number; fields: { key: string; bytes: number }[] }>
   fixRecordBookLabel: (targetId: string) => void
   resetAllData: () => void
@@ -2127,6 +2129,11 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void fixCctvMissionRecordSync(missionIndex, correctCount)
   }
 
+  function rollbackMission(targetMissionIndex: number, leaderId: string) {
+    if (!isAdminFlag || !leaderId) return
+    void rollbackMissionSync(targetMissionIndex, leaderId)
+  }
+
   function diagnoseSessionSize() {
     if (!isAdminFlag) return Promise.resolve({ totalBytes: 0, fields: [] })
     return diagnoseSessionSizeSync()
@@ -2841,6 +2848,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       grantCoins,
       grantItem,
       fixCctvMissionRecord,
+      rollbackMission,
       diagnoseSessionSize,
       fixRecordBookLabel,
       resetAllData,

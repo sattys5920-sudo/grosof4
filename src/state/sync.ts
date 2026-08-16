@@ -1590,6 +1590,62 @@ export async function resetAllDataSync(): Promise<void> {
 }
 
 /**
+ * GM 전용: 조사(원정)를 지정한 차수 직전으로 되돌린다. 그 차수부터 지금까지 이미 기록된
+ * 결과(성공/실패, 카드 수, 참가자 명단)를 전부 지우고 승수도 되돌린 뒤, 지정한 인물을
+ * 그 차수의 조사대장으로 세워 propose 단계부터 다시 시작한다.
+ */
+export async function rollbackMissionSync(targetMissionIndex: number, leaderId: string): Promise<void> {
+  const sref = sessionRef()
+  await runTransaction(requireDb(), async (tx) => {
+    const snap = await tx.get(sref)
+    if (!snap.exists()) return
+    const data = snap.data() as SessionDoc
+    const mission = deserializeMission(data.mission)
+    if (targetMissionIndex < 0 || targetMissionIndex >= mission.missionResults.length) return
+    if (targetMissionIndex > mission.missionIndex) return
+    const leaderIdx = mission.turnOrder.indexOf(leaderId)
+    if (leaderIdx < 0) return
+
+    const missionResults = [...mission.missionResults]
+    const failCounts = [...mission.failCounts]
+    const teamHistory = [...mission.teamHistory]
+    let wardWins = mission.wardWins
+    let sinWins = mission.sinWins
+    for (let i = mission.missionResults.length - 1; i >= targetMissionIndex; i--) {
+      if (missionResults[i] === 'success') wardWins -= 1
+      else if (missionResults[i] === 'fail') sinWins -= 1
+      missionResults[i] = null
+      failCounts[i] = null
+      teamHistory[i] = null
+    }
+
+    const next: MissionState = {
+      ...mission,
+      missionIndex: targetMissionIndex,
+      leaderIdx,
+      phase: 'propose',
+      proposedTeam: [],
+      draftPreview: [],
+      rejectionCount: 0,
+      voteTally: null,
+      cardTally: null,
+      missionResults,
+      failCounts,
+      teamHistory,
+      wardWins: Math.max(0, wardWins),
+      sinWins: Math.max(0, sinWins),
+      winner: null,
+      lastNote: `불가가 ${targetMissionIndex + 1} 차 조사부터 다시 진행하도록 되돌렸다.`,
+      shielded: false,
+      phaseStartedAtMs: Date.now(),
+      votes: {},
+      cards: {},
+    }
+    tx.update(sref, { mission: serializeMission(next) })
+  })
+}
+
+/**
  * GM 전용 일회성 보정: 수호 능력 버그로 CCTV 결과가 잘못 저장/전달됐던 과거 조사 한 건을
  * 바로잡는다. mission.failCounts[missionIndex]를 correctCount로 고치고, 이미 나가 있는
  * "《CCTV》 N 차 조사 — 실패 카드 X 장." 문구(공용 능력 로그 + 모든 플레이어의 개인 단서·
