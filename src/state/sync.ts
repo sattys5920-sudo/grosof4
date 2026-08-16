@@ -1404,11 +1404,15 @@ export async function closeExecuteFinaleSync(): Promise<void> {
       const nameText = names.length > 0 ? names.join('과 ') : '누군가'
       const pronoun = names.length > 1 ? '그들' : '그 사람'
       const turnPhrase = names.length > 1 ? '모두 천천히 뒤돌아섰다' : '천천히 뒤돌아섰다'
+      const broke = next.proposedTeam.includes(FINALE_BREAKER_ID)
+      const opening = `드디어 마지막 조사. 해치워야 할 괴이가 저기...... 응? ${nameText}이(가) 괴이 앞을 막아섰다. 그런데 ${pronoun}의 눈이 이상하다. 이쪽을 보고 있지도 않다. 검게 가라앉은 눈동자, 웃는 것도 우는 것도 아닌 얼굴. 괴이가 된 모습으로, ${turnPhrase}. 결계는 무너지지 않았다.`
       patch.broadcast = {
         id: `bc-${Date.now()}`,
         kind: 'sin',
-        title: '마지막 문턱',
-        body: `드디어 마지막 조사. 해치워야 할 괴이가 저기...... 응? ${nameText}이(가) 괴이 앞을 막아섰다. 그런데 ${pronoun}의 눈이 이상하다. 이쪽을 보고 있지도 않다. 검게 가라앉은 눈동자, 웃는 것도 우는 것도 아닌 얼굴. 괴이가 된 모습으로, ${turnPhrase}. 결계는 무너지지 않았다. 우리는 영원히 갇힌 거다.`,
+        title: broke ? '마지막 문턱' : '또 다른 십 년',
+        body: broke
+          ? `${opening} 그래도, 우리가 더 큰 희생을 막은 것 같기도 하다.`
+          : `${opening} 또 십 년을 기다려야 하나....... 웃고 있는 민서의 깔깔대는 소리가 들려온다.`,
       }
     } else if (finaleResult === 'success') {
       const broke = next.proposedTeam.includes(FINALE_BREAKER_ID)
