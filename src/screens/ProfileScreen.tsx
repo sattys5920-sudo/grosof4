@@ -309,6 +309,7 @@ export function ProfileScreen() {
     fixCctvMissionRecord,
     rollbackMission,
     trimChatHistory,
+    applyTeamOverride,
     diagnoseSessionSize,
     fixRecordBookLabel,
     resetAllData,
@@ -350,6 +351,12 @@ export function ProfileScreen() {
   const [rollbackMissionPick, setRollbackMissionPick] = useState(1)
   const [rollbackLeaderId, setRollbackLeaderId] = useState('')
   const [trimKeepCount, setTrimKeepCount] = useState('30')
+  const [overrideTargetId, setOverrideTargetId] = useState('')
+  const [overrideTeam, setOverrideTeam] = useState<'ward' | 'sin' | 'veil'>('sin')
+  const [overrideTitle, setOverrideTitle] = useState('기억이 돌아온다')
+  const [overrideBody, setOverrideBody] = useState(
+    '기억이 돌아온다. 외로운 언니를 위해 나는 여기 있어야 한다. 외로운 언니가 우리 모두를 여기로 이끌었을 테니까. 그리고, 그리고 더 중요한 것은.......',
+  )
   const [recordBookTarget, setRecordBookTarget] = useState('')
   const [openClueId, setOpenClueId] = useState<string | null>(null)
   const [abilityModalOpen, setAbilityModalOpen] = useState(false)
@@ -1066,7 +1073,7 @@ export function ProfileScreen() {
                     <div key={id} className="profile__search-queue-item">
                       <span className="profile__search-queue-who">
                         {p.nickname}
-                        {c ? ` · ${c.role}` : ''}
+                        {c ? ` · ${roleLabel(c, resolvedTeam(mission, id))}` : ''}
                       </span>
                       <p className="profile__search-queue-q">
                         {p.grade} · 코인 {p.coins}
@@ -1304,6 +1311,52 @@ export function ProfileScreen() {
               </button>
             </div>
           )}
+
+          <div className="profile__gm">
+            <span className="profile__section-label">불가 전용 — 진영 전향 (각성)</span>
+            <p className="profile__gm-note">
+              특정 인물의 진영을 서사상 다른 진영으로 바꾼다. 적용 즉시 그 인물의 원정 실패 카드
+              자격, 기록자·감찰자·복수자 조사 결과, 명단·프로필의 진영 표기가 전부 새 진영
+              기준으로 바뀐다. 제목·내용을 채우면 그 인물 화면에만 개인 팝업이 뜬다(비워 두면
+              팝업 없이 진영만 바뀐다).
+            </p>
+            <select value={overrideTargetId} onChange={(e) => setOverrideTargetId(e.target.value)}>
+              <option value="">전향시킬 인물 선택</option>
+              {sortedPlayerEntries.map(([id, p]) => (
+                <option key={id} value={id}>
+                  {p.nickname}
+                </option>
+              ))}
+            </select>
+            <select value={overrideTeam} onChange={(e) => setOverrideTeam(e.target.value as 'ward' | 'sin' | 'veil')}>
+              <option value="ward">학생 진영으로</option>
+              <option value="sin">괴이 진영으로</option>
+              <option value="veil">독립 진영으로</option>
+            </select>
+            <input
+              className="profile__gm-input"
+              value={overrideTitle}
+              onChange={(e) => setOverrideTitle(e.target.value)}
+              placeholder="팝업 제목 (비우면 팝업 없이 진영만 변경)"
+            />
+            <textarea
+              className="profile__gm-textarea"
+              rows={4}
+              value={overrideBody}
+              onChange={(e) => setOverrideBody(e.target.value)}
+              placeholder="팝업 내용"
+            />
+            <button
+              className="profile__gm-send"
+              disabled={!overrideTargetId}
+              onClick={() => {
+                applyTeamOverride(overrideTargetId, overrideTeam, overrideTitle, overrideBody)
+                setOverrideTargetId('')
+              }}
+            >
+              전향 적용하기
+            </button>
+          </div>
 
           <div className="profile__gm">
             <span className="profile__section-label">불가 전용 — 강당 조사 10 종 (스포일러)</span>

@@ -37,6 +37,8 @@ export interface MissionState {
   phaseStartedAtMs: number | null
   votes: Record<string, boolean>
   cards: Record<string, 'success' | 'fail'>
+  /** 불가가 서사상 진영을 전향시킨 인물의 실제 진영 오버라이드. 있으면 캐릭터 고정 진영보다 우선한다. */
+  teamOverrides: Record<string, 'ward' | 'sin' | 'veil'>
 }
 
 export type MissionAction =
@@ -56,6 +58,8 @@ const DEFAULT_ORDER = CHARACTERS.map((c) => c.id)
 // 실패로 끝난 조사가 2 회 이상이면 '괴이'로, 아니면 '학생'으로 진영이 확정된다.
 // 확정 전까지는 어느 쪽도 아닌 veil 로 취급한다.
 export function resolvedTeam(state: MissionState, viewerId: string): 'ward' | 'sin' | 'veil' {
+  const override = state.teamOverrides?.[viewerId]
+  if (override) return override
   const char = CHARACTERS.find((c) => c.id === viewerId)!
   if (char.role !== '망각자') return char.team
   if (state.missionResults[2] === null) return 'veil'
@@ -89,6 +93,7 @@ export function initialMissionState(turnOrder: string[] = DEFAULT_ORDER): Missio
     phaseStartedAtMs: Date.now(),
     votes: {},
     cards: {},
+    teamOverrides: {},
   }
 }
 

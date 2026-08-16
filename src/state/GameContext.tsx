@@ -42,6 +42,7 @@ import type {
   HallObjectResult,
   HalliGameState,
   HalliRoomId,
+  PersonalPopup,
   RoomEventState,
   RoomId,
   SearchQuery,
@@ -69,6 +70,7 @@ import {
   fixCctvMissionRecordSync,
   rollbackMissionSync,
   trimChatHistorySync,
+  applyTeamOverrideSync,
   fixRecordBookLabelSync,
   grantCoinsSync,
   grantItemSync,
@@ -471,6 +473,9 @@ interface GameState {
   fixCctvMissionRecord: (missionIndex: number, correctCount: number) => void
   rollbackMission: (targetMissionIndex: number, leaderId: string) => void
   trimChatHistory: (keepPerChannel: number) => void
+  applyTeamOverride: (targetId: string, newTeam: 'ward' | 'sin' | 'veil', popupTitle: string, popupBody: string) => void
+  personalPopup: PersonalPopup | null
+  dismissPersonalPopup: () => void
   diagnoseSessionSize: () => Promise<{ totalBytes: number; fields: { key: string; bytes: number }[] }>
   fixRecordBookLabel: (targetId: string) => void
   resetAllData: () => void
@@ -537,13 +542,18 @@ function makeAbilityLogEntry(
 
 const DISGUISE_DURATION_MS = 6 * 60 * 60 * 1000
 
-function resolveTeamCheckPure(disguiseArmedUntilMs: number | null, targetId: string): { team: 'ward' | 'sin' } {
+function resolveTeamCheckPure(
+  disguiseArmedUntilMs: number | null,
+  targetId: string,
+  mission: MissionState,
+): { team: 'ward' | 'sin' } {
   const target = CHARACTERS.find((c) => c.id === targetId)!
   const disguised = !!disguiseArmedUntilMs && Date.now() < disguiseArmedUntilMs
   if (target.role === '잠입자' && disguised) {
     return { team: 'ward' }
   }
-  return { team: target.team === 'ward' ? 'ward' : 'sin' }
+  const eff = resolvedTeam(mission, targetId)
+  return { team: eff === 'ward' ? 'ward' : 'sin' }
 }
 
 function FirebaseSetupNotice() {
@@ -692,6 +702,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
   const inventory = myPlayer?.inventory ?? {}
   const searcherUses = myPlayer?.searcherUses ?? 0
   const searchQueries = myPlayer?.searchQueries ?? []
+  const personalPopup = myPlayer?.personalPopup ?? null
   const atk = BASE_ATK + (myPlayer?.weaponAtkBonus ?? 0)
   const def = myPlayer?.armorDefBonus ?? 0
   const equippedWeaponId = myPlayer?.equippedWeaponId ?? null
@@ -2141,6 +2152,19 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void trimChatHistorySync(keepPerChannel)
   }
 
+  function applyTeamOverride(targetId: string, newTeam: 'ward' | 'sin' | 'veil', popupTitle: string, popupBody: string) {
+    if (!isAdminFlag || !targetId) return
+    const title = popupTitle.trim()
+    const body = popupBody.trim()
+    const popup = title && body ? { title, body } : null
+    void applyTeamOverrideSync(targetId, newTeam, popup)
+  }
+
+  function dismissPersonalPopup() {
+    if (!viewerId) return
+    void patchPlayer(viewerId, { personalPopup: null })
+  }
+
   function diagnoseSessionSize() {
     if (!isAdminFlag) return Promise.resolve({ totalBytes: 0, fields: [] })
     return diagnoseSessionSizeSync()
@@ -2202,14 +2226,15 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       if (!a || !b) return {}
       const lieOnA = Math.random() < 0.5
       const teamLabel = (team: 'ward' | 'sin') => (team === 'ward' ? '학생' : '괴이')
-      const trueA = resolveTeamCheckPure(sess.disguiseArmedUntilMs, a.id).team
-      const trueB = resolveTeamCheckPure(sess.disguiseArmedUntilMs, b.id).team
+      const trueA = resolveTeamCheckPure(sess.disguiseArmedUntilMs, a.id, sess.mission).team
+      const trueB = resolveTeamCheckPure(sess.disguiseArmedUntilMs, b.id, sess.mission).team
       const shownA = lieOnA ? (trueA === 'ward' ? 'sin' : 'ward') : trueA
       const shownB = !lieOnA ? (trueB === 'ward' ? 'sin' : 'ward') : trueB
-      // 독립 역할(a.team === 'veil')은 학생도 괴이도 아니므로, 거짓말 여부와 무관하게
-      // 항상 ???로만 보여준다(단정적으로 괴이라고 속이지 않는다).
-      const labelA = a.team === 'veil' ? '???' : teamLabel(shownA)
-      const labelB = b.team === 'veil' ? '???' : teamLabel(shownB)
+      // 독립 역할(veil)은 학생도 괴이도 아니므로, 거짓말 여부와 무관하게 항상 ???로만
+      // 보여준다(단정적으로 괴이라고 속이지 않는다). 불가가 진영을 전향시킨 경우에는
+      // resolvedTeam이 그 오버라이드를 반영하므로 더 이상 veil이 아니게 된다.
+      const labelA = resolvedTeam(sess.mission, a.id) === 'veil' ? '???' : teamLabel(shownA)
+      const labelB = resolvedTeam(sess.mission, b.id) === 'veil' ? '???' : teamLabel(shownB)
       const text = `《출석부》 ${displayName(a.id)} = ${labelA}, ${displayName(b.id)} = ${labelB} — 둘 중 하나는 거짓이다.`
       return {
         session: {
@@ -2230,7 +2255,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     void runAbilityTransaction(viewerId, (sess, player) => {
       if (!sess.abilitiesOpen) return {}
       if (!player.abilityUnlocked || player.abilityUseCount >= abilityMax('감찰자')) return {}
-      const check = resolveTeamCheckPure(sess.disguiseArmedUntilMs, targetId)
+      const check = resolveTeamCheckPure(sess.disguiseArmedUntilMs, targetId, sess.mission)
       const resultText = `《학생부 조사》 ${displayName(targetId)} — 실패 카드를 ${check.team === 'sin' ? '낼 수 있다' : '낼 수 없다'}.`
       return {
         session: {
@@ -2343,12 +2368,13 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         if (!me.abilityUnlocked || me.abilityUseCount >= abilityMax('복수자')) return {}
         if (!target) return {}
         const targetChar = CHARACTERS.find((c) => c.id === targetId)!
-        const check = resolveTeamCheckPure(sess.disguiseArmedUntilMs, targetId)
+        const targetEffTeam = resolvedTeam(sess.mission, targetId)
+        const check = resolveTeamCheckPure(sess.disguiseArmedUntilMs, targetId, sess.mission)
         const trueRoleLabel =
-          check.team === targetChar.team
+          check.team === targetEffTeam
             ? targetChar.role === '일반학생'
               ? '(???)'
-              : `${TEAM_LABEL[targetChar.team]} · ${targetChar.role}`
+              : `${TEAM_LABEL[targetEffTeam]} · ${targetChar.role}`
             : '(???)'
         const resultText = `《투시》 ${displayName(targetId)}의 진짜 정체 — ${trueRoleLabel}.`
         const notifyText = '누군가 당신의 정체를 확인했다....... 누가 그랬는지는 알 수 없다.'
@@ -2857,6 +2883,9 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       fixCctvMissionRecord,
       rollbackMission,
       trimChatHistory,
+      applyTeamOverride,
+      personalPopup,
+      dismissPersonalPopup,
       diagnoseSessionSize,
       fixRecordBookLabel,
       resetAllData,
@@ -2976,6 +3005,7 @@ function GameProviderInner({ children }: { children: ReactNode }) {
       inventory,
       searcherUses,
       searchQueries,
+      personalPopup,
       players,
       myPlayer,
       notifyRoomEvents,

@@ -111,6 +111,13 @@ export interface SearchQuery {
   answeredAtMs: number | null
 }
 
+// 불가가 특정 인물에게만 띄우는 개인 서사 팝업(예: 진영 전향 각성 연출). 전체
+// 공지(Broadcast)와 달리 그 사람 화면에만 뜬다.
+export interface PersonalPopup {
+  title: string
+  body: string
+}
+
 export interface CombatLogEntry {
   id: string
   text: string

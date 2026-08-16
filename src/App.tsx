@@ -4,6 +4,7 @@ import { GameProvider, useGame } from './state/GameContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { TabBar } from './components/TabBar'
 import { BroadcastPopup } from './components/BroadcastPopup'
+import { PersonalRevealPopup } from './components/PersonalRevealPopup'
 import { LeakerRevealPopup } from './components/LeakerRevealPopup'
 import { TopBarAlert } from './components/TopBarAlert'
 import { BackgroundMusic, startBackgroundMusic } from './components/BackgroundMusic'
@@ -68,6 +69,7 @@ function Shell() {
       <TabBar />
       <TopBarAlert />
       <BroadcastPopup />
+      <PersonalRevealPopup />
       <LeakerRevealPopup />
     </div>
   )

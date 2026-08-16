@@ -303,7 +303,9 @@ export function roleLabel(c: Character, resolved?: 'ward' | 'sin' | 'veil'): str
   if (c.role === '망각자' && resolved && resolved !== 'veil') {
     return `${TEAM_LABEL[resolved]} · ${LEAKER_ROLE_LABEL}`
   }
-  return `${TEAM_LABEL[c.team]} · ${c.role}`
+  // 불가가 서사상 진영을 전향시킨 경우, resolved가 그 새 진영을 담아 온다.
+  const team = resolved && resolved !== 'veil' ? resolved : c.team
+  return `${TEAM_LABEL[team]} · ${c.role}`
 }
 
 export function personalize(text: string, name: string): string {

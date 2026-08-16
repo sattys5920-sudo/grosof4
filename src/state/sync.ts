@@ -31,6 +31,7 @@ import type {
   HalliCard,
   HalliGameState,
   HalliRoomId,
+  PersonalPopup,
   RoomEventState,
   RoomId,
   SearchQuery,
@@ -139,6 +140,7 @@ export interface PlayerDoc {
   leakRevealShown: boolean
   searcherUses: number
   searchQueries: SearchQuery[]
+  personalPopup: PersonalPopup | null
 }
 
 export interface FeedPostDoc {
@@ -458,6 +460,7 @@ export async function registerAccountSync(username: string, password: string): P
       leakRevealShown: false,
       searcherUses: 0,
       searchQueries: [],
+      personalPopup: null,
     })
     const account: AccountDoc = { passwordHash, characterId: assigned.id, createdAtMs: Date.now() }
     tx.set(aref, account)
@@ -515,6 +518,7 @@ export async function assignRoleManuallySync(characterId: string, nickname: stri
       leakRevealShown: false,
       searcherUses: 0,
       searchQueries: [],
+      personalPopup: null,
     })
   })
 }
@@ -1664,6 +1668,33 @@ export async function rollbackMissionSync(targetMissionIndex: number, leaderId: 
       cards: {},
     }
     tx.update(sref, { mission: serializeMission(next) })
+  })
+}
+
+/**
+ * GM 전용: 특정 인물을 서사상 다른 진영으로 전향시킨다(예: 각성 이벤트). mission에
+ * 진영 오버라이드를 심어 두면 이후 모든 진영 판정(원정 실패 카드 자격, 출석부·학생부
+ * 조사·투시 결과, 명단/프로필의 뱃지)이 전부 새 진영을 기준으로 바뀐다. popup을 같이
+ * 넘기면 그 인물 화면에만 개인 팝업이 뜬다.
+ */
+export async function applyTeamOverrideSync(
+  targetId: string,
+  newTeam: 'ward' | 'sin' | 'veil',
+  popup: PersonalPopup | null,
+): Promise<void> {
+  const sref = sessionRef()
+  const pref = playerRef(targetId)
+  await runTransaction(requireDb(), async (tx) => {
+    const sSnap = await tx.get(sref)
+    const pSnap = popup ? await tx.get(pref) : null
+    if (!sSnap.exists()) return
+    const rawSession = sSnap.data() as SessionDoc
+    const mission = deserializeMission(rawSession.mission)
+    const teamOverrides = { ...(mission.teamOverrides ?? {}), [targetId]: newTeam }
+    tx.update(sref, { mission: serializeMission({ ...mission, teamOverrides }) })
+    if (popup && pSnap && pSnap.exists()) {
+      tx.update(pref, { personalPopup: popup })
+    }
   })
 }
 
