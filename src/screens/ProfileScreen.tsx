@@ -1052,6 +1052,29 @@ export function ProfileScreen() {
 
           {sortedPlayerEntries.length > 0 && (
             <div className="profile__gm">
+              <span className="profile__section-label">불가 전용 — 플레이어 명단</span>
+              <p className="profile__gm-note">가입한 사람들의 닉네임·역할·학년·코인을 한눈에 모아 본다.</p>
+              <div className="profile__search-queue">
+                {sortedPlayerEntries.map(([id, p]) => {
+                  const c = CHARACTERS.find((ch) => ch.id === id)
+                  return (
+                    <div key={id} className="profile__search-queue-item">
+                      <span className="profile__search-queue-who">
+                        {p.nickname}
+                        {c ? ` · ${c.role}` : ''}
+                      </span>
+                      <p className="profile__search-queue-q">
+                        {p.grade} · 코인 {p.coins}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {sortedPlayerEntries.length > 0 && (
+            <div className="profile__gm">
               <span className="profile__section-label">불가 전용 — 코인 지급</span>
               <p className="profile__gm-note">사람을 고르고 지급할 코인 양을 입력한다. 음수를 입력하면 코인을 회수한다.</p>
               <div className="profile__gm-presets">
