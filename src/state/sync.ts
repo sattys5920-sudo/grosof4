@@ -1277,6 +1277,7 @@ export async function forceCloseRoomSync(roomId: RoomId) {
     const nextEvents = {
       ...data.roomEvents,
       [roomId]: {
+        ...data.roomEvents[roomId],
         event: null,
         cleared: false,
         clue: null,

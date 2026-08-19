@@ -151,6 +151,8 @@ export interface RoomEventState {
   combat: CombatState | null
   open: boolean
   investigation: HallwayInvestigationState
+  /** 도서관 전용: 방 전체가 공유하는 investigation과 달리, 사람(playerId)마다 따로 진행되는 개인 조사 로그. */
+  personalInvestigations?: Record<string, HallwayInvestigationState>
 }
 
 // 구관 각 방(도서관/보건실/방송실/옥상)에 고정된, 최초 조사 시 재생되는 튜토리얼성

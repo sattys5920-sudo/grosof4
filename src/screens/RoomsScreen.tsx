@@ -109,6 +109,7 @@ export function RoomsScreen() {
     resetHalliGame,
   } = useGame()
   const [openRoom, setOpenRoom] = useState<RoomId | null>(null)
+  const [libraryTarget, setLibraryTarget] = useState('')
   const [openCardRoom, setOpenCardRoom] = useState<CardRoomId | null>(null)
   const [openHalliRoom, setOpenHalliRoom] = useState<HalliRoomId | null>(null)
   const [halliBetDraft, setHalliBetDraft] = useState('')
@@ -231,6 +232,13 @@ export function RoomsScreen() {
     const iAmHere = !!viewerId && occupants.includes(viewerId)
     const roomEvent = roomEvents[openRoom]
     const investigation = hallwayInvestigationByRoom(openRoom)
+    // 도서관은 조사 로그가 방 전체가 아니라 사람마다 따로 진행된다 — 각자 자기 진행 상황만 본다.
+    const isIndividualInvestigation = openRoom === 'library'
+    const libraryViewerId = isAdmin ? libraryTarget || occupants[0] || '' : viewerId ?? ''
+    const personalInvestigationState =
+      isIndividualInvestigation && libraryViewerId
+        ? (roomEvent.personalInvestigations?.[libraryViewerId] ?? { started: false, logIndex: 0, completed: false })
+        : roomEvent.investigation
 
     function submitChat() {
       sendRoomMessage(openRoom!, draft)
@@ -276,10 +284,10 @@ export function RoomsScreen() {
                 <button className="rooms__pin-plus" onClick={() => setSheetOpen(true)} aria-label="괴이 발동" title="괴이 발동">
                   +
                 </button>
-                {!roomEvent.investigation.started && (
+                {!personalInvestigationState.started && libraryViewerId && (
                   <button
                     className="rooms__pin-plus rooms__pin-plus--investigate"
-                    onClick={() => startHallwayInvestigation(openRoom!)}
+                    onClick={() => startHallwayInvestigation(openRoom!, isIndividualInvestigation ? libraryViewerId : undefined)}
                     aria-label="조사 시작"
                     title="조사 시작"
                   >
@@ -289,6 +297,23 @@ export function RoomsScreen() {
               </div>
             )}
           </div>
+          {isIndividualInvestigation && gmReveal && (
+            <div className="rooms__pin-gm">
+              <span className="rooms__pin-count">조사 로그 대상</span>
+              <select
+                className="rooms__pin-first-select"
+                value={libraryViewerId}
+                onChange={(e) => setLibraryTarget(e.target.value)}
+              >
+                {CHARACTERS.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {displayName(c.id)}
+                    {occupants.includes(c.id) ? ' (입장 중)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="rooms__pin-occupants">
             <span className="rooms__pin-count">
               {occupants.length}/{room.capacity}
@@ -340,38 +365,47 @@ export function RoomsScreen() {
             <p className="rooms__pin-ambient">{room.ambientText}</p>
           )}
 
-          {investigation && roomEvent.investigation.started && (
+          {investigation && personalInvestigationState.started && (!isIndividualInvestigation || isAdmin || iAmHere) && (
             <div className="rooms__investigation">
               <span className="rooms__investigation-creature">{investigation.creatureName}</span>
+              {isIndividualInvestigation && (isAdmin || iAmHere) && (
+                <p className="rooms__investigation-waiting">
+                  {isAdmin ? `${displayName(libraryViewerId)}의 개인 조사 진행 상황` : '이 조사는 나만 볼 수 있다.'}
+                </p>
+              )}
               <div className="rooms__investigation-logs" ref={investigationLogsRef}>
-                {investigation.logs.slice(0, roomEvent.investigation.logIndex).map((line, i) => (
+                {investigation.logs.slice(0, personalInvestigationState.logIndex).map((line, i) => (
                   <p key={i} className="rooms__investigation-log-line">
                     {line}
                   </p>
                 ))}
-                {roomEvent.investigation.logIndex === 0 && !gmReveal && (
+                {personalInvestigationState.logIndex === 0 && !gmReveal && (
                   <p className="rooms__investigation-waiting">아직 아무 일도 일어나지 않았다.</p>
                 )}
-                {roomEvent.investigation.logIndex < investigation.logs.length && gmReveal && (
+                {personalInvestigationState.logIndex < investigation.logs.length && gmReveal && (
                   <button
                     className="rooms__investigation-next"
-                    onClick={() => advanceHallwayInvestigationLog(openRoom!)}
+                    onClick={() =>
+                      advanceHallwayInvestigationLog(openRoom!, isIndividualInvestigation ? libraryViewerId : undefined)
+                    }
                   >
-                    다음 로그 ({roomEvent.investigation.logIndex}/{investigation.logs.length})
+                    다음 로그 ({personalInvestigationState.logIndex}/{investigation.logs.length})
                   </button>
                 )}
               </div>
-              {roomEvent.investigation.logIndex >= investigation.logs.length &&
-                !roomEvent.investigation.completed &&
+              {personalInvestigationState.logIndex >= investigation.logs.length &&
+                !personalInvestigationState.completed &&
                 gmReveal && (
                   <button
                     className="rooms__investigation-finish"
-                    onClick={() => finishHallwayInvestigation(openRoom!)}
+                    onClick={() =>
+                      finishHallwayInvestigation(openRoom!, isIndividualInvestigation ? libraryViewerId : undefined)
+                    }
                   >
                     종이 줍기 (역할 정보 공개)
                   </button>
                 )}
-              {roomEvent.investigation.completed && (
+              {personalInvestigationState.completed && (
                 <p className="rooms__investigation-done">
                   조사를 마쳤다....... 채팅에 남은 단서를 확인하자.
                 </p>

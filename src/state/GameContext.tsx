@@ -341,9 +341,9 @@ interface GameState {
   resetHalliGame: (roomId: HalliRoomId) => void
   closeRoomInvestigation: (roomId: RoomId) => void
   setRoomOpen: (roomId: RoomId, open: boolean) => void
-  startHallwayInvestigation: (roomId: RoomId) => void
-  advanceHallwayInvestigationLog: (roomId: RoomId) => void
-  finishHallwayInvestigation: (roomId: RoomId) => void
+  startHallwayInvestigation: (roomId: RoomId, forPlayerId?: string) => void
+  advanceHallwayInvestigationLog: (roomId: RoomId, forPlayerId?: string) => void
+  finishHallwayInvestigation: (roomId: RoomId, forPlayerId?: string) => void
   classroomMessages: ChatMessage[]
   sendClassroomMessage: (text: string) => void
   classroom: ClassroomState
@@ -1257,28 +1257,52 @@ function GameProviderInner({ children }: { children: ReactNode }) {
     }
   }
 
-  function startHallwayInvestigation(roomId: RoomId) {
+  // 도서관(library)은 조사 로그가 방 전체가 아니라 사람마다 따로 진행된다 — forPlayerId가 있으면
+  // roomEvent.personalInvestigations[forPlayerId]를 건드리고, 없으면 기존처럼 roomEvent.investigation을 건드린다.
+  function startHallwayInvestigation(roomId: RoomId, forPlayerId?: string) {
     if (!isAdminFlag) return
     const investigation = hallwayInvestigationByRoom(roomId)
     if (!investigation) return
     void updateRoomEventSync(roomId, (state) => {
+      if (forPlayerId) {
+        if (state.personalInvestigations?.[forPlayerId]?.started) return state
+        return {
+          ...state,
+          personalInvestigations: {
+            ...(state.personalInvestigations ?? {}),
+            [forPlayerId]: { started: true, logIndex: 0, completed: false },
+          },
+        }
+      }
       if (state.investigation.started) return state
       return { ...state, investigation: { started: true, logIndex: 0, completed: false } }
     })
   }
 
-  function advanceHallwayInvestigationLog(roomId: RoomId) {
+  function advanceHallwayInvestigationLog(roomId: RoomId, forPlayerId?: string) {
     if (!isAdminFlag) return
     const investigation = hallwayInvestigationByRoom(roomId)
     if (!investigation) return
     void updateRoomEventSync(roomId, (state) => {
+      if (forPlayerId) {
+        const personal = state.personalInvestigations?.[forPlayerId]
+        if (!personal?.started || personal.completed) return state
+        const nextLogIndex = Math.min(personal.logIndex + 1, investigation.logs.length)
+        return {
+          ...state,
+          personalInvestigations: {
+            ...(state.personalInvestigations ?? {}),
+            [forPlayerId]: { ...personal, logIndex: nextLogIndex },
+          },
+        }
+      }
       if (!state.investigation.started || state.investigation.completed) return state
       const nextLogIndex = Math.min(state.investigation.logIndex + 1, investigation.logs.length)
       return { ...state, investigation: { ...state.investigation, logIndex: nextLogIndex } }
     })
   }
 
-  function finishHallwayInvestigation(roomId: RoomId) {
+  function finishHallwayInvestigation(roomId: RoomId, forPlayerId?: string) {
     if (!isAdminFlag) return
     const investigation = hallwayInvestigationByRoom(roomId)
     if (!investigation) return
@@ -1289,15 +1313,31 @@ function GameProviderInner({ children }: { children: ReactNode }) {
         return character ? `${role} — ${character.abilityName}\n${character.abilityDescription}` : role
       })
       .join('\n\n')
+    const clueTitle = forPlayerId
+      ? `${room.name} 조사 결과 (${displayName(forPlayerId)})`
+      : `${room.name} 조사 결과`
     const clueMsg: ChatMessage = {
       id: `room-${Date.now()}-clue`,
       authorId: 'admin',
-      text: `【최종 단서】 ${paperText}`,
+      text: forPlayerId
+        ? `【최종 단서 · ${displayName(forPlayerId)}】 ${paperText}`
+        : `【최종 단서】 ${paperText}`,
       time: '지금',
     }
     void sendRoomMessageSync(roomId, clueMsg)
-    void addClueSync(makeClue({ title: `${room.name} 조사 결과`, text: paperText }, '구관'))
+    void addClueSync(makeClue({ title: clueTitle, text: paperText }, '구관'))
     void updateRoomEventSync(roomId, (state) => {
+      if (forPlayerId) {
+        const personal = state.personalInvestigations?.[forPlayerId]
+        if (!personal?.started || personal.completed) return state
+        return {
+          ...state,
+          personalInvestigations: {
+            ...(state.personalInvestigations ?? {}),
+            [forPlayerId]: { ...personal, completed: true },
+          },
+        }
+      }
       if (!state.investigation.started || state.investigation.completed) return state
       return { ...state, investigation: { ...state.investigation, completed: true } }
     })
