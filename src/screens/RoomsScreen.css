@@ -995,8 +995,8 @@ button.cardcard.is-dead {
 
 .hallicards {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-wrap: nowrap;
+  gap: clamp(3px, 1.4vw, 10px);
   justify-content: center;
   width: 100%;
 }
@@ -1013,12 +1013,15 @@ button.cardcard.is-dead {
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  flex: 0 1 64px;
+  min-width: 0;
 }
 
 .hallicards--n4 .halli-slot,
 .hallicards--n5 .halli-slot {
   position: absolute;
   transform: translate(-50%, -50%);
+  flex: none;
 }
 
 .halli-slot.is-eliminated {
@@ -1035,14 +1038,18 @@ button.cardcard.is-dead {
 }
 
 .halli-slot__name {
-  font-size: 11px;
+  font-size: clamp(8px, 2.6vw, 11px);
   color: var(--bone-bright);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .halli-slot__count {
-  font-size: 10px;
+  font-size: clamp(7px, 2.2vw, 10px);
   color: var(--bone-dim);
+  white-space: nowrap;
 }
 
 .halli-slot__out {
@@ -1052,18 +1059,45 @@ button.cardcard.is-dead {
 }
 
 .hallicard {
-  width: 40px;
-  height: 54px;
+  position: relative;
+  width: 100%;
+  max-width: 40px;
+  min-width: 20px;
+  aspect-ratio: 40 / 54;
   border-radius: 5px;
   border: 2px solid var(--line);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-pixel);
-  font-size: 18px;
+  font-size: clamp(10px, 4vw, 18px);
   font-weight: bold;
   color: #fff;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.hallicards--n4 .hallicard,
+.hallicards--n5 .hallicard {
+  width: 40px;
+}
+
+.hallicard.is-mine {
+  box-shadow: 0 0 0 2px #ff4d4f;
+}
+
+.hallicard__mine-tag {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ff4d4f;
+  color: #fff;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  font-weight: bold;
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
 }
 
 .hallicard--red {

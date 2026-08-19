@@ -1030,16 +1030,20 @@ export function RoomsScreen() {
                     const card = game.revealed[id]
                     const eliminated = game.eliminated.includes(id)
                     const style = halliSlotStyle(i, game.playerIds.length)
+                    const isMine = id === viewerId
                     return (
                       <div
                         key={id}
-                        className={`halli-slot ${eliminated ? 'is-eliminated' : ''} ${id === turnPlayerId ? 'is-turn' : ''}`}
+                        className={`halli-slot ${eliminated ? 'is-eliminated' : ''} ${id === turnPlayerId ? 'is-turn' : ''} ${isMine ? 'is-mine' : ''}`}
                         style={style}
                       >
                         <span className="halli-slot__name">{displayName(id)}</span>
                         <span className="halli-slot__count">{(game.decks[id] ?? []).length}장</span>
                         {card ? (
-                          <div className={`hallicard hallicard--${card.color}`}>{card.value}</div>
+                          <div className={`hallicard hallicard--${card.color} ${isMine ? 'is-mine' : ''}`}>
+                            {isMine && <span className="hallicard__mine-tag">내 카드</span>}
+                            {card.value}
+                          </div>
                         ) : (
                           <div className="hallicard hallicard--empty" />
                         )}
@@ -1142,14 +1146,22 @@ export function RoomsScreen() {
     )
   }
 
+  const anyRoomOpen =
+    ROOMS.some((r) => roomEvents[r.id].open) ||
+    CARD_ROOMS.some((r) => roomEvents[r.id].open) ||
+    HALLI_ROOMS.some((r) => roomEvents[r.id].open)
+
   return (
     <div className="rooms">
       <div className="rooms__intro">
         <span className="rooms__intro-label">구관</span>
         <p>선착순으로 입장한다. 각 구관에는 인원 제한이 있다. 교실 A/B는 협동 카드 게임 "더 게임"이다.</p>
       </div>
+      {!isAdmin && !anyRoomOpen && (
+        <p className="rooms__empty">불가가 아직 아무 조사 공간도 열지 않았다.</p>
+      )}
       <div className="rooms__grid">
-        {ROOMS.map((room) => {
+        {ROOMS.filter((room) => isAdmin || roomEvents[room.id].open).map((room) => {
           const occupants = roomOccupancy[room.id]
           const full = occupants.length >= room.capacity
           const cleared = roomEvents[room.id].cleared
@@ -1187,7 +1199,7 @@ export function RoomsScreen() {
             </button>
           )
         })}
-        {CARD_ROOMS.map((room) => {
+        {CARD_ROOMS.filter((room) => isAdmin || roomEvents[room.id].open).map((room) => {
           const occupants = roomOccupancy[room.id] ?? []
           const full = occupants.length >= room.capacity
           const game = cardGames[room.id]
@@ -1224,7 +1236,7 @@ export function RoomsScreen() {
             </button>
           )
         })}
-        {HALLI_ROOMS.map((room) => {
+        {HALLI_ROOMS.filter((room) => isAdmin || roomEvents[room.id].open).map((room) => {
           const occupants = roomOccupancy[room.id] ?? []
           const full = occupants.length >= room.capacity
           const game = halliGames[room.id]
