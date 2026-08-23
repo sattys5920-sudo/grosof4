@@ -260,16 +260,6 @@
   color: var(--sin);
 }
 
-.feed__back {
-  align-self: flex-start;
-  background: none;
-  border: none;
-  color: var(--bone-dim);
-  font-size: 13px;
-  cursor: pointer;
-  padding: 0;
-}
-
 .feed__detail-post {
   display: flex;
   flex-direction: column;

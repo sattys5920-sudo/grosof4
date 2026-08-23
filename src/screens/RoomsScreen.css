@@ -129,16 +129,6 @@
   min-height: 16px;
 }
 
-.rooms__back {
-  align-self: flex-start;
-  background: none;
-  border: none;
-  color: var(--bone-dim);
-  font-size: 13px;
-  cursor: pointer;
-  padding: 0;
-}
-
 .rooms__pin {
   display: flex;
   flex-direction: column;

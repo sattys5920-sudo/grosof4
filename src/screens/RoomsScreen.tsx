@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useBackNav } from '../state/BackNavContext'
 import './RoomsScreen.css'
 import { useGame } from '../state/GameContext'
 import { CARD_ROOMS, CHARACTERS, HALLI_ROOMS, ROOMS } from '../data/characters'
@@ -129,6 +130,26 @@ export function RoomsScreen() {
   const cardPinScrollRef = useRef<HTMLDivElement | null>(null)
   const cardChatLogRef = useRef<HTMLDivElement | null>(null)
   const halliChatLogRef = useRef<HTMLDivElement | null>(null)
+  const { setBack } = useBackNav()
+  useEffect(() => {
+    if (openCardRoom) {
+      setBack(() => () => {
+        setOpenRoom(null)
+        setOpenCardRoom(null)
+        setOpenHalliRoom(null)
+        setSelectedCard(null)
+      })
+    } else if (openRoom || openHalliRoom) {
+      setBack(() => () => {
+        setOpenRoom(null)
+        setOpenCardRoom(null)
+        setOpenHalliRoom(null)
+      })
+    } else {
+      setBack(null)
+    }
+    return () => setBack(null)
+  }, [openRoom, openCardRoom, openHalliRoom, setBack])
   const currentInvestigationLogIndex = openRoom ? (roomEvents[openRoom]?.investigation?.logIndex ?? 0) : 0
   const currentRoomMsgCount = openRoom ? (roomMessages[openRoom]?.length ?? 0) : 0
   const currentCombatLogCount = openRoom ? (roomEvents[openRoom]?.combat?.log.length ?? 0) : 0
@@ -265,9 +286,6 @@ export function RoomsScreen() {
     return (
       <div className="rooms">
         <div className={`rooms__pin ${roomEvent.cleared ? 'is-cleared' : ''}`}>
-          <button className="rooms__back" onClick={() => { setOpenRoom(null); setOpenCardRoom(null); setOpenHalliRoom(null) }}>
-            ← 구관 목록
-          </button>
           <div className="rooms__pin-scroll" ref={pinScrollRef}>
           <div className="rooms__pin-head">
             <span className="rooms__pin-title">{room.name}</span>
@@ -580,17 +598,6 @@ export function RoomsScreen() {
     return (
       <div className="rooms">
         <div className="rooms__pin">
-          <button
-            className="rooms__back"
-            onClick={() => {
-              setOpenRoom(null)
-              setOpenCardRoom(null)
-              setOpenHalliRoom(null)
-              setSelectedCard(null)
-            }}
-          >
-            ← 구관 목록
-          </button>
           <div className="rooms__pin-scroll" ref={cardPinScrollRef}>
             <div className="rooms__pin-head">
               <span className="rooms__pin-title">{room.name}</span>
@@ -913,16 +920,6 @@ export function RoomsScreen() {
     return (
       <div className="rooms">
         <div className="rooms__pin">
-          <button
-            className="rooms__back"
-            onClick={() => {
-              setOpenRoom(null)
-              setOpenCardRoom(null)
-              setOpenHalliRoom(null)
-            }}
-          >
-            ← 구관 목록
-          </button>
           <div className="rooms__pin-scroll">
             <div className="rooms__pin-head">
               <span className="rooms__pin-title">{room.name}</span>

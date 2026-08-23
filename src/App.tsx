@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import { GameProvider, useGame } from './state/GameContext'
+import { BackNavProvider, useBackNav } from './state/BackNavContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { TabBar } from './components/TabBar'
 import { BroadcastPopup } from './components/BroadcastPopup'
@@ -49,6 +50,7 @@ function Screen() {
 
 function Shell() {
   const { viewerId } = useGame()
+  const { back } = useBackNav()
   const perceivedYear = viewerId ? CHARACTERS.find((c) => c.id === viewerId)?.perceivedYear : undefined
   const displayYear = perceivedYear ?? new Date().getFullYear()
   const [weather] = useState(() => WEATHER_OPTIONS[Math.floor(Math.random() * WEATHER_OPTIONS.length)])
@@ -56,7 +58,14 @@ function Shell() {
     <div className="shell">
       <div className="shell__fog" />
       <header className="shell__header">
-        <span className="shell__title">{SCHOOL_NAME}</span>
+        <span className="shell__header-left">
+          {back && (
+            <button className="shell__back" onClick={back} aria-label="뒤로 가기">
+              ←
+            </button>
+          )}
+          <span className="shell__title">{SCHOOL_NAME}</span>
+        </span>
         <span className="shell__status">
           <span className="shell__date">{shellDate(displayYear)}</span>
           <span className="shell__dot" />
@@ -98,7 +107,9 @@ function App() {
     <ErrorBoundary>
       <BackgroundMusic />
       <GameProvider>
-        <Gate />
+        <BackNavProvider>
+          <Gate />
+        </BackNavProvider>
       </GameProvider>
     </ErrorBoundary>
   )

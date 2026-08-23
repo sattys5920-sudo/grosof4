@@ -34,6 +34,27 @@
   flex-shrink: 0;
 }
 
+.shell__header-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.shell__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--bone-bright);
+  font-size: 17px;
+  line-height: 1;
+  padding: 2px 2px 2px 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .shell__title {
   font-family: var(--font-title);
   font-size: 14px;

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useBackNav } from '../state/BackNavContext'
 import './MainFeedScreen.css'
 import { useGame } from '../state/GameContext'
 import { CHARACTERS } from '../data/characters'
@@ -42,12 +43,18 @@ export function MainFeedScreen() {
 
   const openPost = feed.find((p) => p.id === openPostId) ?? null
   const myCommentId = gmReveal ? 'admin' : viewerId
+  const { setBack } = useBackNav()
 
   useEffect(() => {
     setDraft('')
     setCommentError(false)
     setCommentSending(false)
   }, [openPostId])
+
+  useEffect(() => {
+    setBack(openPostId ? () => () => setOpenPostId(null) : null)
+    return () => setBack(null)
+  }, [openPostId, setBack])
 
   // 게시글을 열거나 새 댓글이 달리면 카톡/밴드처럼 항상 가장 최근 댓글이 보이는
   // 맨 아래로 스크롤한다. 이 화면은 전용 스크롤 영역이 없이 앱 전체 스크롤
@@ -134,10 +141,6 @@ export function MainFeedScreen() {
   if (openPost) {
     return (
       <div className="feed feed--detail">
-        <button className="feed__back" onClick={() => setOpenPostId(null)}>
-          ← 피드 목록
-        </button>
-
         <article className="feed__detail-post">
           <div className="feed__post-head">
             <span className={`feed__tag feed__tag--${openPost.tag === '경고' ? 'warn' : 'note'}`}>
