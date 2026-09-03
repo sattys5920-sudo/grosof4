@@ -6,8 +6,6 @@ export const GAME_RULES = {
   MAX_HP: 100,
   MAX_MENTAL: 100,
   MAX_POWER: 99,
-  MAX_WATER: 99,
-  MAX_FOOD: 99,
   MAX_SHELTER: 100,
   MAX_INFO: 100,
   MAX_TRUST: 100,
@@ -15,8 +13,6 @@ export const GAME_RULES = {
 
   START_HP: 100,
   START_MENTAL: 100,
-  START_WATER: 0,
-  START_FOOD: 0,
   START_POWER: 20,
   START_SHELTER: 100,
   START_INFO: 0,
@@ -29,8 +25,16 @@ export const GAME_RULES = {
   PREP_FOOD_COUNT: 10,
   TOTAL_DAYS: 30,
 
-  DAILY_WATER: 1,
-  DAILY_FOOD: 1,
+  // 목마름/배고픔 게이지 — 물/식량 "아이템"과는 별개다. 매일 아침 자동으로
+  // 줄어들고, 물/식량 아이템을 사용해야 회복된다.
+  MAX_THIRST: 30,
+  MAX_HUNGER: 30,
+  START_THIRST: 30,
+  START_HUNGER: 30,
+  THIRST_DAILY_DROP: 10,
+  HUNGER_DAILY_DROP: 10,
+  THIRST_RECOVER: 10,
+  HUNGER_RECOVER: 10,
 
   WATER_ZERO_HP: 10,
   WATER_ZERO_MENTAL: 5,
@@ -166,7 +170,7 @@ export const GAME_RULES = {
     { min: 26, max: 30, bonus: 25 },
   ],
 
-  ENDING_PERFECT: { hp: 70, mental: 70, water: 3, food: 3, shelter: 70 },
+  ENDING_PERFECT: { hp: 70, mental: 70, thirst: 20, hunger: 20, shelter: 70 },
   ENDING_COMMUNITY_TRUST: 70,
   ENDING_TRUE_INFO: 100,
   ENDING_TRUE_RADIO_COUNT: 3,

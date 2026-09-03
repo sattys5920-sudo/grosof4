@@ -92,8 +92,8 @@ export function evaluateSurvivalEnding(state: GameState): EndingResult {
   const isPerfect =
     state.stats.hp >= GAME_RULES.ENDING_PERFECT.hp &&
     state.stats.mental >= GAME_RULES.ENDING_PERFECT.mental &&
-    state.stats.water >= GAME_RULES.ENDING_PERFECT.water &&
-    state.stats.food >= GAME_RULES.ENDING_PERFECT.food &&
+    state.stats.thirst >= GAME_RULES.ENDING_PERFECT.thirst &&
+    state.stats.hunger >= GAME_RULES.ENDING_PERFECT.hunger &&
     state.stats.shelter >= GAME_RULES.ENDING_PERFECT.shelter
 
   // 우선순위: 진엔딩 > 탈출 > 공동체 > 희생 > 감염 > 정신붕괴 > 완벽한 생존 > 고독 > 일반생존

@@ -219,8 +219,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
   {
     id: 'warmMeal',
     name: '따뜻한 식사 만들기',
-    description: '성냥 + 통조림(식량 1)',
-    consumes: { matches: 1 },
+    description: '성냥 + 통조림',
+    consumes: { matches: 1, can: 1 },
     produces: { warmMeal: 1 },
   },
   {

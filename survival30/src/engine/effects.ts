@@ -8,11 +8,19 @@ export function hp(n: number): EffectOp {
 export function mental(n: number): EffectOp {
   return { type: 'mental', amount: n }
 }
+// 물/식량은 "목마름·배고픔 게이지"가 아니라 들고 다니는 아이템이다. 이벤트에서
+// water(n)/food(n)을 쓰면 물/통조림 아이템을 그만큼 더 갖거나 잃는다.
 export function water(n: number): EffectOp {
-  return { type: 'water', amount: n }
+  return { type: 'item', id: 'water', amount: n }
 }
 export function food(n: number): EffectOp {
-  return { type: 'food', amount: n }
+  return { type: 'item', id: 'can', amount: n }
+}
+export function thirst(n: number): EffectOp {
+  return { type: 'thirst', amount: n }
+}
+export function hunger(n: number): EffectOp {
+  return { type: 'hunger', amount: n }
 }
 export function power(n: number): EffectOp {
   return { type: 'power', amount: n }

@@ -29,12 +29,12 @@ export default function EndingScreen({ state, onRestart }: { state: GameState; o
             <span className="v">{state.stats.mental}</span>
           </div>
           <div>
-            <span className="k">물</span>
-            <span className="v">{state.stats.water}</span>
+            <span className="k">목마름</span>
+            <span className="v">{state.stats.thirst}</span>
           </div>
           <div>
-            <span className="k">식량</span>
-            <span className="v">{state.stats.food}</span>
+            <span className="k">배고픔</span>
+            <span className="v">{state.stats.hunger}</span>
           </div>
           <div>
             <span className="k">동료</span>

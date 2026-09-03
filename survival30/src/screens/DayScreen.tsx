@@ -58,8 +58,8 @@ function TopBar({ state }: { state: GameState }) {
       <div className="stat-row">
         <StatItem label="체력" value={state.stats.hp} max={100} tone={state.stats.hp <= 30 ? 'danger' : undefined} />
         <StatItem label="정신력" value={state.stats.mental} max={100} tone={state.stats.mental <= 30 ? 'danger' : undefined} />
-        <StatItem label="물" value={state.stats.water} tone={state.stats.water <= 1 ? 'danger' : undefined} />
-        <StatItem label="식량" value={state.stats.food} tone={state.stats.food <= 1 ? 'danger' : undefined} />
+        <StatItem label="목마름" value={state.stats.thirst} max={30} tone={state.stats.thirst <= 10 ? 'danger' : undefined} />
+        <StatItem label="배고픔" value={state.stats.hunger} max={30} tone={state.stats.hunger <= 10 ? 'danger' : undefined} />
         <StatItem label="전력" value={state.stats.power} />
         <StatItem label="대피소" value={state.stats.shelter} max={100} tone={state.stats.shelter <= 30 ? 'danger' : undefined} />
         <StatItem label="정보" value={state.stats.info} max={100} />
@@ -105,6 +105,7 @@ function EventPanel({ state, onChange }: { state: GameState; onChange: (s: GameS
   const enabled = enabledChoices(state, event)
   return (
     <div className="event-card">
+      <div className="event-eyebrow">{state.day}일차 이벤트 발생</div>
       <div className="event-title">{event.title}</div>
       <p className="event-desc">{event.description}</p>
       <div className="event-choices">
@@ -204,8 +205,7 @@ function CraftPicker({ state, onChange }: { state: GameState; onChange: (s: Game
         {CRAFT_RECIPES.map((r) => {
           const ok =
             Object.entries(r.consumes).every(([id, need]) => (state.inventory[id as ItemId] ?? 0) >= (need ?? 0)) &&
-            Object.entries(r.keeps ?? {}).every(([id, need]) => (state.inventory[id as ItemId] ?? 0) >= (need ?? 0)) &&
-            (r.id !== 'warmMeal' || state.stats.food >= 1)
+            Object.entries(r.keeps ?? {}).every(([id, need]) => (state.inventory[id as ItemId] ?? 0) >= (need ?? 0))
           return (
             <button key={r.id} className="choice-btn" disabled={!ok} onClick={() => onChange(performAction(state, 'craft', { recipeId: r.id }))}>
               {r.name}
@@ -289,7 +289,11 @@ function ResourceTargetPicker({
 }
 
 function SidePanel({ state, onChange }: { state: GameState; onChange: (s: GameState) => void }) {
-  const items = (Object.keys(state.inventory) as ItemId[]).filter((id) => (state.inventory[id] ?? 0) > 0)
+  const items = (Object.keys(state.inventory) as ItemId[]).filter(
+    (id) => id !== 'water' && id !== 'can' && (state.inventory[id] ?? 0) > 0,
+  )
+  const waterCount = state.inventory.water ?? 0
+  const foodCount = state.inventory.can ?? 0
   const canUse = state.phase === 'day' && !state.activeEventId
   const [picking, setPicking] = useState<'water' | 'food' | null>(null)
   return (
@@ -300,11 +304,11 @@ function SidePanel({ state, onChange }: { state: GameState; onChange: (s: GameSt
           <li>
             <button
               className={`item-use-btn ${picking === 'water' ? 'active' : ''}`}
-              disabled={!canUse || state.stats.water <= 0}
+              disabled={!canUse || waterCount <= 0}
               onClick={() => setPicking(picking === 'water' ? null : 'water')}
             >
               <span>물 주기</span>
-              <span className="item-qty">×{state.stats.water}</span>
+              <span className="item-qty">×{waterCount}</span>
             </button>
             {picking === 'water' && (
               <ResourceTargetPicker kind="water" state={state} onChange={onChange} onDone={() => setPicking(null)} />
@@ -313,11 +317,11 @@ function SidePanel({ state, onChange }: { state: GameState; onChange: (s: GameSt
           <li>
             <button
               className={`item-use-btn ${picking === 'food' ? 'active' : ''}`}
-              disabled={!canUse || state.stats.food <= 0}
+              disabled={!canUse || foodCount <= 0}
               onClick={() => setPicking(picking === 'food' ? null : 'food')}
             >
               <span>식량 주기</span>
-              <span className="item-qty">×{state.stats.food}</span>
+              <span className="item-qty">×{foodCount}</span>
             </button>
             {picking === 'food' && (
               <ResourceTargetPicker kind="food" state={state} onChange={onChange} onDone={() => setPicking(null)} />

@@ -69,16 +69,15 @@ describe('클램프 규칙', () => {
     expect(next.stats.mental).toBeLessThanOrEqual(GAME_RULES.MAX_MENTAL)
   })
 
-  it('물/식량은 99를 초과하지 않는다 (clamp 함수 자체 검증)', () => {
-    expect(clamp(9999, 0, GAME_RULES.MAX_WATER)).toBe(GAME_RULES.MAX_WATER)
-    expect(clamp(9999, 0, GAME_RULES.MAX_FOOD)).toBe(GAME_RULES.MAX_FOOD)
+  it('목마름/배고픔 게이지는 30을 초과하지 않는다', () => {
+    expect(clamp(9999, 0, GAME_RULES.MAX_THIRST)).toBe(GAME_RULES.MAX_THIRST)
+    expect(clamp(9999, 0, GAME_RULES.MAX_HUNGER)).toBe(GAME_RULES.MAX_HUNGER)
   })
 
-  it('물/식량 증가는 인벤토리 공간을 초과할 수 없다', () => {
+  it('물/식량 아이템 획득은 인벤토리 공간을 초과할 수 없다', () => {
     const state = freshDay1()
-    const { state: next } = applyEffects(state, [{ type: 'water', amount: 9999 }], new Rng(1))
+    const { state: next } = applyEffects(state, [{ type: 'item', id: 'water', amount: 9999 }], new Rng(1))
     expect(usedCapacity(next)).toBeLessThanOrEqual(capacity(next))
-    expect(next.stats.water).toBeLessThanOrEqual(GAME_RULES.MAX_WATER)
   })
 
   it('탐색/위험 확률은 항상 5~95 사이로 제한된다', () => {
@@ -89,11 +88,12 @@ describe('클램프 규칙', () => {
 })
 
 describe('자원 부족 사망', () => {
-  it('물이 3일 연속 부족하면 사망한다', () => {
+  it('목마름이 3일 연속 0이면 사망한다', () => {
     let state = freshDay1()
-    state = { ...state, stats: { ...state.stats, water: 0 } }
+    state = { ...state, stats: { ...state.stats, thirst: 0 } }
     for (let i = 0; i < 3 && state.phase !== 'ended'; i++) {
-      state = { ...state, day: state.day + 1 }
+      // 배고픔은 매번 채워서 굶주림 사망과 섞이지 않게 한다.
+      state = { ...state, day: state.day + 1, stats: { ...state.stats, hunger: GAME_RULES.MAX_HUNGER } }
       state = applyMorning(state)
       state = checkDeath(state)
     }
@@ -101,12 +101,11 @@ describe('자원 부족 사망', () => {
     expect(state.ending).toBe('dehydration')
   })
 
-  it('식량이 4일 연속 부족하면 사망한다', () => {
+  it('배고픔이 4일 연속 0이면 사망한다', () => {
     let state = freshDay1()
-    // 물은 충분히 채워 물 부족으로 먼저 죽지 않게 한다.
-    state = { ...state, stats: { ...state.stats, water: 90, food: 0 } }
+    state = { ...state, stats: { ...state.stats, hunger: 0 } }
     for (let i = 0; i < 4 && state.phase !== 'ended'; i++) {
-      state = { ...state, day: state.day + 1 }
+      state = { ...state, day: state.day + 1, stats: { ...state.stats, thirst: GAME_RULES.MAX_THIRST } }
       state = applyMorning(state)
       state = checkDeath(state)
     }
@@ -120,17 +119,17 @@ describe('부상 방치', () => {
     let state = freshDay1()
     state = {
       ...state,
-      stats: { ...state.stats, hp: 100, water: 90, food: 90 },
+      stats: { ...state.stats, hp: 100, thirst: GAME_RULES.MAX_THIRST, hunger: GAME_RULES.MAX_HUNGER },
       statusEffects: { ...state.statusEffects, injured: true },
     }
     const hpAfterDay1 = state.stats.hp
-    state = { ...state, day: state.day + 1 }
+    state = { ...state, day: state.day + 1, stats: { ...state.stats, thirst: GAME_RULES.MAX_THIRST, hunger: GAME_RULES.MAX_HUNGER } }
     state = applyMorning(state) // 1일째 방치
     const hpAfterDay2 = state.stats.hp
-    state = { ...state, day: state.day + 1 }
+    state = { ...state, day: state.day + 1, stats: { ...state.stats, thirst: GAME_RULES.MAX_THIRST, hunger: GAME_RULES.MAX_HUNGER } }
     state = applyMorning(state) // 2일째 방치
     const hpAfterDay3 = state.stats.hp
-    state = { ...state, day: state.day + 1 }
+    state = { ...state, day: state.day + 1, stats: { ...state.stats, thirst: GAME_RULES.MAX_THIRST, hunger: GAME_RULES.MAX_HUNGER } }
     state = applyMorning(state) // 3일째 방치 — 여기서부터 추가 피해
     const hpAfterDay4 = state.stats.hp
 
@@ -143,7 +142,11 @@ describe('부상 방치', () => {
 describe('30일째와 이벤트 규칙', () => {
   it('30일째에는 반드시 엔딩으로 이어진다', () => {
     let state = freshDay1()
-    state = { ...state, day: 29, stats: { ...state.stats, hp: 100, mental: 100, water: 90, food: 90, shelter: 100 } }
+    state = {
+      ...state,
+      day: 29,
+      stats: { ...state.stats, hp: 100, mental: 100, thirst: 30, hunger: 30, shelter: 100 },
+    }
     state = performAction(state, 'rest')
     // 이벤트가 있으면 전부 넘긴다.
     let guard = 0
@@ -166,7 +169,7 @@ describe('30일째와 이벤트 규칙', () => {
     // 조건을 최대한 충족시켜 2번째 이벤트가 뜨기 쉬운 상태로 만든다.
     state = {
       ...state,
-      stats: { ...state.stats, mental: 20, hp: 20, water: 1, food: 1, shelter: 20 },
+      stats: { ...state.stats, mental: 20, hp: 20, thirst: 5, hunger: 5, shelter: 20 },
     }
     state = performAction(state, 'rest')
     expect(state.queuedEventIds.length).toBeLessThanOrEqual(1) // activeEventId 1개 + 대기열 최대 1개 = 최대 2개
@@ -189,6 +192,9 @@ describe('30일째와 이벤트 규칙', () => {
       } else {
         state = performAction(state, 'rest')
       }
+      // 자원 부족으로 일찍 죽어 시나리오 커버리지가 줄어들지 않게, 목마름/배고픔은
+      // 매 단계 채워 둔다 — 이 테스트가 보려는 건 이벤트 중복 여부다.
+      state = { ...state, stats: { ...state.stats, thirst: GAME_RULES.MAX_THIRST, hunger: GAME_RULES.MAX_HUNGER } }
     }
     expect(state.phase).toBe('ended')
   })
@@ -204,8 +210,8 @@ describe('진엔딩', () => {
         ...state.stats,
         hp: 100,
         mental: 100,
-        water: 90,
-        food: 90,
+        thirst: 30,
+        hunger: 30,
         shelter: 100,
         info: 100,
       },
@@ -236,7 +242,7 @@ describe('진엔딩', () => {
     state = {
       ...state,
       day: 29,
-      stats: { ...state.stats, hp: 100, mental: 100, water: 90, food: 90, shelter: 100, info: 100 },
+      stats: { ...state.stats, hp: 100, mental: 100, thirst: 30, hunger: 30, shelter: 100, info: 100 },
       counters: { radioStory: 3 },
       flags: {
         militaryRecord: true,
@@ -265,7 +271,7 @@ describe('엔딩 우선순위', () => {
     state = {
       ...state,
       day: 29,
-      stats: { ...state.stats, hp: 100, mental: 100, water: 90, food: 90, shelter: 100 },
+      stats: { ...state.stats, hp: 100, mental: 100, thirst: 30, hunger: 30, shelter: 100 },
       flags: { escapeRouteReady: true },
       survivors: [
         { id: 'a', name: '테스트생존자', job: 'civilian', personality: '-', hp: 100, trust: 90, alive: true, infected: false },
@@ -318,23 +324,23 @@ describe('데이터 무결성', () => {
   })
 })
 
-describe('물/식량 즉시 사용', () => {
-  it('물을 마시면 1개 줄고 체력이 오르고 탈수가 풀린다', () => {
+describe('목마름/배고픔 회복', () => {
+  it('물을 마시면 물 아이템이 1개 줄고 목마름이 오르고 탈수가 풀린다', () => {
     let state = freshDay1()
     state = {
       ...state,
-      stats: { ...state.stats, water: 3, hp: 50 },
+      inventory: { ...state.inventory, water: 3 },
+      stats: { ...state.stats, thirst: 5 },
       statusEffects: { ...state.statusEffects, dehydrated: true },
     }
     state = useWater(state)
-    expect(state.stats.water).toBe(2)
-    expect(state.stats.hp).toBe(53)
+    expect(state.inventory.water).toBe(2)
+    expect(state.stats.thirst).toBe(15)
     expect(state.statusEffects.dehydrated).toBe(false)
   })
 
-  it('식량이 없으면 먹을 수 없다', () => {
-    let state = freshDay1()
-    state = { ...state, stats: { ...state.stats, food: 0 } }
+  it('식량 아이템이 없으면 먹을 수 없다', () => {
+    const state = freshDay1()
     const next = useFood(state)
     expect(next).toBe(state) // 아무 변화 없이 그대로 반환
   })
@@ -342,14 +348,20 @@ describe('물/식량 즉시 사용', () => {
   it('물/식량을 나 대신 동료에게 줄 수 있다', () => {
     let state = freshDay1()
     const sv: Survivor = { id: 'a', name: '가영', job: 'civilian', personality: '-', hp: 90, trust: 50, alive: true, infected: false }
-    state = { ...state, stats: { ...state.stats, water: 3, food: 3, hp: 100 }, survivors: [sv] }
+    state = {
+      ...state,
+      inventory: { ...state.inventory, water: 3, can: 3 },
+      stats: { ...state.stats, thirst: 15, hunger: 15 },
+      survivors: [sv],
+    }
     const afterWater = useWater(state, 'a')
-    expect(afterWater.stats.water).toBe(2)
-    expect(afterWater.stats.hp).toBe(100) // 본인 체력은 그대로
+    expect(afterWater.inventory.water).toBe(2)
+    expect(afterWater.stats.thirst).toBe(15) // 본인 게이지는 그대로
     expect(afterWater.survivors[0].hp).toBe(93)
 
     const afterFood = useFood(afterWater, 'a')
-    expect(afterFood.stats.food).toBe(2)
+    expect(afterFood.inventory.can).toBe(2)
+    expect(afterFood.stats.hunger).toBe(15)
     expect(afterFood.survivors[0].hp).toBe(96)
   })
 })

@@ -73,11 +73,7 @@ export function capacity(state: GameState): number {
 }
 
 export function usedCapacity(state: GameState): number {
-  const itemSpace = (Object.keys(state.inventory) as ItemId[]).reduce(
-    (sum, id) => sum + (state.inventory[id] ?? 0) * ITEMS[id].space,
-    0,
-  )
-  return state.stats.water + state.stats.food + itemSpace
+  return (Object.keys(state.inventory) as ItemId[]).reduce((sum, id) => sum + (state.inventory[id] ?? 0) * ITEMS[id].space, 0)
 }
 
 export function remainingCapacity(state: GameState): number {
@@ -102,19 +98,7 @@ export function applyEffects(state: GameState, ops: EffectOp[], rng: Rng): { sta
 
   const cap = GAME_RULES.BASE_CAPACITY + ((inventory.backpack ?? 0) > 0 ? GAME_RULES.BACKPACK_BONUS : 0)
   const usedCap = () =>
-    stats.water + stats.food + (Object.keys(inventory) as ItemId[]).reduce((sum, id) => sum + (inventory[id] ?? 0) * ITEMS[id].space, 0)
-
-  function addResource(kind: 'water' | 'food', amount: number) {
-    const max = kind === 'water' ? GAME_RULES.MAX_WATER : GAME_RULES.MAX_FOOD
-    if (amount <= 0) {
-      stats[kind] = clamp(stats[kind] + amount, 0, max)
-      return
-    }
-    const room = cap - usedCap()
-    const grant = Math.max(0, Math.min(amount, room))
-    if (grant < amount) notes.push('공간이 부족해 일부를 챙기지 못했다.')
-    stats[kind] = clamp(stats[kind] + grant, 0, max)
-  }
+    (Object.keys(inventory) as ItemId[]).reduce((sum, id) => sum + (inventory[id] ?? 0) * ITEMS[id].space, 0)
 
   function addItem(id: ItemId, amount: number) {
     if (amount <= 0) {
@@ -144,11 +128,11 @@ export function applyEffects(state: GameState, ops: EffectOp[], rng: Rng): { sta
         }
         break
       }
-      case 'water':
-        addResource('water', op.amount)
+      case 'thirst':
+        stats.thirst = clamp(stats.thirst + op.amount, 0, GAME_RULES.MAX_THIRST)
         break
-      case 'food':
-        addResource('food', op.amount)
+      case 'hunger':
+        stats.hunger = clamp(stats.hunger + op.amount, 0, GAME_RULES.MAX_HUNGER)
         break
       case 'power':
         stats.power = clamp(stats.power + op.amount, 0, GAME_RULES.MAX_POWER)
@@ -317,34 +301,30 @@ function finalizeGame(state: GameState): GameState {
 
 // ============================== 아침 ==============================
 export function applyMorning(state: GameState): GameState {
-  const survivorCount = state.survivors.filter((sv) => sv.alive).length
-  const waterNeed = GAME_RULES.DAILY_WATER * (1 + survivorCount)
-  const foodNeed = GAME_RULES.DAILY_FOOD * (1 + survivorCount)
-  const waterOk = state.stats.water >= waterNeed
-  const foodOk = state.stats.food >= foodNeed
-
   const stats = {
     ...state.stats,
-    water: Math.max(0, state.stats.water - waterNeed),
-    food: Math.max(0, state.stats.food - foodNeed),
+    thirst: clamp(state.stats.thirst - GAME_RULES.THIRST_DAILY_DROP, 0, GAME_RULES.MAX_THIRST),
+    hunger: clamp(state.stats.hunger - GAME_RULES.HUNGER_DAILY_DROP, 0, GAME_RULES.MAX_HUNGER),
   }
+  const thirstEmpty = stats.thirst <= 0
+  const hungerEmpty = stats.hunger <= 0
   const statusEffects = { ...state.statusEffects }
   const notes: string[] = []
 
-  if (!waterOk) {
+  if (thirstEmpty) {
     stats.hp = clamp(stats.hp - GAME_RULES.WATER_ZERO_HP - GAME_RULES.DEHYDRATION_DAILY_HP, 0, GAME_RULES.MAX_HP)
     stats.mental = clamp(stats.mental - GAME_RULES.WATER_ZERO_MENTAL, 0, GAME_RULES.MAX_MENTAL)
     statusEffects.dehydrated = true
-    notes.push('물이 부족했다. 체력과 정신력이 줄었다.')
+    notes.push('목이 말라 체력과 정신력이 줄었다.')
   } else {
     statusEffects.dehydrated = false
   }
 
-  if (!foodOk) {
+  if (hungerEmpty) {
     stats.hp = clamp(stats.hp - GAME_RULES.FOOD_ZERO_HP - GAME_RULES.STARVATION_DAILY_HP, 0, GAME_RULES.MAX_HP)
     stats.mental = clamp(stats.mental - GAME_RULES.FOOD_ZERO_MENTAL, 0, GAME_RULES.MAX_MENTAL)
     statusEffects.starving = true
-    notes.push('식량이 부족했다. 체력과 정신력이 줄었다.')
+    notes.push('배가 고파 체력과 정신력이 줄었다.')
   } else {
     statusEffects.starving = false
   }
@@ -381,8 +361,8 @@ export function applyMorning(state: GameState): GameState {
     ...state,
     stats: { ...stats, mental: mentalValue },
     statusEffects,
-    waterShortageStreak: waterOk ? 0 : state.waterShortageStreak + 1,
-    foodShortageStreak: foodOk ? 0 : state.foodShortageStreak + 1,
+    waterShortageStreak: thirstEmpty ? state.waterShortageStreak + 1 : 0,
+    foodShortageStreak: hungerEmpty ? state.foodShortageStreak + 1 : 0,
     injuredUntreatedDays,
     pendingBreakdownRecovery,
   }
@@ -438,8 +418,8 @@ export function createInitialState(): GameState {
     stats: {
       hp: GAME_RULES.START_HP,
       mental: GAME_RULES.START_MENTAL,
-      water: GAME_RULES.START_WATER,
-      food: GAME_RULES.START_FOOD,
+      thirst: GAME_RULES.START_THIRST,
+      hunger: GAME_RULES.START_HUNGER,
       power: GAME_RULES.START_POWER,
       shelter: GAME_RULES.START_SHELTER,
       info: GAME_RULES.START_INFO,
@@ -484,8 +464,6 @@ export function pickPrepItem(state: GameState, pickupId: string): GameState {
   if (usedCapacity(state) + def.space > capacity(state)) return state
 
   const prepLayout = state.prepLayout.map((p) => (p.id === pickupId ? { ...p, taken: true } : p))
-  if (pickup.item === 'water') return { ...state, prepLayout, stats: { ...state.stats, water: state.stats.water + 1 } }
-  if (pickup.item === 'can') return { ...state, prepLayout, stats: { ...state.stats, food: state.stats.food + 1 } }
   return { ...state, prepLayout, inventory: { ...state.inventory, [pickup.item]: (state.inventory[pickup.item] ?? 0) + 1 } }
 }
 
@@ -495,8 +473,6 @@ export function unpickPrepItem(state: GameState, pickupId: string): GameState {
   if (!pickup || !pickup.taken) return state
 
   const prepLayout = state.prepLayout.map((p) => (p.id === pickupId ? { ...p, taken: false } : p))
-  if (pickup.item === 'water') return { ...state, prepLayout, stats: { ...state.stats, water: Math.max(0, state.stats.water - 1) } }
-  if (pickup.item === 'can') return { ...state, prepLayout, stats: { ...state.stats, food: Math.max(0, state.stats.food - 1) } }
   const inventory = { ...state.inventory }
   const next = (inventory[pickup.item] ?? 0) - 1
   if (next <= 0) delete inventory[pickup.item]
@@ -526,31 +502,39 @@ export function unpickPrepCompanion(state: GameState, companionId: string): Game
 // 하루의 주요 행동과는 별개로, 언제든 클릭해서 바로 마시거나 먹을 수 있다.
 // target이 'self'면 본인이, 그 외에는 살아있는 생존자 id를 넘겨 그 사람이 먹는다.
 export function useWater(state: GameState, target: 'self' | string = 'self'): GameState {
-  if (state.phase !== 'day' || state.activeEventId || state.stats.water <= 0) return state
-  const stats = { ...state.stats, water: state.stats.water - 1 }
+  if (state.phase !== 'day' || state.activeEventId || (state.inventory.water ?? 0) <= 0) return state
+  const inventory = { ...state.inventory }
+  const left = (inventory.water ?? 0) - 1
+  if (left <= 0) delete inventory.water
+  else inventory.water = left
+
   if (target === 'self') {
-    const nextStats = { ...stats, hp: clamp(stats.hp + 3, 0, GAME_RULES.MAX_HP) }
-    const statusEffects = { ...state.statusEffects, dehydrated: false }
-    return log({ ...state, stats: nextStats, statusEffects }, '물을 마셨다. 체력 +3.', 'action')
+    const stats = { ...state.stats, thirst: clamp(state.stats.thirst + GAME_RULES.THIRST_RECOVER, 0, GAME_RULES.MAX_THIRST) }
+    const statusEffects = { ...state.statusEffects, dehydrated: stats.thirst <= 0 }
+    return log({ ...state, inventory, stats, statusEffects }, `물을 마셨다. 목마름 +${GAME_RULES.THIRST_RECOVER}.`, 'action')
   }
   const survivor = state.survivors.find((sv) => sv.id === target && sv.alive)
   if (!survivor) return state
   const survivors = state.survivors.map((sv) => (sv.id === target ? { ...sv, hp: clamp(sv.hp + 3, 0, 100) } : sv))
-  return log({ ...state, stats, survivors }, `${survivor.name}에게 물을 주었다. 체력 +3.`, 'action')
+  return log({ ...state, inventory, survivors }, `${survivor.name}에게 물을 주었다. 체력 +3.`, 'action')
 }
 
 export function useFood(state: GameState, target: 'self' | string = 'self'): GameState {
-  if (state.phase !== 'day' || state.activeEventId || state.stats.food <= 0) return state
-  const stats = { ...state.stats, food: state.stats.food - 1 }
+  if (state.phase !== 'day' || state.activeEventId || (state.inventory.can ?? 0) <= 0) return state
+  const inventory = { ...state.inventory }
+  const left = (inventory.can ?? 0) - 1
+  if (left <= 0) delete inventory.can
+  else inventory.can = left
+
   if (target === 'self') {
-    const nextStats = { ...stats, hp: clamp(stats.hp + 3, 0, GAME_RULES.MAX_HP) }
-    const statusEffects = { ...state.statusEffects, starving: false }
-    return log({ ...state, stats: nextStats, statusEffects }, '식량을 먹었다. 체력 +3.', 'action')
+    const stats = { ...state.stats, hunger: clamp(state.stats.hunger + GAME_RULES.HUNGER_RECOVER, 0, GAME_RULES.MAX_HUNGER) }
+    const statusEffects = { ...state.statusEffects, starving: stats.hunger <= 0 }
+    return log({ ...state, inventory, stats, statusEffects }, `식량을 먹었다. 배고픔 +${GAME_RULES.HUNGER_RECOVER}.`, 'action')
   }
   const survivor = state.survivors.find((sv) => sv.id === target && sv.alive)
   if (!survivor) return state
   const survivors = state.survivors.map((sv) => (sv.id === target ? { ...sv, hp: clamp(sv.hp + 3, 0, 100) } : sv))
-  return log({ ...state, stats, survivors }, `${survivor.name}에게 식량을 주었다. 체력 +3.`, 'action')
+  return log({ ...state, inventory, survivors }, `${survivor.name}에게 식량을 주었다. 체력 +3.`, 'action')
 }
 
 export function finalizePrep(state: GameState): GameState {
@@ -635,8 +619,8 @@ function shouldQueueSecondEvent(state: GameState): boolean {
   let count = 0
   if (state.stats.mental <= 30) count++
   if (state.stats.hp <= 30) count++
-  if (state.stats.water <= 1) count++
-  if (state.stats.food <= 1) count++
+  if (state.stats.thirst <= 10) count++
+  if (state.stats.hunger <= 10) count++
   if (state.stats.shelter <= 30) count++
   if (state.survivors.filter((s) => s.alive).length >= 2) count++
   if (MAJOR_FLAGS.some((f) => state.flags[f])) count++
@@ -757,8 +741,8 @@ function resolveExplore(state: GameState, loc: LocationId, rng: Rng): { state: G
     const count = 1 + rng.intBelow(3)
     const ops: EffectOp[] = []
     for (let i = 0; i < count; i++) ops.push({ type: 'item', id: rng.pick(rewardTable.items), amount: 1 })
-    if (rewardTable.water > 0) ops.push({ type: 'water', amount: rewardTable.water })
-    if (rewardTable.food > 0) ops.push({ type: 'food', amount: rewardTable.food })
+    if (rewardTable.water > 0) ops.push({ type: 'item', id: 'water', amount: rewardTable.water })
+    if (rewardTable.food > 0) ops.push({ type: 'item', id: 'can', amount: rewardTable.food })
     if (loc === 'lab') ops.push({ type: 'flag', id: 'labExplored' })
     if (rewardTable.rareFlag && rng.roll100() < (rewardTable.rareChance ?? 0)) ops.push({ type: 'flag', id: rewardTable.rareFlag })
     const applied = applyEffects(s, ops, rng)
@@ -857,7 +841,6 @@ function resolveCraft(state: GameState, recipeId: string | undefined): { state: 
   for (const [id, need] of Object.entries(recipe.keeps ?? {})) {
     if ((state.inventory[id as ItemId] ?? 0) < (need ?? 0)) return { state, notes: ['필요한 도구가 없다.'] }
   }
-  if (recipe.id === 'warmMeal' && state.stats.food < 1) return { state, notes: ['재료가 부족하다.'] }
 
   const inventory = { ...state.inventory }
   for (const [id, need] of Object.entries(recipe.consumes)) {
@@ -870,8 +853,7 @@ function resolveCraft(state: GameState, recipeId: string | undefined): { state: 
     const key = id as ItemId
     inventory[key] = (inventory[key] ?? 0) + (gain ?? 0)
   }
-  const stats = recipe.id === 'warmMeal' ? { ...state.stats, food: state.stats.food - 1 } : state.stats
-  return { state: { ...state, inventory, stats }, notes: [`${recipe.name}을(를) 완성했다.`] }
+  return { state: { ...state, inventory }, notes: [`${recipe.name}을(를) 완성했다.`] }
 }
 
 export function actionAvailability(state: GameState): Record<ActionId, boolean> {
@@ -885,8 +867,7 @@ export function actionAvailability(state: GameState): Record<ActionId, boolean> 
     craft: CRAFT_RECIPES.some(
       (r) =>
         Object.entries(r.consumes).every(([id, need]) => (state.inventory[id as ItemId] ?? 0) >= (need ?? 0)) &&
-        Object.entries(r.keeps ?? {}).every(([id, need]) => (state.inventory[id as ItemId] ?? 0) >= (need ?? 0)) &&
-        (r.id !== 'warmMeal' || state.stats.food >= 1),
+        Object.entries(r.keeps ?? {}).every(([id, need]) => (state.inventory[id as ItemId] ?? 0) >= (need ?? 0)),
     ),
     guard: true,
   }

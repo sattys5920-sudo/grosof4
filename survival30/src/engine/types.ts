@@ -109,8 +109,10 @@ export interface LogEntry {
 export interface GameStats {
   hp: number
   mental: number
-  water: number
-  food: number
+  /** 목마름 게이지. 30이 가득 찬 상태, 0이면 탈수. */
+  thirst: number
+  /** 배고픔 게이지. 30이 가득 찬 상태, 0이면 굶주림. */
+  hunger: number
   power: number
   shelter: number
   info: number
@@ -166,8 +168,8 @@ export interface RollResult {
 export type EffectOp =
   | { type: 'hp'; amount: number }
   | { type: 'mental'; amount: number }
-  | { type: 'water'; amount: number }
-  | { type: 'food'; amount: number }
+  | { type: 'thirst'; amount: number }
+  | { type: 'hunger'; amount: number }
   | { type: 'power'; amount: number }
   | { type: 'shelter'; amount: number }
   | { type: 'info'; amount: number }
