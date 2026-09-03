@@ -95,6 +95,18 @@ describe('클램프 규칙', () => {
     expect(dead.ending).toBeTruthy()
   })
 
+  it('정신 붕괴를 겪은 채로 죽으면 감염이 아닌 한 정신 붕괴 엔딩이 된다', () => {
+    let state = freshDay1()
+    // 정신력을 0까지 떨어뜨려 정신 붕괴 플래그를 세운다.
+    const { state: broken } = applyEffects(state, [{ type: 'mental', amount: -9999 }], new Rng(1))
+    expect(broken.mentalBreakdownFlag).toBe(true)
+    state = broken
+    const { state: hurt } = applyEffects(state, [{ type: 'hp', amount: -9999 }], new Rng(2))
+    const dead = checkDeath(hurt)
+    expect(dead.phase).toBe('ended')
+    expect(dead.ending).toBe('breakdown')
+  })
+
   it('정신력은 100을 초과하지 않는다', () => {
     const state = freshDay1()
     const { state: next } = applyEffects(state, [{ type: 'mental', amount: 9999 }], new Rng(1))

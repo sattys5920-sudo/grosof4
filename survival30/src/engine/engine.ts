@@ -257,7 +257,10 @@ export function checkDeath(state: GameState): GameState {
   if (state.phase === 'ended') return state
   if (state.waterShortageStreak >= GAME_RULES.WATER_DEATH_STREAK) return finalizeDeath(state, 'dehydration')
   if (state.foodShortageStreak >= GAME_RULES.FOOD_DEATH_STREAK) return finalizeDeath(state, 'starvation')
-  if (state.stats.hp <= 0) return finalizeDeath(state, state.statusEffects.infected ? 'infection' : 'death')
+  if (state.stats.hp <= 0) {
+    const cause = state.statusEffects.infected ? 'infection' : state.mentalBreakdownFlag ? 'breakdown' : 'death'
+    return finalizeDeath(state, cause)
+  }
   if (
     state.shelterCollapsedDay != null &&
     state.stats.shelter <= 0 &&
