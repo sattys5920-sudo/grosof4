@@ -290,11 +290,16 @@ export default function DayScreen({ state, onChange }: { state: GameState; onCha
       <TopBar state={state} />
       <div className="day-body">
         <main className="day-main">
-          {state.activeEventId ? <EventPanel state={state} onChange={onChange} /> : <ActionPanel state={state} onChange={onChange} />}
+          <ActionPanel state={state} onChange={onChange} />
         </main>
         <SidePanel state={state} />
       </div>
       <LogDrawer state={state} />
+      {state.activeEventId && (
+        <div className="event-modal-backdrop">
+          <EventPanel state={state} onChange={onChange} />
+        </div>
+      )}
     </div>
   )
 }

@@ -78,18 +78,61 @@
   height: 100%;
   background: var(--accent);
 }
-.prep-grid {
+.floor-plan {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
-  flex: 1;
 }
-.prep-item {
-  text-align: left;
+.room-btn {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 6px;
-  padding: 12px;
+  padding: 16px 10px;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.room-btn:hover {
+  border-color: var(--accent-dim);
+}
+.room-btn.open {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.room-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+.room-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+.room-detail {
+  background: var(--panel);
+  border: 1px solid var(--accent-dim);
+  border-radius: 6px;
+  padding: 14px;
+}
+.room-detail-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--accent-bright);
+  margin-bottom: 10px;
+}
+.room-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+}
+.prep-item {
+  text-align: left;
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px;
   color: var(--ink);
   display: flex;
   flex-direction: column;
@@ -107,15 +150,12 @@
 }
 .prep-item-name {
   font-weight: 600;
+  font-size: 13px;
 }
 .prep-item-space {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--ink-faint);
-}
-.prep-item-desc {
-  font-size: 12px;
-  color: var(--ink-dim);
 }
 .prep-footer {
   display: flex;
@@ -213,6 +253,23 @@
 }
 .day-main {
   min-width: 0;
+}
+
+.event-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 5, 2, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+}
+.event-modal-backdrop .event-card {
+  width: 100%;
+  max-width: 460px;
+  max-height: 82vh;
+  overflow-y: auto;
 }
 
 .event-card {

@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { capacity, finalizePrep, pickPrepItem, unpickPrepItem, usedCapacity } from '../engine/engine'
 import { GAME_RULES } from '../engine/rules'
-import { ITEMS, PREP_ITEM_ORDER } from '../engine/items'
+import { ITEMS } from '../engine/items'
+import { ROOMS } from '../engine/rooms'
 import { saveGame } from '../engine/save'
-import type { GameState } from '../engine/types'
-import type { ItemId } from '../engine/types'
+import type { GameState, RoomId } from '../engine/types'
 
 export default function PrepScreen({ state, onChange }: { state: GameState; onChange: (s: GameState) => void }) {
   const [secondsLeft, setSecondsLeft] = useState<number>(GAME_RULES.PREP_SECONDS)
+  const [openRoom, setOpenRoom] = useState<RoomId | null>(null)
   const finishedRef = useRef(false)
 
   useEffect(() => {
@@ -27,11 +28,9 @@ export default function PrepScreen({ state, onChange }: { state: GameState; onCh
 
   const used = usedCapacity(state)
   const cap = capacity(state)
-  const pickedWater = !!state.flags['prep:water']
-  const pickedCan = !!state.flags['prep:can']
 
-  function toggle(id: ItemId, picked: boolean) {
-    const next = picked ? unpickPrepItem(state, id) : pickPrepItem(state, id)
+  function toggle(pickupId: string, taken: boolean) {
+    const next = taken ? unpickPrepItem(state, pickupId) : pickPrepItem(state, pickupId)
     saveGame(next)
     onChange(next)
   }
@@ -41,6 +40,9 @@ export default function PrepScreen({ state, onChange }: { state: GameState; onCh
     finishedRef.current = true
     onChange(finalizePrep(state))
   }
+
+  const activeRoom = ROOMS.find((r) => r.id === openRoom) ?? null
+  const roomItems = openRoom ? state.prepLayout.filter((p) => p.room === openRoom) : []
 
   return (
     <div className="prep">
@@ -55,28 +57,53 @@ export default function PrepScreen({ state, onChange }: { state: GameState; onCh
         </div>
       </header>
 
-      <div className="prep-grid">
-        {PREP_ITEM_ORDER.map((id) => {
-          const def = ITEMS[id]
-          const picked = id === 'water' ? pickedWater : id === 'can' ? pickedCan : (state.inventory[id] ?? 0) > 0
-          const wouldExceed = !picked && used + def.space > cap
+      <div className="floor-plan">
+        {ROOMS.map((room) => {
+          const items = state.prepLayout.filter((p) => p.room === room.id)
+          const takenCount = items.filter((p) => p.taken).length
           return (
             <button
-              key={id}
-              className={`prep-item ${picked ? 'picked' : ''} ${wouldExceed ? 'disabled' : ''}`}
-              disabled={wouldExceed && !picked}
-              onClick={() => toggle(id, picked)}
+              key={room.id}
+              className={`room-btn ${openRoom === room.id ? 'open' : ''}`}
+              onClick={() => setOpenRoom(openRoom === room.id ? null : room.id)}
             >
-              <div className="prep-item-name">{def.name}</div>
-              <div className="prep-item-space">공간 {def.space}</div>
-              <div className="prep-item-desc">{def.description}</div>
+              <div className="room-name">{room.name}</div>
+              <div className="room-meta">
+                {takenCount}/{items.length}
+              </div>
             </button>
           )
         })}
       </div>
 
+      {activeRoom && (
+        <div className="room-detail">
+          <div className="room-detail-title">{activeRoom.name}</div>
+          {roomItems.length === 0 && <p className="muted">아무것도 없다.</p>}
+          <div className="room-items">
+            {roomItems.map((p) => {
+              const def = ITEMS[p.item]
+              const wouldExceed = !p.taken && used + def.space > cap
+              return (
+                <button
+                  key={p.id}
+                  className={`prep-item ${p.taken ? 'picked' : ''} ${wouldExceed ? 'disabled' : ''}`}
+                  disabled={wouldExceed && !p.taken}
+                  onClick={() => toggle(p.id, p.taken)}
+                >
+                  <div className="prep-item-name">{def.name}</div>
+                  <div className="prep-item-space">공간 {def.space}</div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <footer className="prep-footer">
-        <p className="prep-hint">이미 챙긴 물건은 눌러서 다시 내려놓을 수 있다. 시간이 다 되면 자동으로 대피소 문이 닫힌다.</p>
+        <p className="prep-hint">
+          방을 눌러 무엇이 있는지 확인한다. 이미 챙긴 물건은 다시 눌러 내려놓을 수 있다. 시간이 다 되면 자동으로 대피소 문이 닫힌다.
+        </p>
         <button className="btn btn-primary" onClick={enter}>
           지금 대피소로 들어간다
         </button>

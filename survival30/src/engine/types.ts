@@ -47,6 +47,25 @@ export type LocationId = 'house' | 'store' | 'hospital' | 'police' | 'military' 
 
 export type JobId = 'doctor' | 'engineer' | 'hunter' | 'scout' | 'civilian' | 'coward' | 'liar'
 
+export type RoomId =
+  | 'classroom'
+  | 'facultyOffice'
+  | 'nurseOffice'
+  | 'musicRoom'
+  | 'artRoom'
+  | 'scienceRoom'
+  | 'restroom'
+  | 'danceRoom'
+  | 'techRoom'
+
+/** 준비 단계에서 방마다 흩어져 있는 개별 물건 하나. 판마다 무작위로 배치된다. */
+export interface PrepPickup {
+  id: string
+  item: ItemId
+  room: RoomId
+  taken: boolean
+}
+
 export type EndingId =
   | 'true'
   | 'escape'
@@ -109,6 +128,7 @@ export interface GameState {
   scoutBonusCharges: number
   guardActiveTonight: boolean
   inventory: Partial<Record<ItemId, number>>
+  prepLayout: PrepPickup[]
   survivors: Survivor[]
   flags: Record<string, boolean>
   counters: Record<string, number>

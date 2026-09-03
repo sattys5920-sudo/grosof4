@@ -2,8 +2,9 @@
 // GameState를 그대로 화면에 반영한다 — 내부 수치와 UI 표시가 항상 같아야 한다는
 // 기획서 25번 원칙을 지키기 위해, "표시용" 값을 따로 계산하지 않는다.
 import { c, flag, hp, mental, survivorLeave } from './effects'
-import { CRAFT_RECIPES, ITEMS } from './items'
+import { CRAFT_RECIPES, ITEMS, PREP_ITEM_ORDER } from './items'
 import { LOCATION_REWARDS, RISK_OUTCOME_WEIGHTS, type RiskOutcome } from './locations'
+import { ROOMS } from './rooms'
 import { Rng, freshSeed, resolveChance } from './rng'
 import { GAME_RULES, LOCATIONS, clamp, clampChance, difficultyBonus, mentalTier } from './rules'
 import { saveGame } from './save'
@@ -19,6 +20,7 @@ import type {
   GameState,
   ItemId,
   LocationId,
+  PrepPickup,
 } from './types'
 
 export interface ActionParams {
@@ -379,10 +381,34 @@ export function applyMorning(state: GameState): GameState {
 }
 
 // ============================== 준비 단계 ==============================
+// 방마다 흩어질 물건 목록을 만든다. 물/식량은 각각 최대 10개까지 낱개로
+// 흩어지고, 나머지 장비는 전개도 어딘가에 딱 하나씩만 있다. 판이 새로
+// 시작될 때마다(=createInitialState 호출마다) 배치가 다시 섞인다.
+function buildPrepLayout(rng: Rng): PrepPickup[] {
+  const pool: ItemId[] = []
+  for (const id of PREP_ITEM_ORDER) {
+    if (id === 'water') {
+      for (let i = 0; i < GAME_RULES.PREP_WATER_COUNT; i++) pool.push('water')
+    } else if (id === 'can') {
+      for (let i = 0; i < GAME_RULES.PREP_FOOD_COUNT; i++) pool.push('can')
+    } else {
+      pool.push(id)
+    }
+  }
+  const seen: Partial<Record<ItemId, number>> = {}
+  return pool.map((item) => {
+    const idx = seen[item] ?? 0
+    seen[item] = idx + 1
+    return { id: `${item}-${idx}`, item, room: rng.pick(ROOMS).id, taken: false }
+  })
+}
+
 export function createInitialState(): GameState {
+  const rng = new Rng(freshSeed())
+  const prepLayout = buildPrepLayout(rng)
   return {
     seedLabel: 'run',
-    rngState: freshSeed(),
+    rngState: rng.state,
     day: 0,
     phase: 'prep',
     actionTaken: false,
@@ -408,6 +434,7 @@ export function createInitialState(): GameState {
     scoutBonusCharges: 0,
     guardActiveTonight: false,
     inventory: {},
+    prepLayout,
     survivors: [],
     flags: {},
     counters: {},
@@ -425,42 +452,32 @@ export function createInitialState(): GameState {
   }
 }
 
-export function pickPrepItem(state: GameState, itemId: ItemId): GameState {
+export function pickPrepItem(state: GameState, pickupId: string): GameState {
   if (state.phase !== 'prep') return state
-  const def = ITEMS[itemId]
-  if (!def.prepAvailable) return state
-
-  if (itemId === 'water' || itemId === 'can') {
-    const flagKey = itemId === 'water' ? 'prep:water' : 'prep:can'
-    if (state.flags[flagKey]) return state
-    if (usedCapacity(state) + def.space > capacity(state)) return state
-    const stats =
-      itemId === 'water' ? { ...state.stats, water: state.stats.water + 1 } : { ...state.stats, food: state.stats.food + 1 }
-    return { ...state, stats, flags: { ...state.flags, [flagKey]: true } }
-  }
-
-  if ((state.inventory[itemId] ?? 0) >= 1) return state
+  const pickup = state.prepLayout.find((p) => p.id === pickupId)
+  if (!pickup || pickup.taken) return state
+  const def = ITEMS[pickup.item]
   if (usedCapacity(state) + def.space > capacity(state)) return state
-  return { ...state, inventory: { ...state.inventory, [itemId]: 1 } }
+
+  const prepLayout = state.prepLayout.map((p) => (p.id === pickupId ? { ...p, taken: true } : p))
+  if (pickup.item === 'water') return { ...state, prepLayout, stats: { ...state.stats, water: state.stats.water + 1 } }
+  if (pickup.item === 'can') return { ...state, prepLayout, stats: { ...state.stats, food: state.stats.food + 1 } }
+  return { ...state, prepLayout, inventory: { ...state.inventory, [pickup.item]: (state.inventory[pickup.item] ?? 0) + 1 } }
 }
 
-export function unpickPrepItem(state: GameState, itemId: ItemId): GameState {
+export function unpickPrepItem(state: GameState, pickupId: string): GameState {
   if (state.phase !== 'prep') return state
-  if (itemId === 'water' || itemId === 'can') {
-    const flagKey = itemId === 'water' ? 'prep:water' : 'prep:can'
-    if (!state.flags[flagKey]) return state
-    const stats =
-      itemId === 'water'
-        ? { ...state.stats, water: Math.max(GAME_RULES.START_WATER, state.stats.water - 1) }
-        : { ...state.stats, food: Math.max(GAME_RULES.START_FOOD, state.stats.food - 1) }
-    const flags = { ...state.flags }
-    delete flags[flagKey]
-    return { ...state, stats, flags }
-  }
-  if (!state.inventory[itemId]) return state
+  const pickup = state.prepLayout.find((p) => p.id === pickupId)
+  if (!pickup || !pickup.taken) return state
+
+  const prepLayout = state.prepLayout.map((p) => (p.id === pickupId ? { ...p, taken: false } : p))
+  if (pickup.item === 'water') return { ...state, prepLayout, stats: { ...state.stats, water: Math.max(0, state.stats.water - 1) } }
+  if (pickup.item === 'can') return { ...state, prepLayout, stats: { ...state.stats, food: Math.max(0, state.stats.food - 1) } }
   const inventory = { ...state.inventory }
-  delete inventory[itemId]
-  return { ...state, inventory }
+  const next = (inventory[pickup.item] ?? 0) - 1
+  if (next <= 0) delete inventory[pickup.item]
+  else inventory[pickup.item] = next
+  return { ...state, prepLayout, inventory }
 }
 
 export function finalizePrep(state: GameState): GameState {
