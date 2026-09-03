@@ -58,8 +58,18 @@ function TopBar({ state }: { state: GameState }) {
       <div className="stat-row">
         <StatItem label="체력" value={state.stats.hp} max={100} tone={state.stats.hp <= 30 ? 'danger' : undefined} />
         <StatItem label="정신력" value={state.stats.mental} max={100} tone={state.stats.mental <= 30 ? 'danger' : undefined} />
-        <StatItem label="목마름" value={state.stats.thirst} max={30} tone={state.stats.thirst <= 10 ? 'danger' : undefined} />
-        <StatItem label="배고픔" value={state.stats.hunger} max={30} tone={state.stats.hunger <= 10 ? 'danger' : undefined} />
+        <StatItem
+          label="목마름"
+          value={state.stats.thirst}
+          max={GAME_RULES.MAX_THIRST}
+          tone={state.stats.thirst <= 10 ? 'danger' : undefined}
+        />
+        <StatItem
+          label="배고픔"
+          value={state.stats.hunger}
+          max={GAME_RULES.MAX_HUNGER}
+          tone={state.stats.hunger <= 10 ? 'danger' : undefined}
+        />
         <StatItem label="전력" value={state.stats.power} />
         <StatItem label="대피소" value={state.stats.shelter} max={100} tone={state.stats.shelter <= 30 ? 'danger' : undefined} />
         <StatItem label="정보" value={state.stats.info} max={100} />
@@ -375,6 +385,27 @@ function LogDrawer({ state }: { state: GameState }) {
   )
 }
 
+function ResultPopup({ state, onChange }: { state: GameState; onChange: (s: GameState) => void }) {
+  if (!state.resultPopup) return null
+  return (
+    <div className="event-modal-backdrop">
+      <div className="event-card">
+        <div className="event-eyebrow">{state.day}일차</div>
+        {state.resultPopup.map((line, i) => (
+          <p key={i} className="event-desc">
+            {line}
+          </p>
+        ))}
+        <div className="event-choices">
+          <button className="choice-btn choice-btn-confirm" onClick={() => onChange({ ...state, resultPopup: null })}>
+            확인
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function DayScreen({ state, onChange }: { state: GameState; onChange: (s: GameState) => void }) {
   return (
     <div className="day">
@@ -386,10 +417,14 @@ export default function DayScreen({ state, onChange }: { state: GameState; onCha
         <SidePanel state={state} onChange={onChange} />
       </div>
       <LogDrawer state={state} />
-      {state.activeEventId && (
-        <div className="event-modal-backdrop">
-          <EventPanel state={state} onChange={onChange} />
-        </div>
+      {state.resultPopup ? (
+        <ResultPopup state={state} onChange={onChange} />
+      ) : (
+        state.activeEventId && (
+          <div className="event-modal-backdrop">
+            <EventPanel state={state} onChange={onChange} />
+          </div>
+        )
       )}
     </div>
   )

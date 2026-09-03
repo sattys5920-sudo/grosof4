@@ -448,7 +448,7 @@ export function createInitialState(): GameState {
     eventLog: [{ day: 0, text: '경보가 울린다. 60초 안에 챙길 것을 정해야 한다.', tag: 'system' }],
     activeEventId: null,
     queuedEventIds: [],
-    pendingChoiceResult: null,
+    resultPopup: null,
     ending: null,
     deathCause: null,
     gameOverDay: null,
@@ -947,7 +947,7 @@ export function performAction(state: GameState, actionId: ActionId, params: Acti
       }
     }
 
-    s = { ...s, actionTaken: true, actionOfDay: actionId }
+    s = { ...s, actionTaken: true, actionOfDay: actionId, resultPopup: notes.length > 0 ? notes : null }
     s = logNotes(s, notes)
     s = checkDeath(s)
     if (s.phase === 'ended') return s
@@ -978,7 +978,7 @@ function finishChoiceResolution(
   const applied = applyEffects(state, ops, rng)
   let working = logNotes(applied.state, applied.notes)
   working = log(working, `${logPrefix} → ${resultText}`, 'event')
-  working = { ...working, pendingChoiceResult: resultText }
+  working = { ...working, resultPopup: [`${logPrefix} → ${resultText}`, ...applied.notes] }
 
   if (event.id === DAY30_EVENT.id) {
     working = checkDeath(working)

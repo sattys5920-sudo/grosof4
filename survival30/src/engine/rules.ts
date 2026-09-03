@@ -27,14 +27,14 @@ export const GAME_RULES = {
 
   // 목마름/배고픔 게이지 — 물/식량 "아이템"과는 별개다. 매일 아침 자동으로
   // 줄어들고, 물/식량 아이템을 사용해야 회복된다.
-  MAX_THIRST: 30,
-  MAX_HUNGER: 30,
-  START_THIRST: 30,
-  START_HUNGER: 30,
+  MAX_THIRST: 100,
+  MAX_HUNGER: 100,
+  START_THIRST: 100,
+  START_HUNGER: 100,
   THIRST_DAILY_DROP: 10,
   HUNGER_DAILY_DROP: 10,
-  THIRST_RECOVER: 10,
-  HUNGER_RECOVER: 10,
+  THIRST_RECOVER: 30,
+  HUNGER_RECOVER: 30,
 
   WATER_ZERO_HP: 10,
   WATER_ZERO_MENTAL: 5,
@@ -170,7 +170,7 @@ export const GAME_RULES = {
     { min: 26, max: 30, bonus: 25 },
   ],
 
-  ENDING_PERFECT: { hp: 70, mental: 70, thirst: 20, hunger: 20, shelter: 70 },
+  ENDING_PERFECT: { hp: 70, mental: 70, thirst: 70, hunger: 70, shelter: 70 },
   ENDING_COMMUNITY_TRUST: 70,
   ENDING_TRUE_INFO: 100,
   ENDING_TRUE_RADIO_COUNT: 3,

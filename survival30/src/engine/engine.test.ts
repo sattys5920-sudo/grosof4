@@ -181,7 +181,11 @@ describe('30일째와 이벤트 규칙', () => {
     let guard = 0
     while (state.phase !== 'ended' && guard < 300) {
       guard++
-      if (state.activeEventId) {
+      if (state.pendingLeaveChoice) {
+        // "누구를 보낼까?" 선택 단계 — 살아있는 첫 동료를 보낸다.
+        const target = state.survivors.find((sv) => sv.alive)!
+        state = resolveSurvivorSend(state, target.id)
+      } else if (state.activeEventId) {
         const event = getActiveEvent(state)!
         if (event.id !== 'day30-final' && !event.repeatable) {
           expect(seen.has(event.id)).toBe(false)
@@ -335,7 +339,7 @@ describe('목마름/배고픔 회복', () => {
     }
     state = useWater(state)
     expect(state.inventory.water).toBe(2)
-    expect(state.stats.thirst).toBe(15)
+    expect(state.stats.thirst).toBe(35)
     expect(state.statusEffects.dehydrated).toBe(false)
   })
 

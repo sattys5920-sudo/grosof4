@@ -150,7 +150,9 @@ export interface GameState {
   eventLog: LogEntry[]
   activeEventId: string | null
   queuedEventIds: string[]
-  pendingChoiceResult: string | null
+  /** 행동/선택 직후 "무슨 일이 있었는지" 보여주는 팝업. 확인을 누르기 전까지는
+   * 다음 이벤트 카드나 화면이 가려진다. */
+  resultPopup: string[] | null
   ending: EndingId | null
   deathCause: string | null
   gameOverDay: number | null

@@ -353,6 +353,17 @@
 .choice-btn:disabled {
   opacity: 0.4;
 }
+.choice-btn-confirm {
+  text-align: center;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--void);
+  font-weight: 700;
+}
+.choice-btn-confirm:hover {
+  background: var(--accent-bright);
+  border-color: var(--accent-bright);
+}
 .choice-need {
   color: var(--ink-faint);
   font-size: 12px;
