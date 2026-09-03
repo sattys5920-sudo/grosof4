@@ -524,18 +524,33 @@ export function unpickPrepCompanion(state: GameState, companionId: string): Game
 
 // ============================== 물/식량 즉시 사용 ==============================
 // 하루의 주요 행동과는 별개로, 언제든 클릭해서 바로 마시거나 먹을 수 있다.
-export function useWater(state: GameState): GameState {
+// target이 'self'면 본인이, 그 외에는 살아있는 생존자 id를 넘겨 그 사람이 먹는다.
+export function useWater(state: GameState, target: 'self' | string = 'self'): GameState {
   if (state.phase !== 'day' || state.activeEventId || state.stats.water <= 0) return state
-  const stats = { ...state.stats, water: state.stats.water - 1, hp: clamp(state.stats.hp + 3, 0, GAME_RULES.MAX_HP) }
-  const statusEffects = { ...state.statusEffects, dehydrated: false }
-  return log({ ...state, stats, statusEffects }, '물을 마셨다. 체력 +3.', 'action')
+  const stats = { ...state.stats, water: state.stats.water - 1 }
+  if (target === 'self') {
+    const nextStats = { ...stats, hp: clamp(stats.hp + 3, 0, GAME_RULES.MAX_HP) }
+    const statusEffects = { ...state.statusEffects, dehydrated: false }
+    return log({ ...state, stats: nextStats, statusEffects }, '물을 마셨다. 체력 +3.', 'action')
+  }
+  const survivor = state.survivors.find((sv) => sv.id === target && sv.alive)
+  if (!survivor) return state
+  const survivors = state.survivors.map((sv) => (sv.id === target ? { ...sv, hp: clamp(sv.hp + 3, 0, 100) } : sv))
+  return log({ ...state, stats, survivors }, `${survivor.name}에게 물을 주었다. 체력 +3.`, 'action')
 }
 
-export function useFood(state: GameState): GameState {
+export function useFood(state: GameState, target: 'self' | string = 'self'): GameState {
   if (state.phase !== 'day' || state.activeEventId || state.stats.food <= 0) return state
-  const stats = { ...state.stats, food: state.stats.food - 1, hp: clamp(state.stats.hp + 3, 0, GAME_RULES.MAX_HP) }
-  const statusEffects = { ...state.statusEffects, starving: false }
-  return log({ ...state, stats, statusEffects }, '식량을 먹었다. 체력 +3.', 'action')
+  const stats = { ...state.stats, food: state.stats.food - 1 }
+  if (target === 'self') {
+    const nextStats = { ...stats, hp: clamp(stats.hp + 3, 0, GAME_RULES.MAX_HP) }
+    const statusEffects = { ...state.statusEffects, starving: false }
+    return log({ ...state, stats: nextStats, statusEffects }, '식량을 먹었다. 체력 +3.', 'action')
+  }
+  const survivor = state.survivors.find((sv) => sv.id === target && sv.alive)
+  if (!survivor) return state
+  const survivors = state.survivors.map((sv) => (sv.id === target ? { ...sv, hp: clamp(sv.hp + 3, 0, 100) } : sv))
+  return log({ ...state, stats, survivors }, `${survivor.name}에게 식량을 주었다. 체력 +3.`, 'action')
 }
 
 export function finalizePrep(state: GameState): GameState {

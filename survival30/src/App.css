@@ -441,7 +441,7 @@
   flex-direction: column;
   gap: 6px;
 }
-.item-list li {
+.item-row {
   display: flex;
   justify-content: space-between;
   font-size: 13px;
@@ -470,6 +470,22 @@
 }
 .item-use-btn:disabled {
   opacity: 0.4;
+}
+.item-use-btn.active {
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+.target-picker {
+  margin-top: 6px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--accent-dim);
+  border-radius: 5px;
+}
+.target-picker-title {
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-bottom: 6px;
 }
 .survivor-list li {
   border: 1px solid var(--line);

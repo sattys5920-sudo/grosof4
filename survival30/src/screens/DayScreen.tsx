@@ -255,29 +255,77 @@ function ActionPanel({ state, onChange }: { state: GameState; onChange: (s: Game
   )
 }
 
+function ResourceTargetPicker({
+  kind,
+  state,
+  onChange,
+  onDone,
+}: {
+  kind: 'water' | 'food'
+  state: GameState
+  onChange: (s: GameState) => void
+  onDone: () => void
+}) {
+  const survivors = state.survivors.filter((sv) => sv.alive)
+  function give(target: 'self' | string) {
+    onChange(kind === 'water' ? useWater(state, target) : useFood(state, target))
+    onDone()
+  }
+  return (
+    <div className="target-picker">
+      <div className="target-picker-title">누구에게 줄까?</div>
+      <div className="choice-row">
+        <button className="choice-btn" onClick={() => give('self')}>
+          나
+        </button>
+        {survivors.map((sv) => (
+          <button key={sv.id} className="choice-btn" onClick={() => give(sv.id)}>
+            {sv.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function SidePanel({ state, onChange }: { state: GameState; onChange: (s: GameState) => void }) {
   const items = (Object.keys(state.inventory) as ItemId[]).filter((id) => (state.inventory[id] ?? 0) > 0)
   const canUse = state.phase === 'day' && !state.activeEventId
+  const [picking, setPicking] = useState<'water' | 'food' | null>(null)
   return (
     <aside className="side-panel">
       <section>
         <h3>소지품</h3>
         <ul className="item-list">
           <li>
-            <button className="item-use-btn" disabled={!canUse || state.stats.water <= 0} onClick={() => onChange(useWater(state))}>
-              <span>물 마시기</span>
+            <button
+              className={`item-use-btn ${picking === 'water' ? 'active' : ''}`}
+              disabled={!canUse || state.stats.water <= 0}
+              onClick={() => setPicking(picking === 'water' ? null : 'water')}
+            >
+              <span>물 주기</span>
               <span className="item-qty">×{state.stats.water}</span>
             </button>
+            {picking === 'water' && (
+              <ResourceTargetPicker kind="water" state={state} onChange={onChange} onDone={() => setPicking(null)} />
+            )}
           </li>
           <li>
-            <button className="item-use-btn" disabled={!canUse || state.stats.food <= 0} onClick={() => onChange(useFood(state))}>
-              <span>식량 먹기</span>
+            <button
+              className={`item-use-btn ${picking === 'food' ? 'active' : ''}`}
+              disabled={!canUse || state.stats.food <= 0}
+              onClick={() => setPicking(picking === 'food' ? null : 'food')}
+            >
+              <span>식량 주기</span>
               <span className="item-qty">×{state.stats.food}</span>
             </button>
+            {picking === 'food' && (
+              <ResourceTargetPicker kind="food" state={state} onChange={onChange} onDone={() => setPicking(null)} />
+            )}
           </li>
           {items.length === 0 && <li className="muted">그 밖엔 가진 것이 없다.</li>}
           {items.map((id) => (
-            <li key={id}>
+            <li key={id} className="item-row">
               <span>{ITEMS[id].name}</span>
               <span className="item-qty">×{state.inventory[id]}</span>
             </li>

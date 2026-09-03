@@ -338,6 +338,20 @@ describe('물/식량 즉시 사용', () => {
     const next = useFood(state)
     expect(next).toBe(state) // 아무 변화 없이 그대로 반환
   })
+
+  it('물/식량을 나 대신 동료에게 줄 수 있다', () => {
+    let state = freshDay1()
+    const sv: Survivor = { id: 'a', name: '가영', job: 'civilian', personality: '-', hp: 90, trust: 50, alive: true, infected: false }
+    state = { ...state, stats: { ...state.stats, water: 3, food: 3, hp: 100 }, survivors: [sv] }
+    const afterWater = useWater(state, 'a')
+    expect(afterWater.stats.water).toBe(2)
+    expect(afterWater.stats.hp).toBe(100) // 본인 체력은 그대로
+    expect(afterWater.survivors[0].hp).toBe(93)
+
+    const afterFood = useFood(afterWater, 'a')
+    expect(afterFood.stats.food).toBe(2)
+    expect(afterFood.survivors[0].hp).toBe(96)
+  })
 })
 
 describe('준비 단계 동료 데려오기', () => {
