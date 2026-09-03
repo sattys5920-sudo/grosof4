@@ -6,9 +6,13 @@ import {
   performAction,
   requirementMet,
   resolveChoice,
+  resolveSurvivorSend,
+  useFood,
+  useWater,
 } from '../engine/engine'
 import { CRAFT_RECIPES, ITEMS } from '../engine/items'
 import { GAME_RULES, LOCATIONS, mentalTier, mentalTierLabel } from '../engine/rules'
+import { JOBS } from '../engine/survivors'
 import type { ActionId, GameState, ItemId, LocationId } from '../engine/types'
 
 const ACTION_LABELS: Record<ActionId, string> = {
@@ -76,6 +80,28 @@ function TopBar({ state }: { state: GameState }) {
 function EventPanel({ state, onChange }: { state: GameState; onChange: (s: GameState) => void }) {
   const event = getActiveEvent(state)
   if (!event) return null
+
+  if (state.pendingLeaveChoice) {
+    const alive = state.survivors.filter((sv) => sv.alive)
+    return (
+      <div className="event-card">
+        <div className="event-title">누구를 보낼까?</div>
+        <p className="event-desc">{state.pendingLeaveChoice.resultText}</p>
+        <div className="event-choices">
+          {alive.map((sv) => (
+            <button key={sv.id} className="choice-btn" onClick={() => onChange(resolveSurvivorSend(state, sv.id))}>
+              {sv.name}
+              <span className="choice-need">
+                {' '}
+                ({JOBS[sv.job].name} · 신뢰 {sv.trust})
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   const enabled = enabledChoices(state, event)
   return (
     <div className="event-card">
@@ -229,14 +255,27 @@ function ActionPanel({ state, onChange }: { state: GameState; onChange: (s: Game
   )
 }
 
-function SidePanel({ state }: { state: GameState }) {
+function SidePanel({ state, onChange }: { state: GameState; onChange: (s: GameState) => void }) {
   const items = (Object.keys(state.inventory) as ItemId[]).filter((id) => (state.inventory[id] ?? 0) > 0)
+  const canUse = state.phase === 'day' && !state.activeEventId
   return (
     <aside className="side-panel">
       <section>
         <h3>소지품</h3>
-        {items.length === 0 && <p className="muted">가진 것이 없다.</p>}
         <ul className="item-list">
+          <li>
+            <button className="item-use-btn" disabled={!canUse || state.stats.water <= 0} onClick={() => onChange(useWater(state))}>
+              <span>물 마시기</span>
+              <span className="item-qty">×{state.stats.water}</span>
+            </button>
+          </li>
+          <li>
+            <button className="item-use-btn" disabled={!canUse || state.stats.food <= 0} onClick={() => onChange(useFood(state))}>
+              <span>식량 먹기</span>
+              <span className="item-qty">×{state.stats.food}</span>
+            </button>
+          </li>
+          {items.length === 0 && <li className="muted">그 밖엔 가진 것이 없다.</li>}
           {items.map((id) => (
             <li key={id}>
               <span>{ITEMS[id].name}</span>
@@ -292,7 +331,7 @@ export default function DayScreen({ state, onChange }: { state: GameState; onCha
         <main className="day-main">
           <ActionPanel state={state} onChange={onChange} />
         </main>
-        <SidePanel state={state} />
+        <SidePanel state={state} onChange={onChange} />
       </div>
       <LogDrawer state={state} />
       {state.activeEventId && (

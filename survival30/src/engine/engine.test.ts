@@ -13,11 +13,16 @@ import {
   finalizePrep,
   getActiveEvent,
   performAction,
+  pickPrepCompanion,
   resolveChoice,
+  resolveSurvivorSend,
+  unpickPrepCompanion,
   usedCapacity,
+  useFood,
+  useWater,
 } from './engine'
 import { saveGame, loadGame, clearGame } from './save'
-import type { GameState } from './types'
+import type { GameState, Survivor } from './types'
 
 // vitest는 기본적으로 node 환경이라 localStorage가 없다. save.ts 테스트를 위한
 // 최소한의 인메모리 목.
@@ -310,5 +315,88 @@ describe('데이터 무결성', () => {
         expect(enabledChoices(state, event).length >= 0).toBe(true)
       }
     }
+  })
+})
+
+describe('물/식량 즉시 사용', () => {
+  it('물을 마시면 1개 줄고 체력이 오르고 탈수가 풀린다', () => {
+    let state = freshDay1()
+    state = {
+      ...state,
+      stats: { ...state.stats, water: 3, hp: 50 },
+      statusEffects: { ...state.statusEffects, dehydrated: true },
+    }
+    state = useWater(state)
+    expect(state.stats.water).toBe(2)
+    expect(state.stats.hp).toBe(53)
+    expect(state.statusEffects.dehydrated).toBe(false)
+  })
+
+  it('식량이 없으면 먹을 수 없다', () => {
+    let state = freshDay1()
+    state = { ...state, stats: { ...state.stats, food: 0 } }
+    const next = useFood(state)
+    expect(next).toBe(state) // 아무 변화 없이 그대로 반환
+  })
+})
+
+describe('준비 단계 동료 데려오기', () => {
+  it('방에서 동료를 데려오면 survivors에 들어가고, 다시 내려놓으면 빠진다', () => {
+    let state = createInitialState()
+    expect(state.prepCompanions.length).toBe(3)
+    const target = state.prepCompanions[0]
+    state = pickPrepCompanion(state, target.id)
+    expect(state.survivors.some((sv) => sv.id === target.survivor.id)).toBe(true)
+    state = unpickPrepCompanion(state, target.id)
+    expect(state.survivors.length).toBe(0)
+  })
+
+  it('이미 3명이면 더 데려올 수 없다', () => {
+    let state = createInitialState()
+    for (const c of state.prepCompanions) state = pickPrepCompanion(state, c.id)
+    expect(state.survivors.length).toBe(3)
+  })
+})
+
+describe('이벤트에서 보낼 동료 선택', () => {
+  function mockSurvivor(id: string, name: string): Survivor {
+    return { id, name, job: 'civilian', personality: '-', hp: 100, trust: 50, alive: true, infected: false }
+  }
+
+  it('생존자가 2명 이상이면 즉시 보내지 않고 선택을 기다린다', () => {
+    let state = freshDay1()
+    const a = mockSurvivor('a', '가영')
+    const b = mockSurvivor('b', '나은')
+    state = {
+      ...state,
+      day: 18,
+      survivors: [a, b],
+      activeEventId: 'e077',
+      queuedEventIds: [],
+    }
+    const result = resolveChoice(state, 'letGo077')
+    expect(result.pendingLeaveChoice).not.toBeNull()
+    expect(result.survivors.filter((sv) => sv.alive).length).toBe(2)
+    expect(result.activeEventId).toBe('e077') // 이벤트 카드 자리에 선택 UI가 뜬다
+
+    const sent = resolveSurvivorSend(result, 'a')
+    expect(sent.pendingLeaveChoice).toBeNull()
+    expect(sent.survivors.find((sv) => sv.id === 'a')?.alive).toBe(false)
+    expect(sent.survivors.find((sv) => sv.id === 'b')?.alive).toBe(true)
+  })
+
+  it('생존자가 1명뿐이면 바로 그 사람이 떠난다', () => {
+    let state = freshDay1()
+    const a = mockSurvivor('a', '가영')
+    state = {
+      ...state,
+      day: 18,
+      survivors: [a],
+      activeEventId: 'e077',
+      queuedEventIds: [],
+    }
+    const result = resolveChoice(state, 'letGo077')
+    expect(result.pendingLeaveChoice).toBeNull()
+    expect(result.survivors.find((sv) => sv.id === 'a')?.alive).toBe(false)
   })
 })

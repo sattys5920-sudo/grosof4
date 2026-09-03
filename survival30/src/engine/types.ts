@@ -66,6 +66,14 @@ export interface PrepPickup {
   taken: boolean
 }
 
+/** 준비 단계에서 방에 숨어 있다가 데려올 수 있는 동료 후보. */
+export interface PrepCompanion {
+  id: string
+  survivor: Survivor
+  room: RoomId
+  taken: boolean
+}
+
 export type EndingId =
   | 'true'
   | 'escape'
@@ -129,6 +137,7 @@ export interface GameState {
   guardActiveTonight: boolean
   inventory: Partial<Record<ItemId, number>>
   prepLayout: PrepPickup[]
+  prepCompanions: PrepCompanion[]
   survivors: Survivor[]
   flags: Record<string, boolean>
   counters: Record<string, number>
@@ -143,6 +152,9 @@ export interface GameState {
   ending: EndingId | null
   deathCause: string | null
   gameOverDay: number | null
+  /** "동료를 보낸다" 계열 효과가 걸렸는데 생존자가 2명 이상이라, 누구를 보낼지
+   * 플레이어가 직접 고를 때까지 잠시 멈춰 둔 선택 결과. */
+  pendingLeaveChoice: { ops: EffectOp[]; resultText: string; logPrefix: string } | null
 }
 
 export interface RollResult {
@@ -169,6 +181,7 @@ export type EffectOp =
   | { type: 'survivorHp'; target: 'random' | 'all'; amount: number }
   | { type: 'survivorJoin'; job?: JobId }
   | { type: 'survivorLeave' }
+  | { type: 'survivorLeaveTarget'; id: string }
   | { type: 'route'; value: 'north' | 'south' }
   | { type: 'scoutConsume' }
 

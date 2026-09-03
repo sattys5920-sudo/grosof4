@@ -1,8 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { capacity, finalizePrep, pickPrepItem, unpickPrepItem, usedCapacity } from '../engine/engine'
+import {
+  capacity,
+  finalizePrep,
+  pickPrepCompanion,
+  pickPrepItem,
+  unpickPrepCompanion,
+  unpickPrepItem,
+  usedCapacity,
+} from '../engine/engine'
 import { GAME_RULES } from '../engine/rules'
 import { ITEMS } from '../engine/items'
 import { ROOMS } from '../engine/rooms'
+import { JOBS } from '../engine/survivors'
 import { saveGame } from '../engine/save'
 import type { GameState, RoomId } from '../engine/types'
 
@@ -35,6 +44,12 @@ export default function PrepScreen({ state, onChange }: { state: GameState; onCh
     onChange(next)
   }
 
+  function toggleCompanion(companionId: string, taken: boolean) {
+    const next = taken ? unpickPrepCompanion(state, companionId) : pickPrepCompanion(state, companionId)
+    saveGame(next)
+    onChange(next)
+  }
+
   function enter() {
     if (finishedRef.current) return
     finishedRef.current = true
@@ -43,6 +58,8 @@ export default function PrepScreen({ state, onChange }: { state: GameState; onCh
 
   const activeRoom = ROOMS.find((r) => r.id === openRoom) ?? null
   const roomItems = openRoom ? state.prepLayout.filter((p) => p.room === openRoom) : []
+  const roomCompanions = openRoom ? state.prepCompanions.filter((c) => c.room === openRoom) : []
+  const partyFull = state.survivors.filter((sv) => sv.alive).length >= GAME_RULES.SURVIVOR_MAX
 
   return (
     <div className="prep">
@@ -60,7 +77,8 @@ export default function PrepScreen({ state, onChange }: { state: GameState; onCh
       <div className="floor-plan">
         {ROOMS.map((room) => {
           const items = state.prepLayout.filter((p) => p.room === room.id)
-          const takenCount = items.filter((p) => p.taken).length
+          const companions = state.prepCompanions.filter((c) => c.room === room.id)
+          const takenCount = items.filter((p) => p.taken).length + companions.filter((c) => c.taken).length
           return (
             <button
               key={room.id}
@@ -69,7 +87,7 @@ export default function PrepScreen({ state, onChange }: { state: GameState; onCh
             >
               <div className="room-name">{room.name}</div>
               <div className="room-meta">
-                {takenCount}/{items.length}
+                {takenCount}/{items.length + companions.length}
               </div>
             </button>
           )
@@ -79,7 +97,27 @@ export default function PrepScreen({ state, onChange }: { state: GameState; onCh
       {activeRoom && (
         <div className="room-detail">
           <div className="room-detail-title">{activeRoom.name}</div>
-          {roomItems.length === 0 && <p className="muted">아무것도 없다.</p>}
+          {roomItems.length === 0 && roomCompanions.length === 0 && <p className="muted">아무것도 없다.</p>}
+          {roomCompanions.length > 0 && (
+            <div className="room-companions">
+              {roomCompanions.map((c) => {
+                const blocked = !c.taken && partyFull
+                return (
+                  <button
+                    key={c.id}
+                    className={`companion-card ${c.taken ? 'picked' : ''} ${blocked ? 'disabled' : ''}`}
+                    disabled={blocked}
+                    onClick={() => toggleCompanion(c.id, c.taken)}
+                  >
+                    <div className="companion-name">{c.survivor.name}</div>
+                    <div className="companion-meta">
+                      {JOBS[c.survivor.job].name} · {c.survivor.personality}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
           <div className="room-items">
             {roomItems.map((p) => {
               const def = ITEMS[p.item]

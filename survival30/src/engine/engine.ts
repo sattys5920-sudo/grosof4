@@ -20,6 +20,7 @@ import type {
   GameState,
   ItemId,
   LocationId,
+  PrepCompanion,
   PrepPickup,
 } from './types'
 
@@ -238,6 +239,14 @@ export function applyEffects(state: GameState, ops: EffectOp[], rng: Rng): { sta
         }
         break
       }
+      case 'survivorLeaveTarget': {
+        const sv = survivors.find((s) => s.id === op.id && s.alive)
+        if (sv) {
+          sv.alive = false
+          notes.push(`${sv.name}(이)가 떠났다.`)
+        }
+        break
+      }
       case 'route':
         route = op.value
         break
@@ -403,9 +412,22 @@ function buildPrepLayout(rng: Rng): PrepPickup[] {
   })
 }
 
+// 방 어딘가에 숨어 있다가 데려올 수 있는 동료 후보 3명을 만든다.
+function buildPrepCompanions(rng: Rng): PrepCompanion[] {
+  const companions: PrepCompanion[] = []
+  const usedNames: string[] = []
+  for (let i = 0; i < 3; i++) {
+    const survivor = generateSurvivor(rng, usedNames)
+    usedNames.push(survivor.name)
+    companions.push({ id: `companion-${i}`, survivor, room: rng.pick(ROOMS).id, taken: false })
+  }
+  return companions
+}
+
 export function createInitialState(): GameState {
   const rng = new Rng(freshSeed())
   const prepLayout = buildPrepLayout(rng)
+  const prepCompanions = buildPrepCompanions(rng)
   return {
     seedLabel: 'run',
     rngState: rng.state,
@@ -435,6 +457,7 @@ export function createInitialState(): GameState {
     guardActiveTonight: false,
     inventory: {},
     prepLayout,
+    prepCompanions,
     survivors: [],
     flags: {},
     counters: {},
@@ -449,6 +472,7 @@ export function createInitialState(): GameState {
     ending: null,
     deathCause: null,
     gameOverDay: null,
+    pendingLeaveChoice: null,
   }
 }
 
@@ -478,6 +502,40 @@ export function unpickPrepItem(state: GameState, pickupId: string): GameState {
   if (next <= 0) delete inventory[pickup.item]
   else inventory[pickup.item] = next
   return { ...state, prepLayout, inventory }
+}
+
+export function pickPrepCompanion(state: GameState, companionId: string): GameState {
+  if (state.phase !== 'prep') return state
+  const companion = state.prepCompanions.find((c) => c.id === companionId)
+  if (!companion || companion.taken) return state
+  if (state.survivors.filter((sv) => sv.alive).length >= GAME_RULES.SURVIVOR_MAX) return state
+  const prepCompanions = state.prepCompanions.map((c) => (c.id === companionId ? { ...c, taken: true } : c))
+  return { ...state, prepCompanions, survivors: [...state.survivors, companion.survivor] }
+}
+
+export function unpickPrepCompanion(state: GameState, companionId: string): GameState {
+  if (state.phase !== 'prep') return state
+  const companion = state.prepCompanions.find((c) => c.id === companionId)
+  if (!companion || !companion.taken) return state
+  const prepCompanions = state.prepCompanions.map((c) => (c.id === companionId ? { ...c, taken: false } : c))
+  const survivors = state.survivors.filter((sv) => sv.id !== companion.survivor.id)
+  return { ...state, prepCompanions, survivors }
+}
+
+// ============================== 물/식량 즉시 사용 ==============================
+// 하루의 주요 행동과는 별개로, 언제든 클릭해서 바로 마시거나 먹을 수 있다.
+export function useWater(state: GameState): GameState {
+  if (state.phase !== 'day' || state.activeEventId || state.stats.water <= 0) return state
+  const stats = { ...state.stats, water: state.stats.water - 1, hp: clamp(state.stats.hp + 3, 0, GAME_RULES.MAX_HP) }
+  const statusEffects = { ...state.statusEffects, dehydrated: false }
+  return log({ ...state, stats, statusEffects }, '물을 마셨다. 체력 +3.', 'action')
+}
+
+export function useFood(state: GameState): GameState {
+  if (state.phase !== 'day' || state.activeEventId || state.stats.food <= 0) return state
+  const stats = { ...state.stats, food: state.stats.food - 1, hp: clamp(state.stats.hp + 3, 0, GAME_RULES.MAX_HP) }
+  const statusEffects = { ...state.statusEffects, starving: false }
+  return log({ ...state, stats, statusEffects }, '식량을 먹었다. 체력 +3.', 'action')
 }
 
 export function finalizePrep(state: GameState): GameState {
@@ -912,6 +970,41 @@ export function performAction(state: GameState, actionId: ActionId, params: Acti
 }
 
 // ============================== 선택지 해결 ==============================
+/** 선택지 효과를 실제로 적용하고, 이벤트/밤/하루 마감까지 이어서 처리한다. */
+function finishChoiceResolution(
+  state: GameState,
+  event: GameEvent,
+  ops: EffectOp[],
+  resultText: string,
+  logPrefix: string,
+  rng: Rng,
+): GameState {
+  const applied = applyEffects(state, ops, rng)
+  let working = logNotes(applied.state, applied.notes)
+  working = log(working, `${logPrefix} → ${resultText}`, 'event')
+  working = { ...working, pendingChoiceResult: resultText }
+
+  if (event.id === DAY30_EVENT.id) {
+    working = checkDeath(working)
+    if (working.phase === 'ended') return working
+    return finalizeGame(working)
+  }
+
+  working = checkDeath(working)
+  if (working.phase === 'ended') return working
+
+  if (working.queuedEventIds.length > 0) {
+    const [next, ...rest] = working.queuedEventIds
+    return { ...working, activeEventId: next, queuedEventIds: rest }
+  }
+
+  working = { ...working, activeEventId: null }
+  working = resolveNight(working, rng)
+  working = checkDeath(working)
+  if (working.phase === 'ended') return working
+  return endDay(working)
+}
+
 export function resolveChoice(state: GameState, choiceId: string): GameState {
   if (!state.activeEventId) return state
   return withRng(state, (rng, s0) => {
@@ -920,43 +1013,38 @@ export function resolveChoice(state: GameState, choiceId: string): GameState {
     const choice = event.choices.find((ch) => ch.id === choiceId)
     if (!choice || !requirementMet(s0, choice.requires)) return s0
 
-    let working = s0
-    let resultText = ''
-
+    let ops: EffectOp[]
+    let resultText: string
     if (choice.chance != null || choice.chanceFn) {
       const chance = clampChance(choice.chanceFn ? choice.chanceFn(s0) : (choice.chance as number))
       const { success } = resolveChance(rng, chance)
-      const ops = success ? choice.success ?? [] : choice.fail ?? []
-      const applied = applyEffects(working, ops, rng)
-      working = logNotes(applied.state, applied.notes)
+      ops = success ? choice.success ?? [] : choice.fail ?? []
       resultText = success ? choice.successText ?? '' : choice.failText ?? ''
     } else {
-      const applied = applyEffects(working, choice.effects ?? [], rng)
-      working = logNotes(applied.state, applied.notes)
+      ops = choice.effects ?? []
       resultText = choice.resultText ?? ''
     }
 
-    working = log(working, `[${event.title}] ${choice.label} → ${resultText}`, 'event')
-    working = { ...working, pendingChoiceResult: resultText }
-
-    if (event.id === DAY30_EVENT.id) {
-      working = checkDeath(working)
-      if (working.phase === 'ended') return working
-      return finalizeGame(working)
+    const logPrefix = `[${event.title}] ${choice.label}`
+    const aliveCount = s0.survivors.filter((sv) => sv.alive).length
+    const needsSurvivorPick = aliveCount >= 2 && ops.some((op) => op.type === 'survivorLeave')
+    if (needsSurvivorPick) {
+      return { ...s0, pendingLeaveChoice: { ops, resultText, logPrefix } }
     }
 
-    working = checkDeath(working)
-    if (working.phase === 'ended') return working
+    return finishChoiceResolution(s0, event, ops, resultText, logPrefix, rng)
+  })
+}
 
-    if (working.queuedEventIds.length > 0) {
-      const [next, ...rest] = working.queuedEventIds
-      return { ...working, activeEventId: next, queuedEventIds: rest }
-    }
-
-    working = { ...working, activeEventId: null }
-    working = resolveNight(working, rng)
-    working = checkDeath(working)
-    if (working.phase === 'ended') return working
-    return endDay(working)
+/** "누구를 보낼까?" 선택 화면에서 특정 동료를 골랐을 때 호출한다. */
+export function resolveSurvivorSend(state: GameState, survivorId: string): GameState {
+  if (!state.pendingLeaveChoice || !state.activeEventId) return state
+  return withRng(state, (rng, s0) => {
+    const pending = s0.pendingLeaveChoice
+    const event = getEvent(s0.activeEventId!)
+    if (!pending || !event) return s0
+    const ops = pending.ops.map((op): EffectOp => (op.type === 'survivorLeave' ? { type: 'survivorLeaveTarget', id: survivorId } : op))
+    const cleared = { ...s0, pendingLeaveChoice: null }
+    return finishChoiceResolution(cleared, event, ops, pending.resultText, pending.logPrefix, rng)
   })
 }

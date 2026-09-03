@@ -127,6 +127,43 @@
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 8px;
 }
+.room-companions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--line);
+}
+.companion-card {
+  text-align: left;
+  background: var(--panel-raised);
+  border: 1px solid var(--info);
+  border-radius: 6px;
+  padding: 10px;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.companion-card:hover:not(.disabled) {
+  border-color: var(--accent);
+}
+.companion-card.picked {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.companion-card.disabled {
+  opacity: 0.35;
+}
+.companion-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+.companion-meta {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
 .prep-item {
   text-align: left;
   background: var(--panel-raised);
@@ -414,6 +451,25 @@
 .item-qty {
   font-family: var(--font-mono);
   color: var(--ink-faint);
+}
+.item-use-btn {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px 10px;
+  color: var(--ink);
+  font-size: 13px;
+}
+.item-use-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+.item-use-btn:disabled {
+  opacity: 0.4;
 }
 .survivor-list li {
   border: 1px solid var(--line);
