@@ -1,22 +1,22 @@
 :root {
-  --void: #0c0f0a;
-  --panel: #14180f;
-  --panel-raised: #1b2013;
-  --line: #2c3320;
-  --line-soft: #20260f;
-  --ink: #e6e8dc;
-  --ink-dim: #9aa08a;
-  --ink-faint: #5c6350;
+  --void: #0a1410;
+  --panel: #0f2118;
+  --panel-raised: #163020;
+  --line: #24492f;
+  --line-soft: #1a3623;
+  --ink: #dcf0e2;
+  --ink-dim: #8fb89a;
+  --ink-faint: #4f6d57;
 
-  --accent: #d9a441;
-  --accent-bright: #f0c266;
-  --accent-dim: #4a3a1a;
+  --accent: #4fae5c;
+  --accent-bright: #7ee68a;
+  --accent-dim: #1c3a22;
 
   --danger: #c94b3f;
   --danger-dim: #3c1c17;
-  --ok: #6f9c4a;
-  --ok-dim: #22301a;
-  --info: #4f8fae;
+  --ok: #8ed67d;
+  --ok-dim: #1f3a1a;
+  --info: #4f9aae;
 
   --font-display: 'Black Han Sans', 'IBM Plex Sans KR', sans-serif;
   --font-body: 'IBM Plex Sans KR', -apple-system, 'Malgun Gothic', sans-serif;

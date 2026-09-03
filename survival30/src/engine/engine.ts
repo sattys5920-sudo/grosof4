@@ -79,7 +79,7 @@ export function applyEffects(state: GameState, ops: EffectOp[], rng: Rng): { sta
   const dmgMult = dangerMultiplier(state.day)
   const scaleDamage = (amount: number) => (amount < 0 ? Math.round(amount * dmgMult) : amount)
 
-  // 소지 공간 한도는 준비(60초) 단계에서 처음 챙길 때만 적용된다. 그 이후
+  // 소지 공간 한도는 준비(30초) 단계에서 처음 챙길 때만 적용된다. 그 이후
   // 탐색·이벤트로 얻는 물건은 무엇이든 한도 없이 그대로 쌓인다.
   function addItem(id: ItemId, amount: number) {
     if (amount <= 0) {
@@ -460,7 +460,7 @@ export function createInitialState(): GameState {
     route: null,
     firedEventIds: [],
     lastFiredDay: {},
-    eventLog: [{ day: 0, text: '경보가 울린다. 60초 안에 챙길 것을 정해야 한다.', tag: 'system' }],
+    eventLog: [{ day: 0, text: '경보가 울린다. 30초 안에 챙길 것을 정해야 한다.', tag: 'system' }],
     activeEventId: null,
     queuedEventIds: [],
     resultPopup: null,

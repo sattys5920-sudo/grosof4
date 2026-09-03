@@ -4,7 +4,7 @@ export interface ItemDef {
   id: ItemId
   name: string
   space: number
-  /** 60초 준비 단계에서 직접 주울 수 있는 아이템인지 */
+  /** 30초 준비 단계에서 직접 주울 수 있는 아이템인지 */
   prepAvailable: boolean
   description: string
 }
