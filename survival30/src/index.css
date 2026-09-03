@@ -1,0 +1,67 @@
+:root {
+  --void: #0c0f0a;
+  --panel: #14180f;
+  --panel-raised: #1b2013;
+  --line: #2c3320;
+  --line-soft: #20260f;
+  --ink: #e6e8dc;
+  --ink-dim: #9aa08a;
+  --ink-faint: #5c6350;
+
+  --accent: #d9a441;
+  --accent-bright: #f0c266;
+  --accent-dim: #4a3a1a;
+
+  --danger: #c94b3f;
+  --danger-dim: #3c1c17;
+  --ok: #6f9c4a;
+  --ok-dim: #22301a;
+  --info: #4f8fae;
+
+  --font-display: 'Black Han Sans', 'IBM Plex Sans KR', sans-serif;
+  --font-body: 'IBM Plex Sans KR', -apple-system, 'Malgun Gothic', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  color-scheme: dark;
+  color: var(--ink);
+  background: var(--void);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--void);
+  color: var(--ink);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-dim);
+  color: var(--accent-bright);
+}
