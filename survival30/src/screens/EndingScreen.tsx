@@ -1,6 +1,7 @@
 import { endingText } from '../engine/endings'
 import { LOCATION_ORDER } from '../engine/locations'
 import type { GameState } from '../engine/types'
+import LeaderboardSection from './LeaderboardSection'
 
 export default function EndingScreen({ state, onRestart }: { state: GameState; onRestart: () => void }) {
   const ending = state.ending ? endingText(state.ending) : { title: '끝', description: '' }
@@ -67,6 +68,8 @@ export default function EndingScreen({ state, onRestart }: { state: GameState; o
             </ul>
           </div>
         )}
+
+        {state.ending && <LeaderboardSection day={day} endingId={state.ending} endingTitle={ending.title} />}
 
         <button className="btn btn-primary" onClick={onRestart}>
           다시 살아남기
