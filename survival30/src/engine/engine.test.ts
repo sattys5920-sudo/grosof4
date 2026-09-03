@@ -135,10 +135,16 @@ describe('클램프 규칙', () => {
     expect(usedCapacity(next)).toBeGreaterThan(capacity(next))
   })
 
-  it('물/식량이 아닌 다른 물품은 준비 단계 이후에도 여전히 소지 공간 한도를 넘을 수 없다', () => {
+  it('준비 단계 이후에는 물/식량이 아닌 다른 물품도 소지 공간 한도 없이 전부 쌓인다', () => {
     const state = freshDay1()
     const { state: next } = applyEffects(state, [{ type: 'item', id: 'medicine', amount: 9999 }], new Rng(1))
-    expect(next.inventory.medicine ?? 0).toBeLessThan(9999)
+    expect(next.inventory.medicine).toBe(9999)
+  })
+
+  it('도끼로 문을 부수는 선택은 도끼를 소모한다', () => {
+    const state = freshDay1()
+    const { state: next } = applyEffects(state, [{ type: 'item', id: 'axe', amount: -1 }], new Rng(1))
+    expect(next.inventory.axe ?? 0).toBe(0)
   })
 
   it('탐색/위험 확률은 항상 5~95 사이로 제한된다', () => {

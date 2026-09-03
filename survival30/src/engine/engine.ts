@@ -74,10 +74,8 @@ export function applyEffects(state: GameState, ops: EffectOp[], rng: Rng): { sta
   let pendingBreakdownRecovery = state.pendingBreakdownRecovery
   const notes: string[] = []
 
-  const cap = GAME_RULES.BASE_CAPACITY + ((inventory.backpack ?? 0) > 0 ? GAME_RULES.BACKPACK_BONUS : 0)
-  const usedCap = () =>
-    (Object.keys(inventory) as ItemId[]).reduce((sum, id) => sum + (inventory[id] ?? 0) * ITEMS[id].space, 0)
-
+  // 소지 공간 한도는 준비(60초) 단계에서 처음 챙길 때만 적용된다. 그 이후
+  // 탐색·이벤트로 얻는 물건은 무엇이든 한도 없이 그대로 쌓인다.
   function addItem(id: ItemId, amount: number) {
     if (amount <= 0) {
       const next = Math.max(0, (inventory[id] ?? 0) + amount)
@@ -85,16 +83,7 @@ export function applyEffects(state: GameState, ops: EffectOp[], rng: Rng): { sta
       else inventory[id] = next
       return
     }
-    // 물/식량은 준비 단계에서 챙길 때만 소지 한도가 걸리고, 그 이후 탐색·이벤트로 얻는 건 한도 없이 다 쌓인다.
-    if (id === 'water' || id === 'can') {
-      inventory[id] = (inventory[id] ?? 0) + amount
-      return
-    }
-    const space = ITEMS[id].space
-    const room = cap - usedCap()
-    const affordable = Math.max(0, Math.min(amount, Math.floor(room / space)))
-    if (affordable < amount) notes.push('공간이 부족해 일부를 챙기지 못했다.')
-    if (affordable > 0) inventory[id] = (inventory[id] ?? 0) + affordable
+    inventory[id] = (inventory[id] ?? 0) + amount
   }
 
   for (const op of ops) {

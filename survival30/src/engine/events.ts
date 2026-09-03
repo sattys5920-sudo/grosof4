@@ -1589,6 +1589,65 @@ const LATE_GAME_EXTRA: GameEvent[] = [
   ),
 ]
 
+// ============================== 추가분 4 : 1회성 소모 장비 ==============================
+// 소지 공간 제한이 없어진 대신, 도구 몇 가지는 특정 이벤트에서 한 번 크게
+// 쓰고 나면 그 자리에서 사라진다 (item(id, -1)). 다른 이벤트/탐색에서
+// 이 도구를 요구하는 경우엔 영향이 없고, 새로 하나를 더 챙겨야 다시 쓸 수 있다.
+const CONSUMABLE_TOOL_EXTRA: GameEvent[] = [
+  ev(
+    'e134',
+    1,
+    ENDLESS_DAY_MAX,
+    '굳게 닫힌 문',
+    '안쪽에 뭔가 있을 것 같은 문이 굳게 닫혀 있다.',
+    'danger',
+    [
+      c('breakDoor134', '도끼로 부순다', [item('axe', -1), food(2), water(2)], '도끼로 몇 번이고 내리쳐 부쉈다. 날이 완전히 무뎌져 더는 쓸 수 없다. 안에서 식량과 물을 찾았다.', { item: 'axe' }),
+      c('leaveDoor134', '포기한다', [], '무리하지 않고 돌아섰다.'),
+    ],
+    { repeatable: true, cooldownDays: 4 },
+  ),
+  ev(
+    'e135',
+    6,
+    ENDLESS_DAY_MAX,
+    '고장 난 배관',
+    '벽 안쪽 배관이 완전히 망가졌다.',
+    'resource',
+    [
+      c('fixPipe135', '공구함을 탈탈 털어 고친다', [item('toolbox', -1), shelter(15)], '가진 공구를 다 써서 뜯어고쳤다. 공구함 안은 이제 텅 비었다.', { item: 'toolbox' }),
+      c('leavePipe135', '그냥 둔다', [shelter(-5)], '손대지 않았다. 조금씩 더 상했다.'),
+    ],
+    { repeatable: true, cooldownDays: 4 },
+  ),
+  ev(
+    'e136',
+    6,
+    ENDLESS_DAY_MAX,
+    '오염된 저수조',
+    '커다란 저수조에 물이 남아 있지만, 색이 탁하다.',
+    'resource',
+    [
+      c('purify136', '정수 필터로 끝까지 거른다', [item('filter', -1), water(5)], '필터가 완전히 막힐 때까지 거르고 또 걸렀다. 대신 꽤 많은 물을 확보했다.', { item: 'filter' }),
+      c('skipTank136', '위험을 무릅쓰지 않는다', [], '손대지 않기로 했다.'),
+    ],
+    { repeatable: true, cooldownDays: 4 },
+  ),
+  ev(
+    'e137',
+    6,
+    ENDLESS_DAY_MAX,
+    '밤하늘의 신호',
+    '멀리서 규칙적으로 반짝이는 빛이 보인다.',
+    'story',
+    [
+      c('scanSky137', '망원경으로 끝까지 관찰한다', [item('binoculars', -1), info(15)], '오랫동안 눈에 대고 있었더니 렌즈에 금이 갔다. 대신 값진 정보를 얻었다.', { item: 'binoculars' }),
+      c('skipSky137', '대충 보고 만다', [info(3)], '대충 훑어보고 말았다.'),
+    ],
+    { repeatable: true, cooldownDays: 5 },
+  ),
+]
+
 export const ALL_EVENTS: GameEvent[] = [
   ...DAY_1_5,
   ...DAY_6_10,
@@ -1599,6 +1658,7 @@ export const ALL_EVENTS: GameEvent[] = [
   ...SURVIVAL_EXTRA,
   ...COMPANION_EXTRA,
   ...LATE_GAME_EXTRA,
+  ...CONSUMABLE_TOOL_EXTRA,
 ]
 
 export const EVENT_MAP: Record<string, GameEvent> = Object.fromEntries(ALL_EVENTS.map((e) => [e.id, e]))
