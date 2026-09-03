@@ -11,7 +11,10 @@ export default function EndingScreen({ state, onRestart }: { state: GameState; o
   return (
     <div className="ending">
       <div className="ending-card">
-        <div className="ending-eyebrow">{day}일째</div>
+        <div className="ending-eyebrow">
+          {state.ending === 'true' && <span className="ending-badge-true">진엔딩</span>}
+          {day}일째
+        </div>
         <h1 className="ending-title">{ending.title}</h1>
         <p className="ending-desc">{ending.description}</p>
 

@@ -600,6 +600,15 @@
   letter-spacing: 0.1em;
   color: var(--accent);
 }
+.ending-badge-true {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--accent-bright);
+  border-radius: 999px;
+  color: var(--accent-bright);
+  font-weight: 700;
+}
 .ending-title {
   font-family: var(--font-display);
   font-size: 36px;
