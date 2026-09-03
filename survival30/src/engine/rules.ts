@@ -31,10 +31,10 @@ export const GAME_RULES = {
   MAX_HUNGER: 100,
   START_THIRST: 100,
   START_HUNGER: 100,
-  THIRST_DAILY_DROP: 10,
-  HUNGER_DAILY_DROP: 10,
-  THIRST_RECOVER: 30,
-  HUNGER_RECOVER: 30,
+  THIRST_DAILY_DROP: 15,
+  HUNGER_DAILY_DROP: 15,
+  THIRST_RECOVER: 25,
+  HUNGER_RECOVER: 25,
 
   WATER_ZERO_HP: 10,
   WATER_ZERO_MENTAL: 5,
@@ -169,6 +169,12 @@ export const GAME_RULES = {
     { min: 21, max: 25, bonus: 20 },
     { min: 26, max: 30, bonus: 25 },
   ],
+  // 30일 이후에도 난이도가 멈추지 않도록: 표에 없는 날짜부터는 이 간격마다
+  // 계속 보너스가 붙는다 (상한 있음). "적당히 조심하면 끝없이 버틴다"를 막는
+  // 핵심 장치 — 탐색/야간습격 확률뿐 아니라 이벤트 피해량(dangerMultiplier)에도 쓰인다.
+  DIFFICULTY_ENDLESS_STEP_DAYS: 10,
+  DIFFICULTY_ENDLESS_STEP_BONUS: 5,
+  DIFFICULTY_ENDLESS_CAP: 70,
 
   ENDING_TRUE_INFO: 100,
   ENDING_TRUE_RADIO_COUNT: 3,
@@ -214,7 +220,17 @@ export function mentalTierLabel(tier: MentalTier): string {
 
 export function difficultyBonus(day: number): number {
   const row = GAME_RULES.DIFFICULTY_BY_DAY.find((r) => day >= r.min && day <= r.max)
-  return row ? row.bonus : GAME_RULES.DIFFICULTY_BY_DAY[GAME_RULES.DIFFICULTY_BY_DAY.length - 1].bonus
+  if (row) return row.bonus
+  const last = GAME_RULES.DIFFICULTY_BY_DAY[GAME_RULES.DIFFICULTY_BY_DAY.length - 1]
+  const daysBeyond = day - last.max
+  const extra = Math.floor(daysBeyond / GAME_RULES.DIFFICULTY_ENDLESS_STEP_DAYS) * GAME_RULES.DIFFICULTY_ENDLESS_STEP_BONUS
+  return Math.min(last.bonus + extra, GAME_RULES.DIFFICULTY_ENDLESS_CAP)
+}
+
+/** 날짜 기반 난이도 보너스를 "피해량 배율"로 환산한다. 초반(1~5일)엔 1배 그대로,
+ * 시간이 지날수록 이벤트/야간/게이지 소진 피해가 함께 무거워진다. */
+export function dangerMultiplier(day: number): number {
+  return 1 + difficultyBonus(day) / 100
 }
 
 export function clampChance(value: number): number {

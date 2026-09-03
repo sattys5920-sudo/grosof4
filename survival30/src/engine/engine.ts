@@ -5,7 +5,7 @@ import { CRAFT_RECIPES, ITEMS, PREP_ITEM_ORDER } from './items'
 import { LOCATION_REWARDS, RISK_OUTCOME_WEIGHTS, type RiskOutcome } from './locations'
 import { ROOMS } from './rooms'
 import { Rng, freshSeed, resolveChance } from './rng'
-import { GAME_RULES, LOCATIONS, clamp, clampChance, difficultyBonus, mentalTier } from './rules'
+import { GAME_RULES, LOCATIONS, clamp, clampChance, dangerMultiplier, difficultyBonus, mentalTier } from './rules'
 import { saveGame } from './save'
 import { generateSurvivor } from './survivors'
 import { ALL_EVENTS, EVENT_MAP } from './events'
@@ -74,6 +74,11 @@ export function applyEffects(state: GameState, ops: EffectOp[], rng: Rng): { sta
   let pendingBreakdownRecovery = state.pendingBreakdownRecovery
   const notes: string[] = []
 
+  // 시간이 지날수록(날짜 기반 난이도) 이벤트로 입는 피해도 함께 무거워진다.
+  // 회복/보상 효과는 그대로 두고 "깎이는" 효과만 배율을 곱한다.
+  const dmgMult = dangerMultiplier(state.day)
+  const scaleDamage = (amount: number) => (amount < 0 ? Math.round(amount * dmgMult) : amount)
+
   // 소지 공간 한도는 준비(60초) 단계에서 처음 챙길 때만 적용된다. 그 이후
   // 탐색·이벤트로 얻는 물건은 무엇이든 한도 없이 그대로 쌓인다.
   function addItem(id: ItemId, amount: number) {
@@ -89,10 +94,10 @@ export function applyEffects(state: GameState, ops: EffectOp[], rng: Rng): { sta
   for (const op of ops) {
     switch (op.type) {
       case 'hp':
-        stats.hp = clamp(stats.hp + op.amount, 0, GAME_RULES.MAX_HP)
+        stats.hp = clamp(stats.hp + scaleDamage(op.amount), 0, GAME_RULES.MAX_HP)
         break
       case 'mental': {
-        const next = clamp(stats.mental + op.amount, 0, GAME_RULES.MAX_MENTAL)
+        const next = clamp(stats.mental + scaleDamage(op.amount), 0, GAME_RULES.MAX_MENTAL)
         stats.mental = next
         if (next <= 0) {
           mentalBreakdownFlag = true
@@ -159,7 +164,7 @@ export function applyEffects(state: GameState, ops: EffectOp[], rng: Rng): { sta
         for (const t of targets) {
           const sv = survivors.find((s) => s.id === t.id)
           if (!sv) continue
-          sv.hp = clamp(sv.hp + op.amount, 0, 100)
+          sv.hp = clamp(sv.hp + scaleDamage(op.amount), 0, 100)
           if (sv.hp <= 0 && sv.alive) {
             sv.alive = false
             stats.mental = clamp(stats.mental - GAME_RULES.SURVIVOR_DEATH_MENTAL, 0, GAME_RULES.MAX_MENTAL)
@@ -282,6 +287,11 @@ function checkAutoEndings(state: GameState): GameState {
 
 // ============================== 아침 ==============================
 export function applyMorning(state: GameState): GameState {
+  // 며칠째인지에 따라 기본 소모/방치 피해도 함께 무거워진다 (dangerMultiplier).
+  // 아무리 조심스럽게 버텨도 시간이 지나면 하루하루가 더 힘들어지도록 하는 장치.
+  const dmgMult = dangerMultiplier(state.day)
+  const scaled = (n: number) => Math.round(n * dmgMult)
+
   const stats = {
     ...state.stats,
     thirst: clamp(state.stats.thirst - GAME_RULES.THIRST_DAILY_DROP, 0, GAME_RULES.MAX_THIRST),
@@ -293,8 +303,8 @@ export function applyMorning(state: GameState): GameState {
   const notes: string[] = []
 
   if (thirstEmpty) {
-    stats.hp = clamp(stats.hp - GAME_RULES.WATER_ZERO_HP - GAME_RULES.DEHYDRATION_DAILY_HP, 0, GAME_RULES.MAX_HP)
-    stats.mental = clamp(stats.mental - GAME_RULES.WATER_ZERO_MENTAL, 0, GAME_RULES.MAX_MENTAL)
+    stats.hp = clamp(stats.hp - scaled(GAME_RULES.WATER_ZERO_HP + GAME_RULES.DEHYDRATION_DAILY_HP), 0, GAME_RULES.MAX_HP)
+    stats.mental = clamp(stats.mental - scaled(GAME_RULES.WATER_ZERO_MENTAL), 0, GAME_RULES.MAX_MENTAL)
     statusEffects.dehydrated = true
     notes.push('목이 말라 체력과 정신력이 줄었다.')
   } else {
@@ -302,8 +312,8 @@ export function applyMorning(state: GameState): GameState {
   }
 
   if (hungerEmpty) {
-    stats.hp = clamp(stats.hp - GAME_RULES.FOOD_ZERO_HP - GAME_RULES.STARVATION_DAILY_HP, 0, GAME_RULES.MAX_HP)
-    stats.mental = clamp(stats.mental - GAME_RULES.FOOD_ZERO_MENTAL, 0, GAME_RULES.MAX_MENTAL)
+    stats.hp = clamp(stats.hp - scaled(GAME_RULES.FOOD_ZERO_HP + GAME_RULES.STARVATION_DAILY_HP), 0, GAME_RULES.MAX_HP)
+    stats.mental = clamp(stats.mental - scaled(GAME_RULES.FOOD_ZERO_MENTAL), 0, GAME_RULES.MAX_MENTAL)
     statusEffects.starving = true
     notes.push('배가 고파 체력과 정신력이 줄었다.')
   } else {
@@ -314,7 +324,7 @@ export function applyMorning(state: GameState): GameState {
   if (statusEffects.injured) {
     injuredUntreatedDays += 1
     if (injuredUntreatedDays >= GAME_RULES.INJURY_UNTREATED_START_DAY) {
-      stats.hp = clamp(stats.hp - GAME_RULES.INJURY_UNTREATED_HP, 0, GAME_RULES.MAX_HP)
+      stats.hp = clamp(stats.hp - scaled(GAME_RULES.INJURY_UNTREATED_HP), 0, GAME_RULES.MAX_HP)
       notes.push('치료하지 않은 부상이 계속 덧났다.')
     }
   } else {
@@ -322,7 +332,7 @@ export function applyMorning(state: GameState): GameState {
   }
 
   if (stats.contamination >= GAME_RULES.CONTAMINATION_HP_THRESHOLD) {
-    stats.hp = clamp(stats.hp - GAME_RULES.CONTAMINATION_HP_DAILY, 0, GAME_RULES.MAX_HP)
+    stats.hp = clamp(stats.hp - scaled(GAME_RULES.CONTAMINATION_HP_DAILY), 0, GAME_RULES.MAX_HP)
     notes.push('오염이 몸을 갉아먹고 있다.')
   }
   if (stats.contamination >= GAME_RULES.CONTAMINATION_INFECT_THRESHOLD && !statusEffects.infected) {
@@ -337,8 +347,8 @@ export function applyMorning(state: GameState): GameState {
     let survivorHpNext = sv.hp
     const thirst = clamp(sv.thirst - GAME_RULES.THIRST_DAILY_DROP, 0, GAME_RULES.MAX_THIRST)
     const hunger = clamp(sv.hunger - GAME_RULES.HUNGER_DAILY_DROP, 0, GAME_RULES.MAX_HUNGER)
-    if (thirst <= 0) survivorHpNext = clamp(survivorHpNext - GAME_RULES.WATER_ZERO_HP, 0, 100)
-    if (hunger <= 0) survivorHpNext = clamp(survivorHpNext - GAME_RULES.FOOD_ZERO_HP, 0, 100)
+    if (thirst <= 0) survivorHpNext = clamp(survivorHpNext - scaled(GAME_RULES.WATER_ZERO_HP), 0, 100)
+    if (hunger <= 0) survivorHpNext = clamp(survivorHpNext - scaled(GAME_RULES.FOOD_ZERO_HP), 0, 100)
     const alive = survivorHpNext > 0
     if (!alive) {
       diedJustNow.push(sv.id)

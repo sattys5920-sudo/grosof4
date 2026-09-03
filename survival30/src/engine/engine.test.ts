@@ -2,7 +2,7 @@
 // 30일 고정 결승선이 사라진 뒤의 새 규칙(엔드리스 진행, 진엔딩 즉시 종료, 탈출
 // 행동, 동료 목마름/배고픔)도 함께 검증한다.
 import { beforeAll, describe, expect, it } from 'vitest'
-import { GAME_RULES, clamp, clampChance } from './rules'
+import { GAME_RULES, clamp, clampChance, difficultyBonus } from './rules'
 import { Rng } from './rng'
 import { ALL_EVENTS } from './events'
 import {
@@ -151,6 +151,41 @@ describe('클램프 규칙', () => {
     expect(clampChance(-500)).toBe(GAME_RULES.CHANCE_MIN)
     expect(clampChance(500)).toBe(GAME_RULES.CHANCE_MAX)
     expect(clampChance(50)).toBe(50)
+  })
+})
+
+describe('30일 이후에도 계속 오르는 난이도', () => {
+  it('30일까지의 난이도는 기존 표를 그대로 따르고, 그 이후엔 계속 오르다가 상한에서 멈춘다', () => {
+    expect(difficultyBonus(1)).toBe(0)
+    expect(difficultyBonus(30)).toBe(25)
+    expect(difficultyBonus(31)).toBe(25) // 30일 이후 첫 10일 구간 전에는 그대로
+    expect(difficultyBonus(40)).toBe(30) // 25 + 5
+    expect(difficultyBonus(9999)).toBe(GAME_RULES.DIFFICULTY_ENDLESS_CAP) // 상한에서 멈춘다
+  })
+
+  it('날짜가 늦을수록 이벤트로 입는 피해(음수 효과)가 커지고, 회복(양수 효과)은 그대로다', () => {
+    const early = freshDay1()
+    const { state: earlyHurt } = applyEffects(early, [{ type: 'hp', amount: -10 }], new Rng(1))
+    expect(earlyHurt.stats.hp).toBe(90) // 1일차엔 배율 1배
+
+    const late = { ...freshDay1(), day: 9999 }
+    const { state: lateHurt } = applyEffects(late, [{ type: 'hp', amount: -10 }], new Rng(1))
+    expect(lateHurt.stats.hp).toBeLessThan(90) // 훨씬 늦은 날엔 더 많이 깎인다
+
+    const { state: lateHealed } = applyEffects(late, [{ type: 'hp', amount: 10 }], new Rng(1))
+    expect(lateHealed.stats.hp).toBe(100) // 회복 효과는 배율 영향을 받지 않는다 (100 상한에 걸림)
+  })
+
+  it('목마름/배고픔이 바닥났을 때의 기본 피해도 날짜가 늦을수록 커진다', () => {
+    const early = { ...freshDay1(), stats: { ...freshDay1().stats, thirst: 0, hunger: GAME_RULES.MAX_HUNGER } }
+    const earlyNext = applyMorning({ ...early, day: 2 })
+    const earlyLoss = early.stats.hp - earlyNext.stats.hp
+
+    const late = { ...freshDay1(), day: 9999, stats: { ...freshDay1().stats, thirst: 0, hunger: GAME_RULES.MAX_HUNGER } }
+    const lateNext = applyMorning({ ...late, day: 10000 })
+    const lateLoss = late.stats.hp - lateNext.stats.hp
+
+    expect(lateLoss).toBeGreaterThan(earlyLoss)
   })
 })
 
@@ -390,7 +425,7 @@ describe('목마름/배고픔 회복', () => {
     }
     state = useWater(state)
     expect(state.inventory.water).toBe(2)
-    expect(state.stats.thirst).toBe(35)
+    expect(state.stats.thirst).toBe(30) // 5 + 25
     expect(state.statusEffects.dehydrated).toBe(false)
   })
 
@@ -412,11 +447,11 @@ describe('목마름/배고픔 회복', () => {
     const afterWater = useWater(state, 'a')
     expect(afterWater.inventory.water).toBe(2)
     expect(afterWater.stats.thirst).toBe(15) // 본인 게이지는 그대로
-    expect(afterWater.survivors[0].thirst).toBe(50) // 20 + 30
+    expect(afterWater.survivors[0].thirst).toBe(45) // 20 + 25
 
     const afterFood = useFood(afterWater, 'a')
     expect(afterFood.inventory.can).toBe(2)
-    expect(afterFood.survivors[0].hunger).toBe(50)
+    expect(afterFood.survivors[0].hunger).toBe(45)
   })
 })
 

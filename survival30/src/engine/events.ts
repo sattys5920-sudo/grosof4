@@ -1918,6 +1918,221 @@ const CONSUMABLE_TOOL_EXTRA: GameEvent[] = [
   ),
 ]
 
+// ============================== 추가분 5 : 더 가혹한 이벤트 (강탈/파손/질병) ==============================
+// 시간이 갈수록 계속 세지는 dangerMultiplier와 맞물려, "적당히 조심하면 끝없이
+// 버틴다"를 막는 후반부 압박 이벤트들. 강탈(비축한 물자를 잃음), 파손(장비·
+// 대피소가 못 쓰게 됨), 질병 유입(오염/감염 위험) 세 갈래로 구성했다.
+const HARSH_EXTRA: GameEvent[] = [
+  ev(
+    'e159',
+    16,
+    ENDLESS_DAY_MAX,
+    '도둑이 들었다',
+    '자리를 비운 사이 누군가 다녀간 흔적이 있다.',
+    'danger',
+    [
+      roll('catchThief159', '쫓아가 붙잡는다', 50, [], '다행히 아무것도 잃지 않았다.', [item('can', -5), item('water', -5)], '놓쳤다. 식량과 물을 크게 도둑맞았다.'),
+      c('letGo159', '조용히 넘어간다', [item('can', -3)], '약간의 식량만 잃고 넘어갔다.'),
+    ],
+    { repeatable: true, cooldownDays: 4 },
+  ),
+  ev(
+    'e160',
+    16,
+    ENDLESS_DAY_MAX,
+    '의약품이 사라졌다',
+    '보관해 둔 의약품 자리가 비어 있다.',
+    'danger',
+    [
+      roll('chase160', '찾으러 나선다', 45, [], '다행히 도둑을 쫓아내고 지켜냈다.', [item('medicine', -3), item('bandage', -3)], '결국 의약품을 크게 도둑맞았다.'),
+      c('giveUp160', '포기한다', [item('medicine', -2)], '일부만 잃고 넘어갔다.'),
+    ],
+    { repeatable: true, cooldownDays: 5 },
+  ),
+  ev(
+    'e161',
+    21,
+    ENDLESS_DAY_MAX,
+    '무장한 침입자',
+    '무기를 든 누군가가 대피소 안으로 밀고 들어온다.',
+    'danger',
+    [
+      roll('fightIntruder161', '맞서 싸운다', 40, [shelter(-10)], '가까스로 쫓아냈지만 대피소가 상했다.', [hp(-20), item('can', -5), item('water', -5)], '제압당해 크게 다치고 물자를 뺏겼다.'),
+      c('surrenderSupplies161', '물자를 순순히 내준다', [item('can', -5), item('water', -5)], '다치지 않으려고 순순히 내줬다.'),
+    ],
+    { repeatable: true, cooldownDays: 4 },
+  ),
+  ev(
+    'e162',
+    11,
+    ENDLESS_DAY_MAX,
+    '밤손님',
+    '밤사이 누군가 다녀간 흔적이 있다.',
+    'danger',
+    [
+      roll('ambush162', '매복해서 기다린다', 55, [item('battery', -1)], '인기척에 놀라 도망갔지만 뭔가 하나는 챙겨 갔다.', [item('can', -3), item('water', -3), item('medicine', -2)], '눈치채지 못한 사이 여러 물자를 도둑맞았다.'),
+      c('sleepThrough162', '그냥 잔다', [item('can', -2)], '몰랐던 사이 조금 잃었다.'),
+    ],
+    { repeatable: true, cooldownDays: 4 },
+  ),
+  ev(
+    'e163',
+    26,
+    ENDLESS_DAY_MAX,
+    '물자 창고 습격',
+    '조직적으로 움직이는 무리가 비축해 둔 물자를 노린다.',
+    'danger',
+    [
+      roll('defendStock163', '전력으로 지킨다', 35, [hp(-10)], '몸으로 막았다. 다쳤지만 지켜냈다.', [item('can', -5), item('water', -5), item('medicine', -3), item('bandage', -3)], '막지 못했다. 비축해 둔 물자를 크게 잃었다.'),
+      c('hideAndWait163', '숨어서 지나가길 기다린다', [mental(-5)], '물자는 지켰지만 마음이 편치 않았다.'),
+    ],
+    { repeatable: true, cooldownDays: 5 },
+  ),
+  ev(
+    'e164',
+    11,
+    ENDLESS_DAY_MAX,
+    '발전기 고장',
+    '발전기가 갑자기 멈춰 섰다.',
+    'danger',
+    [
+      c('fixGenerator164', '공구함으로 고친다', [item('toolbox', -1), power(10)], '공구함을 써서 고쳤다.', { item: 'toolbox' }),
+      c('leaveGenerator164', '그냥 둔다', [power(-10)], '전력이 크게 줄었다.'),
+    ],
+    { repeatable: true, cooldownDays: 5 },
+  ),
+  ev(
+    'e165',
+    6,
+    ENDLESS_DAY_MAX,
+    '선반이 무너지다',
+    '낡은 선반이 갑자기 기울어진다.',
+    'danger',
+    [
+      roll('dodgeShelf165', '재빨리 피한다', 60, [], '다행히 다치지 않았다.', [hp(-15), item('flashlight', -1)], '미처 피하지 못하고 깔렸다. 손전등도 부서졌다.'),
+      c('stayBack165', '거리를 둔다', [shelter(-5)], '가까이 가지 않았지만 선반은 그대로 무너졌다.'),
+    ],
+    { repeatable: true, cooldownDays: 4 },
+  ),
+  ev(
+    'e166',
+    16,
+    ENDLESS_DAY_MAX,
+    '곰팡이가 대피소를 갉아먹다',
+    '벽 곳곳에 곰팡이가 번지고 있다.',
+    'danger',
+    [
+      c('scrapeMold166', '벽을 뜯어낸다', [shelter(-10), mental(3)], '상한 부분을 뜯어내 더 번지는 건 막았다.'),
+      c('ignoreMoldSpread166', '방치한다', [shelter(-15)], '곰팡이가 계속 번져 나갔다.'),
+    ],
+    { repeatable: true, cooldownDays: 5 },
+  ),
+  ev(
+    'e167',
+    11,
+    ENDLESS_DAY_MAX,
+    '낡은 배관이 터지다',
+    '벽 안쪽 배관이 터져 물이 새어 나온다.',
+    'danger',
+    [
+      c('emergencyFix167', '급히 틀어막는다', [item('toolbox', -1), shelter(-5)], '급한 대로 막았지만 피해는 있었다.', { item: 'toolbox' }),
+      c('letFlood167', '손쓰지 못한다', [shelter(-15), item('water', -5)], '물이 다 새어 나가고 대피소도 상했다.'),
+    ],
+    { repeatable: true, cooldownDays: 5 },
+  ),
+  ev(
+    'e168',
+    26,
+    ENDLESS_DAY_MAX,
+    '장비가 하나둘 고장 난다',
+    '오래 써 온 살림살이가 여기저기서 삐걱댄다.',
+    'survival',
+    [
+      c('accept168', '받아들인다', [mental(-3)], '낡아 가는 살림살이를 받아들이기로 했다.'),
+      roll('tryRepair168', '손봐 본다', 50, [], '그럭저럭 고쳤다.', [item('battery', -1)], '손보다 오히려 배터리만 날렸다.'),
+    ],
+    { repeatable: true, cooldownDays: 4 },
+  ),
+  ev(
+    'e169',
+    16,
+    ENDLESS_DAY_MAX,
+    '낯선 방문자',
+    '문밖에 낯선 사람이 힘없이 서 있다. 어딘가 아파 보인다.',
+    'danger',
+    [
+      c('takeIn169', '받아들인다', [contamination(10), survivorJoin()], '받아들이기로 했다. 어딘가 아파 보이는 게 마음에 걸린다.'),
+      c('turnAway169', '돌려보낸다', [mental(-5)], '매정하지만 돌려보냈다.'),
+    ],
+    { repeatable: true, cooldownDays: 6 },
+  ),
+  ev(
+    'e170',
+    11,
+    ENDLESS_DAY_MAX,
+    '오염된 물자',
+    '챙겨 온 물자에서 이상한 냄새가 난다.',
+    'danger',
+    [
+      c('useAnyway170', '그냥 사용한다', [contamination(15)], '꺼림칙했지만 아쉬운 대로 썼다.'),
+      c('discard170', '버린다', [item('can', -3), item('water', -3)], '아깝지만 버렸다.'),
+    ],
+    { repeatable: true, cooldownDays: 5 },
+  ),
+  ev(
+    'e171',
+    16,
+    ENDLESS_DAY_MAX,
+    '몸에 이상 신호',
+    '몸이 예전 같지 않다. 뭔가 잘못된 것 같다.',
+    'survival',
+    [
+      c('treatSelf171', '약을 먹는다', [status('infected', false), hp(5)], '약을 먹고 증세가 가라앉았다.', { item: 'medicine' }),
+      c('pushThroughIllness171', '참고 넘긴다', [contamination(10), hp(-10)], '몸이 계속 안 좋았다.'),
+    ],
+    { repeatable: true, cooldownDays: 5 },
+  ),
+  ev(
+    'e172',
+    21,
+    ENDLESS_DAY_MAX,
+    '전염병 소문',
+    '근처에 전염병이 돌고 있다는 소문이 들려온다.',
+    'story',
+    [
+      c('quarantine172', '스스로 격리한다', [mental(-5), contamination(-10)], '며칠간 아무도 만나지 않았다.'),
+      c('ignoreRumor172', '신경 쓰지 않는다', [], '소문일 뿐이라 여겼다.'),
+    ],
+    { repeatable: true, cooldownDays: 6 },
+  ),
+  ev(
+    'e173',
+    16,
+    ENDLESS_DAY_MAX,
+    '전기 합선',
+    '벽 안쪽에서 스파크가 튀며 타는 냄새가 난다.',
+    'danger',
+    [
+      roll('cutPower173', '급히 전원을 내린다', 65, [power(-5)], '큰불은 막았다.', [shelter(-15), hp(-10)], '미처 손쓰지 못해 불이 번졌다.'),
+      c('watchBurn173', '지켜만 본다', [shelter(-10)], '대피소 일부가 상했다.'),
+    ],
+    { repeatable: true, cooldownDays: 5 },
+  ),
+  ev(
+    'e174',
+    26,
+    ENDLESS_DAY_MAX,
+    '얼어붙은 밤, 도둑까지',
+    '추위에 정신이 없는 사이 인기척이 스쳐 지나간다.',
+    'danger',
+    [
+      roll('guardTight174', '밤새 지킨다', 45, [mental(-5)], '뜬눈으로 지켰지만 아무 일도 없었다.', [item('can', -5), item('water', -5), item('blanket', -1)], '추위에 지쳐 졸다가 크게 도둑맞았다.'),
+      c('acceptLoss174', '포기하고 잔다', [item('can', -3)], '일부는 그냥 내줬다.'),
+    ],
+    { repeatable: true, cooldownDays: 5 },
+  ),
+]
+
 export const ALL_EVENTS: GameEvent[] = [
   ...DAY_1_5,
   ...DAY_6_10,
@@ -1929,6 +2144,7 @@ export const ALL_EVENTS: GameEvent[] = [
   ...COMPANION_EXTRA,
   ...LATE_GAME_EXTRA,
   ...CONSUMABLE_TOOL_EXTRA,
+  ...HARSH_EXTRA,
 ]
 
 export const EVENT_MAP: Record<string, GameEvent> = Object.fromEntries(ALL_EVENTS.map((e) => [e.id, e]))
