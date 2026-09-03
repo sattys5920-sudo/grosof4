@@ -16,6 +16,7 @@ import {
   getActiveEvent,
   performAction,
   pickPrepCompanion,
+  pickPrepItem,
   resolveChoice,
   resolveSurvivorSend,
   unpickPrepCompanion,
@@ -118,10 +119,26 @@ describe('클램프 규칙', () => {
     expect(clamp(9999, 0, GAME_RULES.MAX_HUNGER)).toBe(GAME_RULES.MAX_HUNGER)
   })
 
-  it('물/식량 아이템 획득은 인벤토리 공간을 초과할 수 없다', () => {
+  it('준비 단계에서 챙기는 물품은 소지 공간 한도를 넘을 수 없다', () => {
+    let state = createInitialState()
+    for (const p of state.prepLayout) {
+      const next = pickPrepItem(state, p.id)
+      if (next !== state) state = next
+    }
+    expect(usedCapacity(state)).toBeLessThanOrEqual(capacity(state))
+  })
+
+  it('준비 단계 이후 탐색/이벤트로 얻는 물/식량은 소지 공간 한도를 넘어도 전부 쌓인다', () => {
     const state = freshDay1()
     const { state: next } = applyEffects(state, [{ type: 'item', id: 'water', amount: 9999 }], new Rng(1))
-    expect(usedCapacity(next)).toBeLessThanOrEqual(capacity(next))
+    expect(next.inventory.water).toBe(9999)
+    expect(usedCapacity(next)).toBeGreaterThan(capacity(next))
+  })
+
+  it('물/식량이 아닌 다른 물품은 준비 단계 이후에도 여전히 소지 공간 한도를 넘을 수 없다', () => {
+    const state = freshDay1()
+    const { state: next } = applyEffects(state, [{ type: 'item', id: 'medicine', amount: 9999 }], new Rng(1))
+    expect(next.inventory.medicine ?? 0).toBeLessThan(9999)
   })
 
   it('탐색/위험 확률은 항상 5~95 사이로 제한된다', () => {

@@ -85,6 +85,11 @@ export function applyEffects(state: GameState, ops: EffectOp[], rng: Rng): { sta
       else inventory[id] = next
       return
     }
+    // 물/식량은 준비 단계에서 챙길 때만 소지 한도가 걸리고, 그 이후 탐색·이벤트로 얻는 건 한도 없이 다 쌓인다.
+    if (id === 'water' || id === 'can') {
+      inventory[id] = (inventory[id] ?? 0) + amount
+      return
+    }
     const space = ITEMS[id].space
     const room = cap - usedCap()
     const affordable = Math.max(0, Math.min(amount, Math.floor(room / space)))
