@@ -1,7 +1,6 @@
 // 게임의 심장부. UI는 이 모듈이 내보내는 함수만 호출하고, 그 결과로 받은
 // GameState를 그대로 화면에 반영한다 — 내부 수치와 UI 표시가 항상 같아야 한다는
 // 기획서 25번 원칙을 지키기 위해, "표시용" 값을 따로 계산하지 않는다.
-import { c, flag, hp, mental, survivorLeave } from './effects'
 import { CRAFT_RECIPES, ITEMS, PREP_ITEM_ORDER } from './items'
 import { LOCATION_REWARDS, RISK_OUTCOME_WEIGHTS, type RiskOutcome } from './locations'
 import { ROOMS } from './rooms'
@@ -10,7 +9,7 @@ import { GAME_RULES, LOCATIONS, clamp, clampChance, difficultyBonus, mentalTier 
 import { saveGame } from './save'
 import { generateSurvivor } from './survivors'
 import { ALL_EVENTS, EVENT_MAP } from './events'
-import { endingForDeathCause, evaluateSurvivalEnding } from './endings'
+import { endingForDeathCause, isTrueEndingReady, trueEndingResult, escapeEndingResult } from './endings'
 import type {
   ActionId,
   ChoiceRequirement,
@@ -31,29 +30,8 @@ export interface ActionParams {
   recipeId?: string
 }
 
-export const DAY30_EVENT: GameEvent = {
-  id: 'day30-final',
-  dayMin: 30,
-  dayMax: 30,
-  title: '30일째',
-  description:
-    '문밖에서 조용한 목소리가 들린다. "이제 문을 열어도 됩니다." 30일 동안의 기억이 한꺼번에 스친다.',
-  category: 'story',
-  choices: [
-    c('holdDoor', '문을 열지 않는다', [flag('doorHeldFinal')], '벽에 남아 있던 경고를 마지막까지 믿기로 했다.'),
-    c('openDoor', '문을 연다', [flag('doorOpenedFinal'), hp(-10)], '문을 열자 눈부신 빛이 쏟아져 들어왔다.'),
-    c(
-      'finalSacrifice',
-      '동료를 남기고 홀로 나간다',
-      [flag('survivorSacrificed'), survivorLeave(), mental(-10)],
-      '함께 버텨온 이와 여기서 작별했다.',
-      { survivor: true },
-    ),
-  ],
-}
-
 function getEvent(id: string): GameEvent | undefined {
-  return id === DAY30_EVENT.id ? DAY30_EVENT : EVENT_MAP[id]
+  return EVENT_MAP[id]
 }
 
 /** UI와 테스트 양쪽에서 "지금 뜬 이벤트가 뭔지" 조회할 때 쓴다. */
@@ -290,13 +268,19 @@ export function checkDeath(state: GameState): GameState {
   return state
 }
 
-function finalizeGame(state: GameState): GameState {
-  const result = evaluateSurvivalEnding(state)
+function finalizeWith(state: GameState, result: { id: GameState['ending']; title: string }): GameState {
   return log(
     { ...state, phase: 'ended', ending: result.id, gameOverDay: state.day, activeEventId: null, queuedEventIds: [] },
-    `30일째, ${result.title}.`,
+    `${state.day}일째, ${result.title}.`,
     'system',
   )
+}
+
+/** 매 행동/이벤트/하루 종료 뒤 호출해서, 진엔딩 조건이 갖춰진 순간 즉시 게임을 끝낸다. */
+function checkAutoEndings(state: GameState): GameState {
+  if (state.phase === 'ended') return state
+  if (isTrueEndingReady(state)) return finalizeWith(state, trueEndingResult())
+  return state
 }
 
 // ============================== 아침 ==============================
@@ -349,6 +333,29 @@ export function applyMorning(state: GameState): GameState {
     notes.push('결국 감염되고 말았다.')
   }
 
+  // 동료도 나와 똑같이 목마름/배고픔이 줄고, 게이지가 바닥나면 체력이 깎인다.
+  const diedJustNow: string[] = []
+  let survivors = state.survivors.map((sv) => {
+    if (!sv.alive) return sv
+    let survivorHpNext = sv.hp
+    const thirst = clamp(sv.thirst - GAME_RULES.THIRST_DAILY_DROP, 0, GAME_RULES.MAX_THIRST)
+    const hunger = clamp(sv.hunger - GAME_RULES.HUNGER_DAILY_DROP, 0, GAME_RULES.MAX_HUNGER)
+    if (thirst <= 0) survivorHpNext = clamp(survivorHpNext - GAME_RULES.WATER_ZERO_HP, 0, 100)
+    if (hunger <= 0) survivorHpNext = clamp(survivorHpNext - GAME_RULES.FOOD_ZERO_HP, 0, 100)
+    const alive = survivorHpNext > 0
+    if (!alive) {
+      diedJustNow.push(sv.id)
+      notes.push(`${sv.name}이(가) 목마름과 배고픔을 버티지 못했다.`)
+    }
+    return { ...sv, hp: survivorHpNext, thirst, hunger, alive }
+  })
+  if (diedJustNow.length > 0) {
+    stats.mental = clamp(stats.mental - GAME_RULES.SURVIVOR_DEATH_MENTAL * diedJustNow.length, 0, GAME_RULES.MAX_MENTAL)
+    survivors = survivors.map((sv) =>
+      sv.alive ? { ...sv, trust: clamp(sv.trust - GAME_RULES.SURVIVOR_DEATH_TRUST * diedJustNow.length, 0, 100) } : sv,
+    )
+  }
+
   let mentalValue = stats.mental
   let pendingBreakdownRecovery = state.pendingBreakdownRecovery
   if (pendingBreakdownRecovery) {
@@ -361,6 +368,7 @@ export function applyMorning(state: GameState): GameState {
     ...state,
     stats: { ...stats, mental: mentalValue },
     statusEffects,
+    survivors,
     waterShortageStreak: thirstEmpty ? state.waterShortageStreak + 1 : 0,
     foodShortageStreak: hungerEmpty ? state.foodShortageStreak + 1 : 0,
     injuredUntreatedDays,
@@ -515,8 +523,10 @@ export function useWater(state: GameState, target: 'self' | string = 'self'): Ga
   }
   const survivor = state.survivors.find((sv) => sv.id === target && sv.alive)
   if (!survivor) return state
-  const survivors = state.survivors.map((sv) => (sv.id === target ? { ...sv, hp: clamp(sv.hp + 3, 0, 100) } : sv))
-  return log({ ...state, inventory, survivors }, `${survivor.name}에게 물을 주었다. 체력 +3.`, 'action')
+  const survivors = state.survivors.map((sv) =>
+    sv.id === target ? { ...sv, thirst: clamp(sv.thirst + GAME_RULES.THIRST_RECOVER, 0, GAME_RULES.MAX_THIRST) } : sv,
+  )
+  return log({ ...state, inventory, survivors }, `${survivor.name}에게 물을 주었다. 목마름 +${GAME_RULES.THIRST_RECOVER}.`, 'action')
 }
 
 export function useFood(state: GameState, target: 'self' | string = 'self'): GameState {
@@ -533,8 +543,10 @@ export function useFood(state: GameState, target: 'self' | string = 'self'): Gam
   }
   const survivor = state.survivors.find((sv) => sv.id === target && sv.alive)
   if (!survivor) return state
-  const survivors = state.survivors.map((sv) => (sv.id === target ? { ...sv, hp: clamp(sv.hp + 3, 0, 100) } : sv))
-  return log({ ...state, inventory, survivors }, `${survivor.name}에게 식량을 주었다. 체력 +3.`, 'action')
+  const survivors = state.survivors.map((sv) =>
+    sv.id === target ? { ...sv, hunger: clamp(sv.hunger + GAME_RULES.HUNGER_RECOVER, 0, GAME_RULES.MAX_HUNGER) } : sv,
+  )
+  return log({ ...state, inventory, survivors }, `${survivor.name}에게 식량을 주었다. 배고픔 +${GAME_RULES.HUNGER_RECOVER}.`, 'action')
 }
 
 export function finalizePrep(state: GameState): GameState {
@@ -685,11 +697,7 @@ function endDay(state: GameState): GameState {
   let s: GameState = { ...state, day: newDay, actionTaken: false, actionOfDay: null, activeEventId: null, queuedEventIds: [] }
   s = applyMorning(s)
   s = checkDeath(s)
-  if (s.phase === 'ended') {
-    saveGame(s)
-    return s
-  }
-  if (s.day >= 30) s = { ...s, activeEventId: DAY30_EVENT.id }
+  if (s.phase !== 'ended') s = checkAutoEndings(s)
   saveGame(s)
   return s
 }
@@ -870,12 +878,18 @@ export function actionAvailability(state: GameState): Record<ActionId, boolean> 
         Object.entries(r.keeps ?? {}).every(([id, need]) => (state.inventory[id as ItemId] ?? 0) >= (need ?? 0)),
     ),
     guard: true,
+    escape: state.flags.escapeVehicleReady === true || state.flags.escapeRouteReady === true,
   }
 }
 
 export function performAction(state: GameState, actionId: ActionId, params: ActionParams = {}): GameState {
   if (state.phase !== 'day' || state.actionTaken || state.activeEventId) return state
   return withRng(state, (rng, s0) => {
+    if (actionId === 'escape') {
+      if (!s0.flags.escapeVehicleReady && !s0.flags.escapeRouteReady) return s0
+      return finalizeWith(s0, escapeEndingResult(s0))
+    }
+
     let s = s0
     let notes: string[] = []
 
@@ -951,8 +965,8 @@ export function performAction(state: GameState, actionId: ActionId, params: Acti
     s = logNotes(s, notes)
     s = checkDeath(s)
     if (s.phase === 'ended') return s
-
-    if (s.day >= 30) return s // 30일째는 행동 대신 파이널 이벤트로 직행 (endDay에서 이미 세팅됨)
+    s = checkAutoEndings(s)
+    if (s.phase === 'ended') return s
 
     s = queueEventsForDay(s, rng)
     if (s.activeEventId == null) {
@@ -967,26 +981,15 @@ export function performAction(state: GameState, actionId: ActionId, params: Acti
 
 // ============================== 선택지 해결 ==============================
 /** 선택지 효과를 실제로 적용하고, 이벤트/밤/하루 마감까지 이어서 처리한다. */
-function finishChoiceResolution(
-  state: GameState,
-  event: GameEvent,
-  ops: EffectOp[],
-  resultText: string,
-  logPrefix: string,
-  rng: Rng,
-): GameState {
+function finishChoiceResolution(state: GameState, ops: EffectOp[], resultText: string, logPrefix: string, rng: Rng): GameState {
   const applied = applyEffects(state, ops, rng)
   let working = logNotes(applied.state, applied.notes)
   working = log(working, `${logPrefix} → ${resultText}`, 'event')
   working = { ...working, resultPopup: [`${logPrefix} → ${resultText}`, ...applied.notes] }
 
-  if (event.id === DAY30_EVENT.id) {
-    working = checkDeath(working)
-    if (working.phase === 'ended') return working
-    return finalizeGame(working)
-  }
-
   working = checkDeath(working)
+  if (working.phase === 'ended') return working
+  working = checkAutoEndings(working)
   if (working.phase === 'ended') return working
 
   if (working.queuedEventIds.length > 0) {
@@ -1028,7 +1031,7 @@ export function resolveChoice(state: GameState, choiceId: string): GameState {
       return { ...s0, pendingLeaveChoice: { ops, resultText, logPrefix } }
     }
 
-    return finishChoiceResolution(s0, event, ops, resultText, logPrefix, rng)
+    return finishChoiceResolution(s0, ops, resultText, logPrefix, rng)
   })
 }
 
@@ -1037,10 +1040,9 @@ export function resolveSurvivorSend(state: GameState, survivorId: string): GameS
   if (!state.pendingLeaveChoice || !state.activeEventId) return state
   return withRng(state, (rng, s0) => {
     const pending = s0.pendingLeaveChoice
-    const event = getEvent(s0.activeEventId!)
-    if (!pending || !event) return s0
+    if (!pending) return s0
     const ops = pending.ops.map((op): EffectOp => (op.type === 'survivorLeave' ? { type: 'survivorLeaveTarget', id: survivorId } : op))
     const cleared = { ...s0, pendingLeaveChoice: null }
-    return finishChoiceResolution(cleared, event, ops, pending.resultText, pending.logPrefix, rng)
+    return finishChoiceResolution(cleared, ops, pending.resultText, pending.logPrefix, rng)
   })
 }

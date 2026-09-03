@@ -7,27 +7,27 @@ export interface EndingResult {
   description: string
 }
 
+// 30일이라는 고정 결승선이 사라진 뒤의 엔딩들. 이제 게임은
+// (1) 진실을 전부 알아내는 순간, (2) 플레이어가 스스로 탈출을 택하는 순간,
+// (3) 죽는 순간 — 이 세 가지 중 하나로만 끝난다. "며칠까지 버텼는지"는
+// 엔딩 종류가 아니라 엔딩과 함께 보여 주는 기록이다.
 const ENDING_TEXT: Record<EndingId, { title: string; description: string }> = {
   true: {
     title: '진실',
     description:
-      '재난은 단순한 자연재해가 아니었다. 대피소는 거대한 생존 실험의 일부였고, 구조 신호와 외부 정보 상당수는 의도적으로 조작된 것이었다. 문을 열지 않고 버텨낸 30일이 곧 실험의 마지막 단계였다.',
+      '재난은 단순한 자연재해가 아니었다. 대피소는 거대한 생존 실험의 일부였고, 구조 신호와 외부 정보 상당수는 의도적으로 조작된 것이었다. 흩어져 있던 조각을 전부 맞춘 순간, 더는 대피소에 남아 있을 이유가 없어졌다.',
   },
   escape: {
     title: '탈출',
     description: '준비해 둔 차량과 경로로 대피소를 벗어났다. 바깥은 여전히 낯설지만, 처음으로 스스로 정한 방향으로 나아간다.',
   },
-  community: {
-    title: '공동체',
-    description: '끝까지 함께한 사람들과 30일을 버텼다. 서로를 믿었기에 여기까지 올 수 있었다.',
-  },
   sacrifice: {
     title: '희생',
-    description: '누군가 자신을 대신해 남았다. 그 선택 덕분에 오늘을 맞았다.',
+    description: '누군가 자신을 대신해 이곳에 남았다. 그 선택 덕분에 대피소를 벗어날 수 있었다.',
   },
   infection: {
     title: '감염',
-    description: '오염은 결국 몸 안까지 스며들었다. 30일을 채우지 못한 채, 대피소는 조용해졌다.',
+    description: '오염은 결국 몸 안까지 스며들었다. 더는 버티지 못한 채, 대피소는 조용해졌다.',
   },
   breakdown: {
     title: '정신 붕괴',
@@ -47,23 +47,12 @@ const ENDING_TEXT: Record<EndingId, { title: string; description: string }> = {
   },
   death: {
     title: '끝',
-    description: '30일을 채우지 못했다.',
-  },
-  solitude: {
-    title: '고독',
-    description: '아무도 곁에 없이, 홀로 30일을 버텨냈다. 문이 열리자 정적만이 맞이한다.',
-  },
-  perfect: {
-    title: '완벽한 생존',
-    description: '체력도, 마음도, 비축한 것들도 흔들림 없이 30일을 마쳤다. 더할 나위 없는 결말이다.',
-  },
-  normal: {
-    title: '생존',
-    description: '완벽하지도, 특별하지도 않았지만 살아남았다. 그것으로 충분하다.',
+    description: '더는 버티지 못했다.',
   },
 }
 
-function isTrueEndingReady(state: GameState): boolean {
+/** 진엔딩(진실) 조건을 전부 만족했는지 — 만족하는 즉시 게임이 끝난다. */
+export function isTrueEndingReady(state: GameState): boolean {
   const f = state.flags
   const radioOk = (state.counters.radioStory ?? 0) >= GAME_RULES.ENDING_TRUE_RADIO_COUNT
   return (
@@ -73,53 +62,17 @@ function isTrueEndingReady(state: GameState): boolean {
     f.labExplored === true &&
     f.blackBox === true &&
     f.finalBroadcast === true &&
-    f.truthDoor === true &&
-    f.doorHeldFinal === true
+    f.truthDoor === true
   )
 }
 
-function aliveSurvivors(state: GameState) {
-  return state.survivors.filter((s) => s.alive)
+export function trueEndingResult(): EndingResult {
+  return { id: 'true', ...ENDING_TEXT.true }
 }
 
-/**
- * 30일 생존에 성공했을 때 어떤 엔딩인지 우선순위대로 판정한다 (기획서 34).
- * 사망으로 게임이 끝난 경우는 finalizeDeath()에서 별도로 처리한다.
- */
-export function evaluateSurvivalEnding(state: GameState): EndingResult {
-  const alive = aliveSurvivors(state)
-  const avgTrust = alive.length > 0 ? alive.reduce((sum, s) => sum + s.trust, 0) / alive.length : 0
-  const isPerfect =
-    state.stats.hp >= GAME_RULES.ENDING_PERFECT.hp &&
-    state.stats.mental >= GAME_RULES.ENDING_PERFECT.mental &&
-    state.stats.thirst >= GAME_RULES.ENDING_PERFECT.thirst &&
-    state.stats.hunger >= GAME_RULES.ENDING_PERFECT.hunger &&
-    state.stats.shelter >= GAME_RULES.ENDING_PERFECT.shelter
-
-  // 우선순위: 진엔딩 > 탈출 > 공동체 > 희생 > 감염 > 정신붕괴 > 완벽한 생존 > 고독 > 일반생존
-  // (기획서 34번. 탈수/굶주림은 사망 즉시 종료되는 원인이라 여기까지 오지 않는다.)
-  let id: EndingId
-
-  if (isTrueEndingReady(state)) {
-    id = 'true'
-  } else if (state.flags.escapeVehicleReady === true || state.flags.escapeRouteReady === true) {
-    id = 'escape'
-  } else if (alive.length >= 2 && avgTrust >= GAME_RULES.ENDING_COMMUNITY_TRUST) {
-    id = 'community'
-  } else if (state.flags.survivorSacrificed === true) {
-    id = 'sacrifice'
-  } else if (state.statusEffects.infected) {
-    id = 'infection'
-  } else if (state.mentalBreakdownFlag) {
-    id = 'breakdown'
-  } else if (isPerfect) {
-    id = 'perfect'
-  } else if (alive.length === 0) {
-    id = 'solitude'
-  } else {
-    id = 'normal'
-  }
-
+/** 탈출 조건(차량/경로 확보)이 갖춰진 뒤 플레이어가 직접 "탈출한다"를 골랐을 때. */
+export function escapeEndingResult(state: GameState): EndingResult {
+  const id: EndingId = state.flags.survivorSacrificed ? 'sacrifice' : 'escape'
   return { id, ...ENDING_TEXT[id] }
 }
 

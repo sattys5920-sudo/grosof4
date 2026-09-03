@@ -170,8 +170,6 @@ export const GAME_RULES = {
     { min: 26, max: 30, bonus: 25 },
   ],
 
-  ENDING_PERFECT: { hp: 70, mental: 70, thirst: 70, hunger: 70, shelter: 70 },
-  ENDING_COMMUNITY_TRUST: 70,
   ENDING_TRUE_INFO: 100,
   ENDING_TRUE_RADIO_COUNT: 3,
 } as const

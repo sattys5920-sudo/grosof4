@@ -1,4 +1,6 @@
 // 기획서 42번 "개발 완료 전 자동 검증" 체크리스트를 실제 코드로 옮긴 테스트.
+// 30일 고정 결승선이 사라진 뒤의 새 규칙(엔드리스 진행, 진엔딩 즉시 종료, 탈출
+// 행동, 동료 목마름/배고픔)도 함께 검증한다.
 import { beforeAll, describe, expect, it } from 'vitest'
 import { GAME_RULES, clamp, clampChance } from './rules'
 import { Rng } from './rng'
@@ -46,6 +48,36 @@ function freshDay1(): GameState {
   return finalizePrep(createInitialState())
 }
 
+function mockSurvivor(id: string, overrides: Partial<Survivor> = {}): Survivor {
+  return {
+    id,
+    name: `동료-${id}`,
+    job: 'civilian',
+    personality: '-',
+    hp: 100,
+    trust: 50,
+    alive: true,
+    infected: false,
+    thirst: GAME_RULES.MAX_THIRST,
+    hunger: GAME_RULES.MAX_HUNGER,
+    ...overrides,
+  }
+}
+
+/** 이벤트/보류 중인 선택을 자동으로 넘겨서 다음 상태로 진행시킨다. */
+function advancePastEvent(state: GameState): GameState {
+  if (state.pendingLeaveChoice) {
+    const target = state.survivors.find((sv) => sv.alive)
+    return target ? resolveSurvivorSend(state, target.id) : state
+  }
+  if (state.activeEventId) {
+    const event = getActiveEvent(state)!
+    const choice = enabledChoices(state, event)[0]
+    return resolveChoice(state, choice.id)
+  }
+  return state
+}
+
 describe('클램프 규칙', () => {
   it('체력은 100을 초과하지 않는다', () => {
     const state = freshDay1()
@@ -69,7 +101,7 @@ describe('클램프 규칙', () => {
     expect(next.stats.mental).toBeLessThanOrEqual(GAME_RULES.MAX_MENTAL)
   })
 
-  it('목마름/배고픔 게이지는 30을 초과하지 않는다', () => {
+  it('목마름/배고픔 게이지는 100을 초과하지 않는다', () => {
     expect(clamp(9999, 0, GAME_RULES.MAX_THIRST)).toBe(GAME_RULES.MAX_THIRST)
     expect(clamp(9999, 0, GAME_RULES.MAX_HUNGER)).toBe(GAME_RULES.MAX_HUNGER)
   })
@@ -139,29 +171,45 @@ describe('부상 방치', () => {
   })
 })
 
-describe('30일째와 이벤트 규칙', () => {
-  it('30일째에는 반드시 엔딩으로 이어진다', () => {
+describe('동료의 목마름/배고픔', () => {
+  it('매일 아침 나와 똑같이 줄어든다', () => {
+    let state = freshDay1()
+    state = { ...state, survivors: [mockSurvivor('a')] }
+    state = { ...state, day: state.day + 1 }
+    state = applyMorning(state)
+    expect(state.survivors[0].thirst).toBe(GAME_RULES.MAX_THIRST - GAME_RULES.THIRST_DAILY_DROP)
+    expect(state.survivors[0].hunger).toBe(GAME_RULES.MAX_HUNGER - GAME_RULES.HUNGER_DAILY_DROP)
+  })
+
+  it('게이지가 바닥나 체력이 0이 되면 죽고, 남은 동료에게도 영향을 준다', () => {
+    let state = freshDay1()
+    const a = mockSurvivor('a', { hp: 5, thirst: 0, hunger: 0 })
+    const b = mockSurvivor('b', { trust: 50 })
+    state = { ...state, stats: { ...state.stats, mental: 100 }, survivors: [a, b] }
+    state = { ...state, day: state.day + 1 }
+    state = applyMorning(state)
+    expect(state.survivors.find((sv) => sv.id === 'a')?.alive).toBe(false)
+    expect(state.stats.mental).toBeLessThan(100)
+    expect(state.survivors.find((sv) => sv.id === 'b')?.trust).toBeLessThan(50)
+  })
+})
+
+describe('엔드리스 진행과 이벤트 규칙', () => {
+  it('30일이 지나도 게임이 강제로 끝나지 않는다', () => {
     let state = freshDay1()
     state = {
       ...state,
-      day: 29,
-      stats: { ...state.stats, hp: 100, mental: 100, thirst: 30, hunger: 30, shelter: 100 },
+      day: 30,
+      stats: { ...state.stats, hp: 100, mental: 100, thirst: 100, hunger: 100, shelter: 100 },
     }
     state = performAction(state, 'rest')
-    // 이벤트가 있으면 전부 넘긴다.
     let guard = 0
-    while (state.activeEventId && state.day < 30 && guard < 10) {
-      const event = getActiveEvent(state)!
-      const choice = enabledChoices(state, event)[0]
-      state = resolveChoice(state, choice.id)
+    while ((state.activeEventId || state.pendingLeaveChoice) && guard < 10) {
+      state = advancePastEvent(state)
       guard++
     }
-    expect(state.day).toBe(30)
-    expect(state.activeEventId).toBe('day30-final')
-
-    state = resolveChoice(state, 'holdDoor')
-    expect(state.phase).toBe('ended')
-    expect(state.ending).toBeTruthy()
+    expect(state.phase).not.toBe('ended')
+    expect(state.day).toBeGreaterThan(30)
   })
 
   it('하루 이벤트는 최대 2개다', () => {
@@ -175,24 +223,19 @@ describe('30일째와 이벤트 규칙', () => {
     expect(state.queuedEventIds.length).toBeLessThanOrEqual(1) // activeEventId 1개 + 대기열 최대 1개 = 최대 2개
   })
 
-  it('일회성 이벤트는 같은 판에서 두 번 발생하지 않는다', () => {
+  it('일회성 이벤트는 여러 날에 걸쳐도 두 번 발생하지 않는다', () => {
     let state = freshDay1()
     const seen = new Set<string>()
-    let guard = 0
-    while (state.phase !== 'ended' && guard < 300) {
-      guard++
+    for (let i = 0; i < 400 && state.phase !== 'ended'; i++) {
       if (state.pendingLeaveChoice) {
-        // "누구를 보낼까?" 선택 단계 — 살아있는 첫 동료를 보낸다.
-        const target = state.survivors.find((sv) => sv.alive)!
-        state = resolveSurvivorSend(state, target.id)
+        state = advancePastEvent(state)
       } else if (state.activeEventId) {
         const event = getActiveEvent(state)!
-        if (event.id !== 'day30-final' && !event.repeatable) {
+        if (!event.repeatable) {
           expect(seen.has(event.id)).toBe(false)
           seen.add(event.id)
         }
-        const choice = enabledChoices(state, event)[0]
-        state = resolveChoice(state, choice.id)
+        state = advancePastEvent(state)
       } else {
         state = performAction(state, 'rest')
       }
@@ -200,25 +243,16 @@ describe('30일째와 이벤트 규칙', () => {
       // 매 단계 채워 둔다 — 이 테스트가 보려는 건 이벤트 중복 여부다.
       state = { ...state, stats: { ...state.stats, thirst: GAME_RULES.MAX_THIRST, hunger: GAME_RULES.MAX_HUNGER } }
     }
-    expect(state.phase).toBe('ended')
+    expect(state.day).toBeGreaterThan(1)
   })
 })
 
-describe('진엔딩', () => {
-  it('8가지 조건을 모두 만족해야 진엔딩이 뜬다', () => {
+describe('진엔딩 — 조건을 모두 만족하면 즉시 끝난다', () => {
+  it('8가지 조건을 모두 만족하면 다음 행동 직후 진엔딩으로 끝난다', () => {
     let state = freshDay1()
     state = {
       ...state,
-      day: 29,
-      stats: {
-        ...state.stats,
-        hp: 100,
-        mental: 100,
-        thirst: 30,
-        hunger: 30,
-        shelter: 100,
-        info: 100,
-      },
+      stats: { ...state.stats, info: 100 },
       counters: { radioStory: 3 },
       flags: {
         militaryRecord: true,
@@ -229,15 +263,7 @@ describe('진엔딩', () => {
       },
     }
     state = performAction(state, 'rest')
-    let guard = 0
-    while (state.activeEventId && state.day < 30 && guard < 10) {
-      const event = getActiveEvent(state)!
-      const choice = enabledChoices(state, event)[0]
-      state = resolveChoice(state, choice.id)
-      guard++
-    }
-    expect(state.activeEventId).toBe('day30-final')
-    state = resolveChoice(state, 'holdDoor')
+    expect(state.phase).toBe('ended')
     expect(state.ending).toBe('true')
   })
 
@@ -245,8 +271,7 @@ describe('진엔딩', () => {
     let state = freshDay1()
     state = {
       ...state,
-      day: 29,
-      stats: { ...state.stats, hp: 100, mental: 100, thirst: 30, hunger: 30, shelter: 100, info: 100 },
+      stats: { ...state.stats, info: 100 },
       counters: { radioStory: 3 },
       flags: {
         militaryRecord: true,
@@ -257,40 +282,31 @@ describe('진엔딩', () => {
       },
     }
     state = performAction(state, 'rest')
-    let guard = 0
-    while (state.activeEventId && state.day < 30 && guard < 10) {
-      const event = getActiveEvent(state)!
-      const choice = enabledChoices(state, event)[0]
-      state = resolveChoice(state, choice.id)
-      guard++
-    }
-    state = resolveChoice(state, 'holdDoor')
     expect(state.ending).not.toBe('true')
   })
 })
 
-describe('엔딩 우선순위', () => {
-  it('탈출 조건과 공동체 조건이 동시에 맞아도 탈출이 우선한다', () => {
+describe('탈출 엔딩', () => {
+  it('탈출 준비가 되면 탈출 행동으로 즉시 게임이 끝난다', () => {
     let state = freshDay1()
-    state = {
-      ...state,
-      day: 29,
-      stats: { ...state.stats, hp: 100, mental: 100, thirst: 30, hunger: 30, shelter: 100 },
-      flags: { escapeRouteReady: true },
-      survivors: [
-        { id: 'a', name: '테스트생존자', job: 'civilian', personality: '-', hp: 100, trust: 90, alive: true, infected: false },
-      ],
-    }
-    state = performAction(state, 'rest')
-    let guard = 0
-    while (state.activeEventId && state.day < 30 && guard < 10) {
-      const event = getActiveEvent(state)!
-      const choice = enabledChoices(state, event)[0]
-      state = resolveChoice(state, choice.id)
-      guard++
-    }
-    state = resolveChoice(state, 'holdDoor')
+    state = { ...state, flags: { ...state.flags, escapeRouteReady: true } }
+    state = performAction(state, 'escape')
+    expect(state.phase).toBe('ended')
     expect(state.ending).toBe('escape')
+  })
+
+  it('동료가 희생한 상태로 탈출하면 희생 엔딩이 된다', () => {
+    let state = freshDay1()
+    state = { ...state, flags: { ...state.flags, escapeRouteReady: true, survivorSacrificed: true } }
+    state = performAction(state, 'escape')
+    expect(state.ending).toBe('sacrifice')
+  })
+
+  it('탈출 준비가 안 됐으면 탈출 행동은 아무 효과가 없다', () => {
+    const state = freshDay1()
+    const next = performAction(state, 'escape')
+    expect(next.phase).toBe('day')
+    expect(next.ending).toBeNull()
   })
 })
 
@@ -349,9 +365,9 @@ describe('목마름/배고픔 회복', () => {
     expect(next).toBe(state) // 아무 변화 없이 그대로 반환
   })
 
-  it('물/식량을 나 대신 동료에게 줄 수 있다', () => {
+  it('물/식량을 나 대신 동료에게 주면 그 동료의 게이지가 회복된다', () => {
     let state = freshDay1()
-    const sv: Survivor = { id: 'a', name: '가영', job: 'civilian', personality: '-', hp: 90, trust: 50, alive: true, infected: false }
+    const sv = mockSurvivor('a', { hp: 90, thirst: 20, hunger: 20 })
     state = {
       ...state,
       inventory: { ...state.inventory, water: 3, can: 3 },
@@ -361,12 +377,11 @@ describe('목마름/배고픔 회복', () => {
     const afterWater = useWater(state, 'a')
     expect(afterWater.inventory.water).toBe(2)
     expect(afterWater.stats.thirst).toBe(15) // 본인 게이지는 그대로
-    expect(afterWater.survivors[0].hp).toBe(93)
+    expect(afterWater.survivors[0].thirst).toBe(50) // 20 + 30
 
     const afterFood = useFood(afterWater, 'a')
     expect(afterFood.inventory.can).toBe(2)
-    expect(afterFood.stats.hunger).toBe(15)
-    expect(afterFood.survivors[0].hp).toBe(96)
+    expect(afterFood.survivors[0].hunger).toBe(50)
   })
 })
 
@@ -389,14 +404,10 @@ describe('준비 단계 동료 데려오기', () => {
 })
 
 describe('이벤트에서 보낼 동료 선택', () => {
-  function mockSurvivor(id: string, name: string): Survivor {
-    return { id, name, job: 'civilian', personality: '-', hp: 100, trust: 50, alive: true, infected: false }
-  }
-
   it('생존자가 2명 이상이면 즉시 보내지 않고 선택을 기다린다', () => {
     let state = freshDay1()
-    const a = mockSurvivor('a', '가영')
-    const b = mockSurvivor('b', '나은')
+    const a = mockSurvivor('a', { name: '가영' })
+    const b = mockSurvivor('b', { name: '나은' })
     state = {
       ...state,
       day: 18,
@@ -417,7 +428,7 @@ describe('이벤트에서 보낼 동료 선택', () => {
 
   it('생존자가 1명뿐이면 바로 그 사람이 떠난다', () => {
     let state = freshDay1()
-    const a = mockSurvivor('a', '가영')
+    const a = mockSurvivor('a', { name: '가영' })
     state = {
       ...state,
       day: 18,

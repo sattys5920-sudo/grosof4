@@ -26,6 +26,10 @@ import {
   water,
 } from './effects'
 
+// 30일을 넘겨도 게임이 계속되는 "며칠까지 버티는지"형 엔드리스 모드용 상한.
+// 아래 REPEATABLE 이벤트들은 이 날짜까지 계속 다시 뽑힐 수 있다.
+const ENDLESS_DAY_MAX = 9999
+
 // ============================== DAY 1~5 : 초반 생존 ==============================
 const DAY_1_5: GameEvent[] = [
   ev(
@@ -45,7 +49,7 @@ const DAY_1_5: GameEvent[] = [
   ev(
     'e002',
     1,
-    5,
+    ENDLESS_DAY_MAX,
     '새는 수도관',
     '벽에서 물이 새고 있다.',
     'resource',
@@ -54,6 +58,7 @@ const DAY_1_5: GameEvent[] = [
       c('fix', '수리한다', [shelter(5)], '수리했다.', { item: 'toolbox' }),
       c('leave', '무시한다', [shelter(-10)], '결국 내구도가 더 상했다.'),
     ],
+    { repeatable: true, cooldownDays: 3 },
   ),
   ev(
     'e003',
@@ -123,7 +128,7 @@ const DAY_1_5: GameEvent[] = [
   ev(
     'e008',
     1,
-    5,
+    ENDLESS_DAY_MAX,
     '작은 상처',
     '탐색 중 손을 다쳤다.',
     'survival',
@@ -131,6 +136,7 @@ const DAY_1_5: GameEvent[] = [
       c('treatNow', '즉시 붕대를 감는다', [], '상처를 바로 처치했다.', { item: 'bandage' }),
       c('leaveIt', '그냥 둔다', [status('injured', true)], '일단 부상 상태가 되었다.'),
     ],
+    { repeatable: true, cooldownDays: 3 },
   ),
   ev(
     'e009',
@@ -156,7 +162,7 @@ const DAY_1_5: GameEvent[] = [
   ev(
     'e011',
     1,
-    5,
+    ENDLESS_DAY_MAX,
     '쥐',
     '대피소 안에 쥐가 나타났다.',
     'survival',
@@ -165,6 +171,7 @@ const DAY_1_5: GameEvent[] = [
       c('shooRat', '쫓아낸다', [mental(1)], '내보냈다.'),
       c('leaveRat', '방치한다', [food(-1)], '식량을 축냈다.'),
     ],
+    { repeatable: true, cooldownDays: 3 },
   ),
   ev(
     'e012',
@@ -329,7 +336,7 @@ const DAY_6_10: GameEvent[] = [
   ev(
     'e027',
     6,
-    10,
+    ENDLESS_DAY_MAX,
     '약탈자',
     '무기를 든 사람들이 밖에 나타났다.',
     'danger',
@@ -338,12 +345,13 @@ const DAY_6_10: GameEvent[] = [
       c('negotiate027', '협상한다', [food(-2)], '식량을 나눠 주고 돌려보냈다.'),
       roll('fight027', '맞선다', 55, [shelter(-5)], '몰아냈다. 대피소가 약간 상했다.', [hp(-20), shelter(-15)], '크게 다치고 대피소도 부서졌다.', { item: 'axe' }),
     ],
+    { repeatable: true, cooldownDays: 3 },
   ),
   ev('e028', 6, 10, '발전기 소리', '밖에서 발전기 소리가 들린다.', 'story', [c('note028', '방향을 기록한다', [info(5)], '소리가 나는 방향을 지도에 표시했다.')]),
   ev(
     'e029',
     6,
-    10,
+    ENDLESS_DAY_MAX,
     '정전',
     '갑자기 전력이 나갔다.',
     'danger',
@@ -351,11 +359,12 @@ const DAY_6_10: GameEvent[] = [
       c('genFix029', '발전기로 버틴다', [power(5)], '발전기 덕에 큰 피해는 없었다.', { item: 'generator' }),
       c('darkNight029', '어둠 속에서 버틴다', [power(-10), mental(-3)], '불안한 밤을 보냈다.'),
     ],
+    { repeatable: true, cooldownDays: 3 },
   ),
   ev(
     'e030',
     6,
-    10,
+    ENDLESS_DAY_MAX,
     '폭우',
     '밤새 비가 거세게 내린다.',
     'danger',
@@ -363,6 +372,7 @@ const DAY_6_10: GameEvent[] = [
       c('filterRain030', '정수 필터로 받는다', [water(3), shelter(-5)], '물은 확보했지만 지붕이 약간 상했다.', { item: 'filter' }),
       c('rawRain030', '그냥 버틴다', [shelter(-15)], '대피소 내구도가 크게 상했다.'),
     ],
+    { repeatable: true, cooldownDays: 3 },
   ),
   ev(
     'e031',
@@ -447,7 +457,7 @@ const DAY_6_10: GameEvent[] = [
     6,
     10,
     '낙서',
-    '벽에 누군가 급하게 남긴 글씨가 있다. "30일째에는 문을 열지 마."',
+    '벽에 누군가 급하게 남긴 글씨가 있다. "문밖에서 부르는 소리가 들려도 열지 마."',
     'story',
     [c('read038', '읽는다', [flag('doorWarning'), mental(-3)], '누가 남겼을지 모를 경고가 마음에 박혔다.')],
     { fixed: true },
@@ -479,11 +489,20 @@ const DAY_6_10: GameEvent[] = [
 
 // ============================== DAY 11~15 : 위기 ==============================
 const DAY_11_15: GameEvent[] = [
-  ev('e041', 11, 15, '물 부족', '비축된 물이 눈에 띄게 줄었다.', 'resource', [c('note041', '아껴 쓰기로 한다', [water(-1)], '오늘은 평소보다 아껴 마셨다.')]),
+  ev(
+    'e041',
+    11,
+    ENDLESS_DAY_MAX,
+    '물 부족',
+    '비축된 물이 눈에 띄게 줄었다.',
+    'resource',
+    [c('note041', '아껴 쓰기로 한다', [water(-1)], '오늘은 평소보다 아껴 마셨다.')],
+    { repeatable: true, cooldownDays: 3 },
+  ),
   ev(
     'e042',
     11,
-    15,
+    ENDLESS_DAY_MAX,
     '식량 배급',
     '식량이 부족해 나눠야 할 상황이다.',
     'resource',
@@ -491,22 +510,22 @@ const DAY_11_15: GameEvent[] = [
       c('share042', '나눠 먹는다', [food(-2), mental(5, )], '다 함께 나눠 먹었다. 분위기가 한결 나아졌다.'),
       c('keep042', '혼자 먹는다', [trust(-10)], '눈치가 보였다.'),
     ],
-    { requires: (s) => s.survivors.some((sv) => sv.alive) },
+    { requires: (s) => s.survivors.some((sv) => sv.alive), repeatable: true, cooldownDays: 3 },
   ),
   ev(
     'e043',
     11,
-    15,
+    ENDLESS_DAY_MAX,
     '부상 악화',
     '치료하지 않은 상처가 욱신거린다.',
     'danger',
     [c('worse043', '버틴다', [hp(-10)], '상처가 덧났다.')],
-    { requires: (s) => s.statusEffects.injured },
+    { requires: (s) => s.statusEffects.injured, repeatable: true, cooldownDays: 3 },
   ),
   ev(
     'e044',
     11,
-    15,
+    ENDLESS_DAY_MAX,
     '대피소 균열',
     '벽에 큰 균열이 생겼다.',
     'danger',
@@ -514,11 +533,12 @@ const DAY_11_15: GameEvent[] = [
       c('fix044', '공구상자로 보강한다', [shelter(-10)], '피해를 최소화했다.', { item: 'toolbox' }),
       c('nofix044', '어쩔 도리가 없다', [shelter(-20)], '균열이 더 커졌다.'),
     ],
+    { repeatable: true, cooldownDays: 3 },
   ),
   ev(
     'e045',
     11,
-    15,
+    ENDLESS_DAY_MAX,
     '화재',
     '한쪽 구석에서 불씨가 일었다.',
     'danger',
@@ -527,6 +547,7 @@ const DAY_11_15: GameEvent[] = [
       roll('escape045', '탈출한다', 60, [], '무사히 피했다.', [survivorLeave()], '혼란 속에 한 명을 놓쳤다.', { survivor: true }),
       c('leaveFire045', '방치한다', [shelter(-30)], '피해가 크게 번졌다.'),
     ],
+    { repeatable: true, cooldownDays: 3 },
   ),
   ev(
     'e046',
@@ -572,7 +593,7 @@ const DAY_11_15: GameEvent[] = [
   ev(
     'e050',
     11,
-    15,
+    ENDLESS_DAY_MAX,
     '검은 비',
     '검은빛을 띠는 비가 내린다.',
     'danger',
@@ -580,6 +601,7 @@ const DAY_11_15: GameEvent[] = [
       c('protect050', '마스크와 필터로 대비한다', [contamination(5)], '피해를 줄였다.', { item: 'mask' }),
       c('exposed050', '그대로 맞는다', [contamination(20)], '오염 수치가 크게 올랐다.'),
     ],
+    { repeatable: true, cooldownDays: 3 },
   ),
   ev(
     'e051',
@@ -870,7 +892,7 @@ const DAY_16_20: GameEvent[] = [
   ev(
     'e078',
     16,
-    20,
+    ENDLESS_DAY_MAX,
     '밤의 습격',
     '약탈자들이 대피소를 습격한다.',
     'danger',
@@ -878,6 +900,7 @@ const DAY_16_20: GameEvent[] = [
       c('guardedFight078', '맞서 싸운다', [shelter(-10)], '경계 태세 덕에 피해를 줄였다.', { item: 'axe' }),
       roll('fight078', '맞서 싸운다', 50, [shelter(-15)], '겨우 몰아냈다.', [hp(-20), shelter(-30)], '큰 피해를 입었다.'),
     ],
+    { repeatable: true, cooldownDays: 3 },
   ),
   ev(
     'e079',
@@ -903,7 +926,16 @@ const DAY_16_20: GameEvent[] = [
 
 // ============================== DAY 21~25 : 최종장 ==============================
 const DAY_21_25: GameEvent[] = [
-  ev('e081', 21, 25, '대규모 폭풍', '역대급 폭풍이 대피소를 덮친다.', 'danger', [c('storm081', '버틴다', [shelter(-20, )], '지붕 일부가 뜯겨 나갔다.')]),
+  ev(
+    'e081',
+    21,
+    ENDLESS_DAY_MAX,
+    '대규모 폭풍',
+    '역대급 폭풍이 대피소를 덮친다.',
+    'danger',
+    [c('storm081', '버틴다', [shelter(-20, )], '지붕 일부가 뜯겨 나갔다.')],
+    { repeatable: true, cooldownDays: 3 },
+  ),
   ev(
     'e082',
     21,
@@ -932,7 +964,7 @@ const DAY_21_25: GameEvent[] = [
   ev(
     'e084',
     21,
-    25,
+    ENDLESS_DAY_MAX,
     '대피소 습격',
     '이제까지와는 다른, 조직적인 습격이다.',
     'danger',
@@ -940,6 +972,7 @@ const DAY_21_25: GameEvent[] = [
       c('weaponFight084', '무장하고 맞선다', [hp(-10), shelter(-15)], '무기 덕에 피해를 줄였다.', { item: 'axe' }),
       roll('bareFight084', '맨몸으로 맞선다', 40, [shelter(-20)], '가까스로 버텼다.', [hp(-30), shelter(-30)], '심각한 피해를 입었다.'),
     ],
+    { repeatable: true, cooldownDays: 3 },
   ),
   ev('e085', 21, 25, '식량 창고', '대량의 식량이 남아 있는 창고를 발견했다.', 'resource', [roll('bigFood085', '탐색한다', 55, [food(5)], '많은 식량을 확보했다.', [status('injured', true)], '무너진 선반에 다쳤다.')]),
   ev(
@@ -1025,11 +1058,12 @@ const DAY_26_29: GameEvent[] = [
   ev(
     'e093',
     26,
-    29,
+    ENDLESS_DAY_MAX,
     '최후의 습격',
     '지금까지 중 가장 큰 규모의 습격이다.',
     'danger',
     [c('lastRaid093', '전력으로 방어한다', [shelter(-40)], '가까스로 버텼지만 대피소가 크게 상했다.')],
+    { repeatable: true, cooldownDays: 3 },
   ),
   ev(
     'e094',
@@ -1054,8 +1088,8 @@ const DAY_26_29: GameEvent[] = [
     'e096',
     29,
     29,
-    '마지막 밤',
-    '아무 일도 일어나지 않는다. 대신 지금까지의 선택들이 머릿속을 스친다. "내일이면 30일째다."',
+    '문득 스치는 밤',
+    '아무 일도 일어나지 않는다. 대신 지금까지의 선택들이 머릿속을 스친다. "여기까지 버텼다."',
     'story',
     [c('reflect096', '지난 시간을 돌아본다', [mental(5)], '여기까지 왔다는 사실이 새삼스럽다.')],
     { fixed: true },
@@ -1075,7 +1109,7 @@ const DAY_26_29: GameEvent[] = [
     28,
     29,
     '문밖의 사람',
-    '30일째를 앞두고 누군가 문밖에서 조용히 말한다. "이제 끝났습니다."',
+    '누군가 문밖에서 조용히 말한다. "이제 끝났습니다."',
     'danger',
     [
       c('open098', '문을 연다', [flag('doorOpenedEarly'), hp(-15)], '문을 여는 순간 무언가 잘못됐다는 걸 깨달았다.'),

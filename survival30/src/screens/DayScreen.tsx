@@ -24,6 +24,7 @@ const ACTION_LABELS: Record<ActionId, string> = {
   treat: '치료',
   craft: '제작',
   guard: '경계',
+  escape: '탈출한다',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -53,7 +54,7 @@ function TopBar({ state }: { state: GameState }) {
   return (
     <header className="topbar">
       <div className="topbar-day">
-        DAY {state.day} <span className="topbar-day-total">/ {GAME_RULES.TOTAL_DAYS}</span>
+        DAY {state.day}
       </div>
       <div className="stat-row">
         <StatItem label="체력" value={state.stats.hp} max={100} tone={state.stats.hp <= 30 ? 'danger' : undefined} />
@@ -228,6 +229,32 @@ function CraftPicker({ state, onChange }: { state: GameState; onChange: (s: Game
   )
 }
 
+function EscapeBanner({ state, onChange }: { state: GameState; onChange: (s: GameState) => void }) {
+  const [confirming, setConfirming] = useState(false)
+  const available = state.flags.escapeVehicleReady === true || state.flags.escapeRouteReady === true
+  if (!available) return null
+  return (
+    <div className="escape-banner">
+      <div className="escape-banner-title">탈출할 준비가 되었다</div>
+      <p className="event-desc">지금 떠나면 그 즉시 이야기가 끝난다. 더 버티며 준비를 갖출 수도 있다.</p>
+      {!confirming ? (
+        <button className="btn btn-primary" onClick={() => setConfirming(true)}>
+          지금 떠난다
+        </button>
+      ) : (
+        <div className="choice-row">
+          <button className="btn btn-primary" onClick={() => onChange(performAction(state, 'escape'))}>
+            정말 떠난다
+          </button>
+          <button className="btn" onClick={() => setConfirming(false)}>
+            아직 아니다
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ActionPanel({ state, onChange }: { state: GameState; onChange: (s: GameState) => void }) {
   const [expanded, setExpanded] = useState<ActionId | null>(null)
   const availability = actionAvailability(state)
@@ -361,6 +388,9 @@ function SidePanel({ state, onChange }: { state: GameState; onChange: (s: GameSt
                   체력 {sv.hp} · 신뢰 {sv.trust}
                   {sv.infected ? ' · 감염' : ''}
                 </div>
+                <div className="survivor-meta">
+                  목마름 {sv.thirst} · 배고픔 {sv.hunger}
+                </div>
               </li>
             ))}
         </ul>
@@ -412,6 +442,7 @@ export default function DayScreen({ state, onChange }: { state: GameState; onCha
       <TopBar state={state} />
       <div className="day-body">
         <main className="day-main">
+          <EscapeBanner state={state} onChange={onChange} />
           <ActionPanel state={state} onChange={onChange} />
         </main>
         <SidePanel state={state} onChange={onChange} />

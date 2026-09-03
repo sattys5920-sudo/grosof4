@@ -11,26 +11,40 @@ export interface RewardTable {
   rareChance?: number
 }
 
+// 준비 단계에서만 구할 수 있던 장비도 전부 탐색으로 확률상 나올 수 있게, 21종
+// 장비를 장소별로 나눠 담는다 (물/식량은 아래 water/food 필드로 별도 처리).
 export const LOCATION_REWARDS: Record<LocationId, RewardTable> = {
-  house: { items: ['bandage', 'blanket', 'book', 'matches'], water: 3, food: 2 },
-  store: { items: ['battery', 'flashlight', 'can', 'matches'], water: 3, food: 3 },
-  hospital: { items: ['medicine', 'bandage', 'mask'], water: 1, food: 1 },
+  house: {
+    items: ['bandage', 'blanket', 'book', 'matches', 'photo', 'seed', 'knife'],
+    water: 3,
+    food: 2,
+  },
+  store: {
+    items: ['battery', 'flashlight', 'matches', 'fishingRod', 'radio'],
+    water: 3,
+    food: 3,
+  },
+  hospital: {
+    items: ['medicine', 'bandage', 'mask', 'filter'],
+    water: 1,
+    food: 1,
+  },
   police: {
-    items: ['knife', 'axe', 'mask', 'radio'],
+    items: ['knife', 'axe', 'mask', 'radio', 'map', 'binoculars', 'toolbox'],
     water: 1,
     food: 1,
     rareFlag: 'policeRecord',
     rareChance: 20,
   },
   military: {
-    items: ['fuel', 'generator', 'walkie'],
+    items: ['fuel', 'generator', 'walkie', 'axe', 'binoculars', 'toolbox', 'backpack'],
     water: 1,
     food: 1,
     rareFlag: 'militaryRecord',
     rareChance: 30,
   },
   lab: {
-    items: ['fuel', 'medicine'],
+    items: ['fuel', 'medicine', 'filter', 'seed', 'backpack'],
     water: 0,
     food: 0,
     rareFlag: 'blackBox',

@@ -1,5 +1,6 @@
 import type { JobId, Survivor } from './types'
 import type { Rng } from './rng'
+import { GAME_RULES } from './rules'
 
 export interface JobDef {
   id: JobId
@@ -59,5 +60,7 @@ export function generateSurvivor(rng: Rng, usedNames: string[]): Survivor {
     trust: 30,
     alive: true,
     infected: false,
+    thirst: GAME_RULES.START_THIRST,
+    hunger: GAME_RULES.START_HUNGER,
   }
 }

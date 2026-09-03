@@ -38,6 +38,7 @@ export type ActionId =
   | 'treat'
   | 'craft'
   | 'guard'
+  | 'escape'
 
 export type StatusId = 'injured' | 'dehydrated' | 'starving' | 'infected'
 
@@ -77,15 +78,11 @@ export interface PrepCompanion {
 export type EndingId =
   | 'true'
   | 'escape'
-  | 'community'
   | 'sacrifice'
   | 'infection'
   | 'breakdown'
   | 'dehydration'
   | 'starvation'
-  | 'solitude'
-  | 'normal'
-  | 'perfect'
   | 'shelterCollapse'
   | 'death'
 
@@ -98,6 +95,8 @@ export interface Survivor {
   trust: number
   alive: boolean
   infected: boolean
+  thirst: number
+  hunger: number
 }
 
 export interface LogEntry {
