@@ -21,6 +21,11 @@ service cloud.firestore {
       }
     }
 
+    // 리듬게임(rhythm/) 랭킹 — 같은 프로젝트를 공유하되 이 컬렉션만 쓴다.
+    match /rhythmScores/{scoreId} {
+      allow read, write: if true;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

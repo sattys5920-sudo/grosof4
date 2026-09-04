@@ -7,6 +7,8 @@ import type { Judgment, JudgmentCounts, NoteState, PlayResult } from './types'
 export const PERFECT_WINDOW = 0.05
 export const GREAT_WINDOW = 0.1
 export const GOOD_WINDOW = 0.18
+/** 롱노트 끝나기 이만큼 전부터는 놓아도 성공으로 쳐 주는 여유. */
+export const HOLD_RELEASE_TOLERANCE = 0.12
 
 const BASE_SCORE: Record<Judgment, number> = { perfect: 300, great: 200, good: 100, miss: 0 }
 
@@ -38,11 +40,15 @@ export function findNoteToHit(notes: NoteState[], lane: NoteState['lane'], hitTi
 }
 
 /** 판정선을 GOOD_WINDOW만큼 지나도록 아직 안 맞은 노트는 자동으로 miss
- * 처리한다. (플레이어가 아예 누르지 않은 경우) */
-export function autoMissNotes(notes: NoteState[], currentTime: number): NoteState[] {
+ * 처리한다 (플레이어가 아예 누르지 않은 경우). holdingIds에 들어 있는
+ * 노트(지금 한창 누르고 있는 롱노트)는 시작 시각이 훨씬 지나 있어도
+ * 건드리지 않는다 — 그 판정은 놓을 때(또는 지속 시간이 끝날 때) 별도로
+ * 확정된다. */
+export function autoMissNotes(notes: NoteState[], currentTime: number, holdingIds?: ReadonlySet<number>): NoteState[] {
   let changed = false
   const next = notes.map((n) => {
     if (n.judgment !== null) return n
+    if (holdingIds?.has(n.id)) return n
     if (currentTime - n.time <= GOOD_WINDOW) return n
     changed = true
     return { ...n, judgment: 'miss' as const, judgedAt: currentTime }

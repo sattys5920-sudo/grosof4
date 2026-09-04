@@ -8,14 +8,14 @@
 import type { Chart, ChartNote, Difficulty, Lane } from './types'
 
 export const DIFFICULTY_PARAMS: Record<Difficulty, { thresholdMultiplier: number; minSpacing: number }> = {
-  easy: { thresholdMultiplier: 1.6, minSpacing: 0.34 },
-  normal: { thresholdMultiplier: 1.35, minSpacing: 0.22 },
-  hard: { thresholdMultiplier: 1.15, minSpacing: 0.14 },
+  easy: { thresholdMultiplier: 1.45, minSpacing: 0.28 },
+  normal: { thresholdMultiplier: 1.25, minSpacing: 0.18 },
+  hard: { thresholdMultiplier: 1.05, minSpacing: 0.1 },
 }
 
 /** 감지된 가장 잘게 쪼개진 박자 단위(unitStep)를 난이도별로 몇 배 할지.
- * 어려움=그 단위 그대로(가장 촘촘하게), 보통=2배 간격, 쉬움=4배 간격. */
-const UNIT_MULTIPLIER: Record<Difficulty, number> = { hard: 1, normal: 2, easy: 4 }
+ * 어려움=그 단위 그대로(가장 촘촘하게), 보통=1.5배 간격, 쉬움=2.5배 간격. */
+const UNIT_MULTIPLIER: Record<Difficulty, number> = { hard: 1, normal: 1.5, easy: 2.5 }
 
 /** 박자 추정용 "일단 최대한 촘촘하게" 잡는 온셋 후보 — 난이도와 무관하게
  * 한 번만 뽑아서 박자 그리드의 기준으로 쓴다. */
@@ -252,6 +252,68 @@ export function assignLanes(times: number[]): ChartNote[] {
   return notes
 }
 
+/** 롱노트(꾹 누르기) 길이 범위. 다음에 같은 레인에 노트가 바로 이어지면
+ * 그 전까지만 늘린다 — 너무 짧으면 안 만든다. */
+const MIN_HOLD_DURATION = 0.35
+const MAX_HOLD_DURATION = 0.75
+
+export interface HoldChordParams {
+  holdChance: number
+  chordChance: number
+}
+
+/** 난이도별 롱노트/코드 발생 확률. 쉬움은 아예 없고, 보통은 코드만
+ * 약간, 어려움은 롱노트와 코드를 둘 다 확실히 넣는다. */
+export const HOLD_CHORD_PARAMS: Record<Difficulty, HoldChordParams | null> = {
+  easy: null,
+  normal: { holdChance: 0, chordChance: 0.14 },
+  hard: { holdChance: 0.22, chordChance: 0.3 },
+}
+
+/** 일부 노트를 롱노트로 늘리거나, 다른 레인에 동시 입력 노트를 하나 더
+ * 얹어서(코드) 더 까다롭게 만든다. 난이도별 확률은 HOLD_CHORD_PARAMS. */
+export function addHoldsAndChords(notes: ChartNote[], duration: number, seed: number, params: HoldChordParams): ChartNote[] {
+  const rng = seededRng(seed + 30011)
+  const sorted = [...notes].sort((a, b) => a.time - b.time)
+  const result: ChartNote[] = []
+
+  for (let i = 0; i < sorted.length; i++) {
+    const n = sorted[i]
+    let holdDuration: number | undefined
+
+    if (params.holdChance > 0 && rng() < params.holdChance) {
+      let cap = Math.min(MAX_HOLD_DURATION, duration - END_MARGIN_SECONDS - n.time)
+      for (let j = i + 1; j < sorted.length; j++) {
+        if (sorted[j].lane === n.lane) {
+          cap = Math.min(cap, sorted[j].time - n.time - 0.12)
+          break
+        }
+      }
+      if (cap >= MIN_HOLD_DURATION) {
+        holdDuration = MIN_HOLD_DURATION + rng() * (cap - MIN_HOLD_DURATION)
+      }
+    }
+
+    result.push(holdDuration ? { ...n, holdDuration } : n)
+
+    // 롱노트가 아닐 때만 코드(동시 입력)를 얹는다 — 롱노트를 누른 채로
+    // 다른 손가락이 다른 레인을 처리하게 하면 너무 정신없어진다.
+    if (!holdDuration && rng() < params.chordChance) {
+      let extraLane = Math.floor(rng() * LANE_COUNT) as Lane
+      let tries = 0
+      while (extraLane === n.lane && tries < 10) {
+        extraLane = Math.floor(rng() * LANE_COUNT) as Lane
+        tries++
+      }
+      if (extraLane !== n.lane) {
+        result.push({ time: n.time, lane: extraLane })
+      }
+    }
+  }
+
+  return result.sort((a, b) => a.time - b.time)
+}
+
 export function buildChartFromEnergy(energies: number[], times: number[], duration: number, difficulty: Difficulty): Chart {
   const params = DIFFICULTY_PARAMS[difficulty]
   const denseOnsets = pickOnsets(energies, times, DENSE_ONSET_PARAMS)
@@ -266,9 +328,13 @@ export function buildChartFromEnergy(energies: number[], times: number[], durati
   }
 
   onsets = fillGaps(onsets, duration, params.minSpacing)
-  const notes = assignLanes(onsets)
-    .filter((n) => n.time > LEAD_IN_SECONDS && n.time < duration - END_MARGIN_SECONDS)
-    .sort((a, b) => a.time - b.time)
+  let notes = assignLanes(onsets)
+  const holdChordParams = HOLD_CHORD_PARAMS[difficulty]
+  if (holdChordParams) {
+    const seed = onsets.reduce((acc, t) => acc + t * 811, 1)
+    notes = addHoldsAndChords(notes, duration, seed, holdChordParams)
+  }
+  notes = notes.filter((n) => n.time > LEAD_IN_SECONDS && n.time < duration - END_MARGIN_SECONDS).sort((a, b) => a.time - b.time)
   return { notes, duration, difficulty }
 }
 
@@ -280,15 +346,6 @@ export function analyzeAudioBuffer(audioBuffer: AudioBuffer, difficulty: Difficu
   const mono = mixToMono(channels)
   const { energies, times } = computeEnergy(mono, audioBuffer.sampleRate)
   return buildChartFromEnergy(energies, times, audioBuffer.duration, difficulty)
-}
-
-/** 오디오 파일을 디코딩하고 채보까지 만든다. 재생에도 같은 AudioContext를
- * 재사용해야 브라우저의 컨텍스트 개수 제한/자동재생 정책에 걸리지 않는다. */
-export async function decodeAndAnalyze(file: File, difficulty: Difficulty, audioCtx: AudioContext): Promise<{ chart: Chart; audioBuffer: AudioBuffer }> {
-  const arrayBuffer = await file.arrayBuffer()
-  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer)
-  const chart = analyzeAudioBuffer(audioBuffer, difficulty)
-  return { chart, audioBuffer }
 }
 
 /** public/songs/의 수록곡처럼 URL로 제공되는 오디오를 받아와 디코딩하고

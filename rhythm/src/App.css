@@ -33,15 +33,6 @@
     display: none;
   }
 
-  .start-note {
-    margin-bottom: 12px;
-  }
-
-  .file-drop {
-    padding: 14px;
-    margin-bottom: 12px;
-  }
-
   .start-keys {
     margin-top: 10px;
   }
@@ -86,14 +77,6 @@
   letter-spacing: 1px;
 }
 
-.playlist-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
 .playlist-section-title {
   font-size: 12px;
   font-weight: 800;
@@ -113,16 +96,6 @@
   background-clip: text;
   color: transparent;
   letter-spacing: 0.5px;
-}
-
-.playlist-reset-btn {
-  border: 1px solid var(--line);
-  background: var(--panel-raised);
-  color: var(--ink-dim);
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 11px;
-  white-space: nowrap;
 }
 
 .playlist-list {
@@ -198,11 +171,6 @@
   margin: 0 0 4px;
 }
 
-.start-note {
-  color: var(--ink-faint);
-  font-size: 11.5px;
-  margin: 0 0 22px;
-}
 
 .nickname-input {
   width: 100%;
@@ -219,37 +187,6 @@
 .nickname-input:focus {
   outline: none;
   border-color: #ffd93d;
-}
-
-.file-drop {
-  display: block;
-  border: 2.5px dashed #5a4fc9;
-  border-radius: 16px;
-  padding: 22px;
-  cursor: pointer;
-  background: rgba(90, 79, 201, 0.08);
-  transition: background 0.15s;
-  margin-bottom: 18px;
-}
-
-.file-drop:hover {
-  background: rgba(90, 79, 201, 0.18);
-}
-
-.file-drop input {
-  display: none;
-}
-
-.file-drop-placeholder {
-  color: var(--ink-dim);
-  font-size: 14px;
-}
-
-.file-drop-name {
-  color: var(--accent-bright);
-  font-weight: 700;
-  font-size: 14px;
-  word-break: break-all;
 }
 
 .difficulty-picker {
@@ -689,6 +626,91 @@
   border: none;
   background: linear-gradient(90deg, #ffd93d, #ff9d5c);
   color: #1c1030;
+}
+
+/* ---------------------------------------------------------------- 랭킹 화면 */
+.start-ranking-btn {
+  width: 100%;
+  border: 1.5px solid var(--line);
+  background: var(--panel-raised);
+  color: var(--ink-dim);
+  border-radius: 12px;
+  padding: 10px;
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.start-ranking-btn:hover {
+  border-color: #ffd93d;
+  color: var(--ink);
+}
+
+.ranking-song-select {
+  width: 100%;
+  background: var(--panel-raised);
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--ink);
+  font-size: 13.5px;
+  margin-bottom: 12px;
+}
+
+.ranking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 340px;
+  overflow-y: auto;
+  margin: 16px 0;
+}
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1.5px solid var(--line);
+  background: var(--panel-raised);
+  border-radius: 10px;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.ranking-rank {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  width: 20px;
+  color: var(--ink-dim);
+}
+
+.ranking-row-top1 .ranking-rank {
+  color: #ffd93d;
+}
+.ranking-row-top2 .ranking-rank {
+  color: #d7d7e6;
+}
+.ranking-row-top3 .ranking-rank {
+  color: #ff9d5c;
+}
+
+.ranking-nickname {
+  flex: 1;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.ranking-score {
+  font-size: 12px;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+.ranking-empty {
+  color: var(--ink-dim);
+  font-size: 13px;
+  text-align: center;
+  margin: 20px 0;
 }
 
 /* ---------------------------------------------------------------- 마스코트 */

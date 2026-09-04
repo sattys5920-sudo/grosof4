@@ -11,6 +11,9 @@ export interface ChartNote {
   /** 이 노트가 판정선에 도달해야 하는 시각 (초, 곡 재생 시작 기준) */
   time: number
   lane: Lane
+  /** 롱노트 지속 시간(초). 있으면 이 시간만큼 키를 계속 누르고 있어야
+   * 판정이 확정된다 (어려움 난이도 전용). */
+  holdDuration?: number
 }
 
 export interface Chart {

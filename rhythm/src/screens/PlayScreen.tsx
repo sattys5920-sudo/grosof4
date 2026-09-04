@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { Chart, Lane, NoteState, PlayResult } from '../engine/types'
-import { autoMissNotes, classifyHit, findNoteToHit, summarize } from '../engine/judge'
+import type { Chart, Judgment, Lane, NoteState, PlayResult } from '../engine/types'
+import { autoMissNotes, classifyHit, findNoteToHit, summarize, HOLD_RELEASE_TOLERANCE } from '../engine/judge'
 import Mascot, { type MascotMood } from '../components/Mascot'
 
 const KEYS = ['d', 'f', 'g', 'h', 'j']
@@ -10,8 +10,17 @@ const CANVAS_W = 480
 const CANVAS_H = 700
 const JUDGMENT_Y = CANVAS_H - 90
 
+interface ActiveHold {
+  noteId: number
+  startJudgment: Judgment
+}
+
 function makeInitialNotes(chart: Chart): NoteState[] {
   return chart.notes.map((n, i) => ({ ...n, id: i, judgment: null, judgedAt: null }))
+}
+
+function clampDt(dt: number): number {
+  return Math.max(Math.min(dt, LEAD_TIME), -0.3)
 }
 
 export default function PlayScreen({
@@ -33,6 +42,7 @@ export default function PlayScreen({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const notesRef = useRef<NoteState[]>(makeInitialNotes(chart))
+  const activeHoldRef = useRef<Partial<Record<Lane, ActiveHold>>>({})
   const prevMissRef = useRef(0)
   const startTimeRef = useRef(0)
   const sourceRef = useRef<AudioBufferSourceNode | null>(null)
@@ -59,21 +69,19 @@ export default function PlayScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveResult])
 
-  /** 레인 하나를 "지금" 눌렀을 때의 판정 처리. 키보드(D F J K)와 모바일
-   * 터치 버튼이 똑같이 이 함수를 호출한다. */
-  const hitLane = useCallback(
-    (lane: Lane) => {
-      const elapsed = audioCtx.currentTime - startTimeRef.current
-      const note = findNoteToHit(notesRef.current, lane, elapsed)
-      if (!note) return
-      const judgment = classifyHit(note.time - elapsed)
-      if (!judgment) return
-      const updated = notesRef.current.map((n) => (n.id === note.id ? { ...n, judgment, judgedAt: elapsed } : n))
-      notesRef.current = updated
-      const result = summarize(updated)
-      setLiveResult(result)
-      setPopup({ text: judgment.toUpperCase(), key: Date.now() })
+  /** 노트 하나의 판정을 확정한다(점수/콤보/마스코트/팝업까지 전부).
+   * 일반 노트는 누르는 즉시, 롱노트는 다 채우거나 실패했을 때 호출된다. */
+  const applyJudgment = useCallback((noteId: number, judgment: Judgment, elapsed: number) => {
+    const updated = notesRef.current.map((n) => (n.id === noteId ? { ...n, judgment, judgedAt: elapsed } : n))
+    notesRef.current = updated
+    const result = summarize(updated)
+    setLiveResult(result)
+    prevMissRef.current = result.counts.miss
+    setPopup({ text: judgment.toUpperCase(), key: Date.now() })
 
+    if (judgment === 'miss') {
+      setMascotMood('sad')
+    } else {
       let currentCombo = 0
       for (let i = updated.length - 1; i >= 0; i--) {
         const j = updated[i].judgment
@@ -88,9 +96,49 @@ export default function PlayScreen({
       } else {
         setMascotMood('idle')
       }
-      setMascotBump((b) => b + 1)
+    }
+    setMascotBump((b) => b + 1)
+  }, [])
+
+  /** 레인 하나를 "지금" 눌렀을 때의 판정 처리. 키보드(D F G H J)와 모바일
+   * 터치 버튼이 똑같이 이 함수를 호출한다. 롱노트면 바로 확정하지 않고
+   * releaseLane에서 놓을 때(또는 다 채웠을 때) 확정한다. */
+  const hitLane = useCallback(
+    (lane: Lane) => {
+      const elapsed = audioCtx.currentTime - startTimeRef.current
+      const note = findNoteToHit(notesRef.current, lane, elapsed)
+      if (!note) return
+      const judgment = classifyHit(note.time - elapsed)
+      if (!judgment) return
+
+      if (note.holdDuration) {
+        activeHoldRef.current[lane] = { noteId: note.id, startJudgment: judgment }
+        setPopup({ text: 'HOLD', key: Date.now() })
+        return
+      }
+      applyJudgment(note.id, judgment, elapsed)
     },
-    [audioCtx],
+    [audioCtx, applyJudgment],
+  )
+
+  /** 레인 하나를 놓았을 때 — 누르고 있던 롱노트가 있으면 충분히 채웠는지에
+   * 따라 성공/실패를 확정한다. 일반 노트를 놓는 건 아무 의미 없다. */
+  const releaseLane = useCallback(
+    (lane: Lane) => {
+      const active = activeHoldRef.current[lane]
+      if (!active) return
+      delete activeHoldRef.current[lane]
+      const note = notesRef.current.find((n) => n.id === active.noteId)
+      if (!note || note.judgment !== null) return // 이미 확정됨(자동 완료 등)
+      const elapsed = audioCtx.currentTime - startTimeRef.current
+      const endTime = note.time + (note.holdDuration ?? 0)
+      if (elapsed >= endTime - HOLD_RELEASE_TOLERANCE) {
+        applyJudgment(note.id, active.startJudgment, elapsed)
+      } else {
+        applyJudgment(note.id, 'miss', elapsed)
+      }
+    },
+    [audioCtx, applyJudgment],
   )
 
   function handleTouchStart(lane: Lane) {
@@ -100,6 +148,7 @@ export default function PlayScreen({
 
   function handleTouchEnd(lane: Lane) {
     setPressed((p) => p.map((v, i) => (i === lane ? false : v)))
+    releaseLane(lane)
   }
 
   useEffect(() => {
@@ -133,26 +182,68 @@ export default function PlayScreen({
 
       for (const n of notesRef.current) {
         if (n.judgment !== null) continue
-        const dt = n.time - elapsed
-        if (dt > LEAD_TIME || dt < -0.25) continue
-        const y = JUDGMENT_Y - (dt / LEAD_TIME) * JUDGMENT_Y
+        const isHold = !!n.holdDuration
+        const headDt = n.time - elapsed
+        const tailDt = isHold ? n.time + n.holdDuration! - elapsed : headDt
+        if (headDt > LEAD_TIME) continue
+        if (tailDt < -0.25) continue
+
         const x = n.lane * laneW + laneW / 2
         const w = laneW * 0.72
-        const h = 26
-        ctx.fillStyle = LANE_COLORS[n.lane]
-        ctx.strokeStyle = 'rgba(10,14,20,0.7)'
-        ctx.lineWidth = 3
-        roundRect(ctx, x - w / 2, y - h / 2, w, h, 8)
-        ctx.fill()
-        ctx.stroke()
+        const headY = JUDGMENT_Y - (clampDt(headDt) / LEAD_TIME) * JUDGMENT_Y
+
+        if (isHold) {
+          const tailY = JUDGMENT_Y - (clampDt(tailDt) / LEAD_TIME) * JUDGMENT_Y
+          const active = activeHoldRef.current[n.lane]?.noteId === n.id
+          ctx.fillStyle = active ? LANE_COLORS[n.lane] : `${LANE_COLORS[n.lane]}aa`
+          ctx.strokeStyle = active ? '#ffffff' : 'rgba(10,14,20,0.7)'
+          ctx.lineWidth = active ? 3.5 : 3
+          const top = Math.min(tailY, headY) - 13
+          const bottom = Math.max(tailY, headY) + 13
+          roundRect(ctx, x - w / 2, top, w, bottom - top, 10)
+          ctx.fill()
+          ctx.stroke()
+        } else {
+          const h = 26
+          ctx.fillStyle = LANE_COLORS[n.lane]
+          ctx.strokeStyle = 'rgba(10,14,20,0.7)'
+          ctx.lineWidth = 3
+          roundRect(ctx, x - w / 2, headY - h / 2, w, h, 8)
+          ctx.fill()
+          ctx.stroke()
+        }
       }
     }
 
     function frame() {
       if (cancelled) return
       const elapsed = audioCtx.currentTime - startTimeRef.current
+
+      // 롱노트를 계속 누르고 있는 채로 지속 시간을 다 채웠으면, 손을 떼기
+      // 전이라도 그 자리에서 바로 성공으로 확정한다.
+      for (const key of Object.keys(activeHoldRef.current)) {
+        const lane = Number(key) as Lane
+        const active = activeHoldRef.current[lane]
+        if (!active) continue
+        const note = notesRef.current.find((n) => n.id === active.noteId)
+        if (!note || note.judgment !== null) {
+          delete activeHoldRef.current[lane]
+          continue
+        }
+        const endTime = note.time + (note.holdDuration ?? 0)
+        if (elapsed >= endTime) {
+          delete activeHoldRef.current[lane]
+          applyJudgment(note.id, active.startJudgment, elapsed)
+        }
+      }
+
+      const holdingIds = new Set(
+        Object.values(activeHoldRef.current)
+          .filter((h): h is ActiveHold => !!h)
+          .map((h) => h.noteId),
+      )
       const before = notesRef.current
-      const after = autoMissNotes(before, elapsed)
+      const after = autoMissNotes(before, elapsed, holdingIds)
       if (after !== before) {
         notesRef.current = after
         const result = summarize(after)
@@ -194,6 +285,7 @@ export default function PlayScreen({
       const lane = laneForKey(e.key)
       if (lane === -1) return
       setPressed((p) => p.map((v, i) => (i === lane ? false : v)))
+      releaseLane(lane)
     }
 
     window.addEventListener('keydown', onKeyDown)

@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { classifyHit, findNoteToHit, autoMissNotes, scoreForJudgment, summarize, PERFECT_WINDOW, GREAT_WINDOW, GOOD_WINDOW } from './judge'
-import { computeEnergy, pickOnsets, fillGaps, assignLanes, buildChartFromEnergy, mixToMono, DIFFICULTY_PARAMS, estimateTempo, DENSE_ONSET_PARAMS } from './analyze'
+import {
+  computeEnergy,
+  pickOnsets,
+  fillGaps,
+  assignLanes,
+  buildChartFromEnergy,
+  mixToMono,
+  DIFFICULTY_PARAMS,
+  estimateTempo,
+  DENSE_ONSET_PARAMS,
+  addHoldsAndChords,
+} from './analyze'
 import type { NoteState } from './types'
 
 function mockNote(overrides: Partial<NoteState> = {}): NoteState {
@@ -342,5 +353,75 @@ describe('박자 그리드 기반 채보 (난이도별 밀도)', () => {
     // 16분음표까지 채우는 어려움은 최소한 정박(4분음표)의 두 배 이상은 돼야
     // "진짜 어렵다"고 할 수 있다.
     expect(hard.notes.length).toBeGreaterThan(easy.notes.length * 2)
+  })
+})
+
+describe('addHoldsAndChords', () => {
+  function makeNotes(times: number[]): NoteState[] {
+    return times.map((t, i) => ({ time: t, lane: (i % 5) as NoteState['lane'], id: i, judgment: null, judgedAt: null }))
+  }
+
+  it('holdChance가 0보다 크면 일부 노트가 롱노트(holdDuration)가 된다', () => {
+    const times = Array.from({ length: 60 }, (_, i) => 1.5 + i * 0.4)
+    const notes = makeNotes(times)
+    const result = addHoldsAndChords(notes, 30, 12345, { holdChance: 1, chordChance: 0 })
+    expect(result.some((n) => n.holdDuration !== undefined)).toBe(true)
+  })
+
+  it('holdChance가 0이면 롱노트를 만들지 않는다', () => {
+    const times = Array.from({ length: 30 }, (_, i) => 1.5 + i * 0.4)
+    const notes = makeNotes(times)
+    const result = addHoldsAndChords(notes, 20, 999, { holdChance: 0, chordChance: 0 })
+    expect(result.every((n) => n.holdDuration === undefined)).toBe(true)
+  })
+
+  it('chordChance가 크면 같은 시각에 다른 레인 노트가 추가로 생긴다', () => {
+    const times = Array.from({ length: 30 }, (_, i) => 1.5 + i * 0.4)
+    const notes = makeNotes(times)
+    const result = addHoldsAndChords(notes, 20, 42, { holdChance: 0, chordChance: 1 })
+    expect(result.length).toBeGreaterThan(notes.length)
+    const byTime = new Map<number, Set<number>>()
+    for (const n of result) {
+      if (!byTime.has(n.time)) byTime.set(n.time, new Set())
+      byTime.get(n.time)!.add(n.lane)
+    }
+    const hasChord = [...byTime.values()].some((lanes) => lanes.size >= 2)
+    expect(hasChord).toBe(true)
+  })
+
+  it('롱노트 길이는 곡이 끝나기 전(END_MARGIN) 안에서만 늘어난다', () => {
+    const times = [1.5]
+    const notes = makeNotes(times)
+    const duration = 1.9 // 노트 시작 1.5 + 여유 0.3 = 곡은 사실상 여유가 거의 없다
+    const result = addHoldsAndChords(notes, duration, 7, { holdChance: 1, chordChance: 0 })
+    for (const n of result) {
+      if (n.holdDuration !== undefined) {
+        expect(n.time + n.holdDuration).toBeLessThanOrEqual(duration - 0.3 + 1e-9)
+      }
+    }
+  })
+
+  it('같은 입력(시드 포함)이면 항상 같은 결과를 만든다 (결정적)', () => {
+    const times = [1.5, 2.0, 2.5, 3.0, 3.5]
+    const notes = makeNotes(times)
+    const a = addHoldsAndChords(notes, 10, 5, { holdChance: 0.5, chordChance: 0.5 })
+    const b = addHoldsAndChords(notes, 10, 5, { holdChance: 0.5, chordChance: 0.5 })
+    expect(a).toEqual(b)
+  })
+
+  it('쉬움 난이도 채보에는 롱노트/코드가 없다', () => {
+    const sampleRate = 44100
+    const duration = 10
+    const samples = new Float32Array(sampleRate * duration)
+    for (let t = 0.5; t < duration; t += 0.25) {
+      const start = Math.floor(t * sampleRate)
+      for (let i = 0; i < 150; i++) samples[start + i] = 1.0
+    }
+    const { energies, times } = computeEnergy(samples, sampleRate)
+    const chart = buildChartFromEnergy(energies, times, duration, 'easy')
+    expect(chart.notes.every((n) => n.holdDuration === undefined)).toBe(true)
+    const timeCounts = new Map<number, number>()
+    for (const n of chart.notes) timeCounts.set(n.time, (timeCounts.get(n.time) ?? 0) + 1)
+    expect([...timeCounts.values()].every((c) => c === 1)).toBe(true)
   })
 })

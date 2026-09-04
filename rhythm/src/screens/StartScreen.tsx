@@ -1,13 +1,9 @@
 import { useState } from 'react'
 import type { Difficulty } from '../engine/types'
-import { loadBest, fileSongKey, builtinSongKey } from '../engine/save'
+import { loadBest, builtinSongKey } from '../engine/save'
 import { BUILTIN_SONGS, type BuiltinSong } from '../engine/songs'
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: '쉬움', normal: '보통', hard: '어려움' }
-
-function cleanName(fileName: string): string {
-  return fileName.replace(/\.[^./]+$/, '')
-}
 
 function BestBadge({ songKey, difficulty, busy }: { songKey: string; difficulty: Difficulty; busy: boolean }) {
   if (busy) return <span className="playlist-row-busy">분석 중…</span>
@@ -21,26 +17,16 @@ function BestBadge({ songKey, difficulty, busy }: { songKey: string; difficulty:
 }
 
 export default function StartScreen({
-  playlist,
-  onPlaylistChange,
-  onReady,
   onReadyBuiltin,
+  onShowRanking,
 }: {
-  playlist: File[]
-  onPlaylistChange: (files: File[]) => void
-  onReady: (file: File, difficulty: Difficulty) => Promise<void>
   onReadyBuiltin: (song: BuiltinSong, difficulty: Difficulty) => Promise<void>
+  onShowRanking: () => void
 }) {
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
   const [status, setStatus] = useState<'idle' | 'analyzing' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [activeKey, setActiveKey] = useState<string | null>(null)
-
-  function handleFilesChosen(e: React.ChangeEvent<HTMLInputElement>) {
-    const list = Array.from(e.target.files ?? [])
-    if (list.length > 0) onPlaylistChange([...playlist, ...list])
-    e.target.value = ''
-  }
 
   async function run(key: string, action: () => Promise<void>) {
     if (status === 'analyzing') return
@@ -60,7 +46,6 @@ export default function StartScreen({
     <div className="start-screen">
       <div className="start-card start-card-wide">
         <h1 className="start-title-sm">곡 선택</h1>
-        <p className="start-note">파일은 서버로 전송되지 않고 이 브라우저 안에서만 분석·재생됩니다.</p>
 
         <div className="difficulty-picker">
           {(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => (
@@ -71,6 +56,10 @@ export default function StartScreen({
         </div>
 
         {status === 'error' && <p className="start-error">{errorMsg}</p>}
+
+        <button type="button" className="start-ranking-btn" onClick={onShowRanking}>
+          🏆 랭킹 보기
+        </button>
 
         <h2 className="playlist-section-title">수록곡</h2>
         <div className="playlist-list">
@@ -91,41 +80,6 @@ export default function StartScreen({
             )
           })}
         </div>
-
-        <div className="playlist-header">
-          <h2 className="playlist-section-title">내 파일 추가</h2>
-          {playlist.length > 0 && (
-            <button type="button" className="playlist-reset-btn" onClick={() => onPlaylistChange([])}>
-              목록 비우기
-            </button>
-          )}
-        </div>
-
-        <label className="file-drop">
-          <input type="file" accept="audio/*" multiple onChange={handleFilesChosen} />
-          <span className="file-drop-placeholder">클릭해서 내 mp3(또는 wav) 파일 추가</span>
-        </label>
-
-        {playlist.length > 0 && (
-          <div className="playlist-list">
-            {playlist.map((file, i) => {
-              const key = fileSongKey(file.name, file.size)
-              return (
-                <button
-                  key={`${key}-${i}`}
-                  type="button"
-                  className="playlist-row"
-                  disabled={status === 'analyzing'}
-                  onClick={() => run(key, () => onReady(file, difficulty))}
-                >
-                  <span className="playlist-row-num">{i + 1}</span>
-                  <span className="playlist-row-name">{cleanName(file.name)}</span>
-                  <BestBadge songKey={key} difficulty={difficulty} busy={status === 'analyzing' && activeKey === key} />
-                </button>
-              )
-            })}
-          </div>
-        )}
 
         <div className="start-keys">
           <span className="key-chip">D</span>
