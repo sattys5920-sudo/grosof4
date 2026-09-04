@@ -1,0 +1,72 @@
+:root {
+  --void: #0a0e14;
+  --panel: #10161f;
+  --panel-raised: #161e2b;
+  --line: #263242;
+  --line-soft: #1a232f;
+  --ink: #e4ebf5;
+  --ink-dim: #93a3b8;
+  --ink-faint: #566577;
+
+  --accent: #3d9df0;
+  --accent-bright: #6cc0ff;
+  --accent-dim: #16324a;
+
+  --danger: #e0473f;
+  --danger-dim: #3c1815;
+  --ok: #4fae5c;
+  --ok-dim: #1c3a22;
+
+  --lane1: #e0473f;
+  --lane2: #e0c23e;
+  --lane3: #4fae5c;
+  --lane4: #3d8ff0;
+
+  --font-display: 'Black Han Sans', 'IBM Plex Sans KR', sans-serif;
+  --font-body: 'IBM Plex Sans KR', -apple-system, 'Malgun Gothic', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  color-scheme: dark;
+  color: var(--ink);
+  background: var(--void);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--void);
+  color: var(--ink);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-dim);
+  color: var(--accent-bright);
+}
