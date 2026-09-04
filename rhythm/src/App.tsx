@@ -61,7 +61,7 @@ export default function App() {
     const ctx = getAudioCtx()
     if (ctx.state === 'suspended') await ctx.resume()
     const { chart: c, audioBuffer: buf } = await decodeAndAnalyzeFromUrl(`${import.meta.env.BASE_URL}songs/${song.file}`, diff, ctx)
-    startPlaying(c, buf, song.title, builtinSongKey(song.id), diff)
+    startPlaying(c, buf, `${song.title} · ${song.song}`, builtinSongKey(song.id), diff)
   }
 
   function handleFinish(result: PlayResult) {

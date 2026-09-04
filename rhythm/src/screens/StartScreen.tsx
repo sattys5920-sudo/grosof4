@@ -91,7 +91,10 @@ export default function StartScreen({
                 onClick={() => run(key, () => onReadyBuiltin(song, difficulty))}
               >
                 <span className="playlist-row-num">{i + 1}</span>
-                <span className="playlist-row-name">{song.title}</span>
+                <span className="playlist-row-names">
+                  <span className="playlist-row-name">{song.title}</span>
+                  <span className="playlist-row-subname">{song.song}</span>
+                </span>
                 <BestBadge songKey={key} difficulty={difficulty} busy={status === 'analyzing' && activeKey === key} />
               </button>
             )
