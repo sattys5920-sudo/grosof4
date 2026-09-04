@@ -4,6 +4,23 @@
 import type { Difficulty, PlayResult } from './types'
 
 const PREFIX = 'rhythm-solo:best:v1:'
+const NICKNAME_KEY = 'rhythm-solo:nickname:v1'
+
+export function loadNickname(): string {
+  try {
+    return localStorage.getItem(NICKNAME_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+export function saveNickname(nickname: string): void {
+  try {
+    localStorage.setItem(NICKNAME_KEY, nickname)
+  } catch {
+    // 저장 실패해도 게임 진행에는 지장 없다
+  }
+}
 
 export function songKey(fileName: string, fileSize: number, difficulty: Difficulty): string {
   return `${PREFIX}${fileName}:${fileSize}:${difficulty}`

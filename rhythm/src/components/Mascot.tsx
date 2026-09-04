@@ -9,10 +9,13 @@ const SPEECH: Record<MascotMood, string[]> = {
   sad: ['괜찮아, 다시!', '아쉽다…', '집중집중!'],
 }
 
-/** 헤드폰을 쓴 로봇 마스코트. 특정 상용 리듬게임의 실제 캐릭터(로고 포함
- * 디자인)를 그대로 베낀 게 아니라, "헤드폰 쓴 화이트/블루/옐로 로봇"이라는
- * 분위기만 오마주해서 새로 그린 오리지널 디자인이다. 평소에는 계속 고개를
- * 까딱까딱 흔들고, bump가 바뀔 때마다(히트/미스) 한 번씩 크게 끄덕인다. */
+/** 화이트/블루/옐로 톤의 라운드 로봇 마스코트.
+ * 사용자가 보내준 참고 이미지는 실제 상용 리듬게임의 저작권 있는 캐릭터라
+ * 로고·구체적 조형을 그대로 베끼진 않았지만, 그 캐릭터의 전체적인 실루엣과
+ * 색 배치(둥근 흰 몸체, 검은 바이저, 위쪽 뿔 모양 스파이크+안테나, 옆면
+ * 귀 모양 돌기, 아래쪽 파란 투톤, 동그란 손)는 최대한 가깝게 새로 그린
+ * 오리지널 디자인이다. 평소에는 고개를 계속 까딱까딱 흔들고, bump가 바뀔
+ * 때마다(히트/미스) 한 번씩 크게 끄덕인다. */
 export default function Mascot({ mood, bump }: { mood: MascotMood; bump: number }) {
   const [nodBump, setNodBump] = useState(false)
   const [line, setLine] = useState(SPEECH.idle[0])
@@ -31,48 +34,57 @@ export default function Mascot({ mood, bump }: { mood: MascotMood; bump: number 
   return (
     <div className={`mascot mascot-${mood}`}>
       <div className="mascot-bubble">{line}</div>
-      <svg viewBox="0 0 200 230" className="mascot-svg" aria-hidden="true">
+      <svg viewBox="0 0 200 240" className="mascot-svg" aria-hidden="true">
         {mood === 'excited' && (
           <g className="mascot-sparkles">
-            <circle cx="20" cy="50" r="5" />
-            <circle cx="180" cy="70" r="4" />
-            <circle cx="24" cy="140" r="3.5" />
-            <circle cx="176" cy="150" r="5" />
+            <circle cx="16" cy="60" r="5" />
+            <circle cx="184" cy="80" r="4" />
+            <circle cx="20" cy="150" r="3.5" />
+            <circle cx="180" cy="160" r="5" />
           </g>
         )}
 
-        {/* 다리/발 */}
-        <rect x="72" y="196" width="20" height="20" rx="6" className="mascot-leg" />
-        <rect x="108" y="196" width="20" height="20" rx="6" className="mascot-leg" />
-        <ellipse cx="82" cy="220" rx="20" ry="8" className="mascot-foot" />
-        <ellipse cx="118" cy="220" rx="20" ry="8" className="mascot-foot" />
+        {/* 다리/발 (고개 흔들 때도 가만히 있는 부분) */}
+        <rect x="72" y="204" width="20" height="18" rx="6" className="mascot-leg" />
+        <rect x="108" y="204" width="20" height="18" rx="6" className="mascot-leg" />
+        <ellipse cx="82" cy="226" rx="20" ry="8" className="mascot-foot" />
+        <ellipse cx="118" cy="226" rx="20" ry="8" className="mascot-foot" />
 
-        {/* 몸통 */}
-        <rect x="62" y="150" width="76" height="52" rx="18" className="mascot-torso" />
-        <rect x="72" y="160" width="56" height="14" rx="7" className="mascot-torso-stripe" />
-        <circle cx="100" cy="188" r="7" className="mascot-torso-dot" />
-
-        {/* 고개(까딱까딱 흔들리는 부분) */}
+        {/* 몸통 + 머리 (까딱까딱 흔들리는 부분) */}
         <g className={`mascot-head-group ${nodBump ? 'mascot-head-bump' : ''}`}>
-          <line x1="100" y1="130" x2="100" y2="150" className="mascot-neck" />
+          {/* 팔 + 손 */}
+          <rect x="34" y="146" width="26" height="16" rx="8" className="mascot-arm" />
+          <rect x="140" y="146" width="26" height="16" rx="8" className="mascot-arm" />
+          <circle cx="32" cy="156" r="12" className="mascot-hand" />
+          <circle cx="168" cy="156" r="12" className="mascot-hand" />
 
-          {/* 헤드폰 밴드 + 이어컵 */}
-          <path d="M 38 90 Q 100 22 162 90" className="mascot-headband" />
-          <rect x="24" y="80" width="26" height="42" rx="13" className="mascot-earcup" />
-          <rect x="150" y="80" width="26" height="42" rx="13" className="mascot-earcup" />
-          <circle cx="37" cy="101" r="5" className="mascot-earcup-tip" />
-          <circle cx="163" cy="101" r="5" className="mascot-earcup-tip" />
+          {/* 몸통 + 아래쪽 파란 투톤 */}
+          <rect x="56" y="128" width="88" height="72" rx="36" className="mascot-torso" />
+          <rect x="62" y="176" width="76" height="26" rx="13" className="mascot-skirt" />
+          <circle cx="100" cy="158" r="10" className="mascot-chest-ring" />
+          <circle cx="100" cy="158" r="4" className="mascot-chest-dot" />
+
+          {/* 옆면 귀(돌기) */}
+          <path d="M 48 88 Q 18 96 24 124 Q 38 122 52 102 Z" className="mascot-ear" />
+          <path d="M 152 88 Q 182 96 176 124 Q 162 122 148 102 Z" className="mascot-ear" />
+          <circle cx="24" cy="120" r="6" className="mascot-ear-tip" />
+          <circle cx="176" cy="120" r="6" className="mascot-ear-tip" />
 
           {/* 머리 */}
-          <rect x="46" y="52" width="108" height="88" rx="34" className="mascot-head" />
-          <path d="M 92 30 L 100 12 L 108 30 Z" className="mascot-antenna-fin" />
+          <rect x="48" y="46" width="104" height="96" rx="38" className="mascot-head" />
+
+          {/* 위쪽 뿔 스파이크 + 안테나 */}
+          <path d="M 76 50 L 84 14 L 94 50 Z" className="mascot-spike mascot-spike-a" />
+          <path d="M 96 50 L 106 8 L 116 50 Z" className="mascot-spike mascot-spike-b" />
+          <line x1="132" y1="46" x2="140" y2="26" className="mascot-antenna-line" />
+          <circle cx="142" cy="22" r="7" className="mascot-antenna-ball" />
 
           {/* 얼굴 바이저 */}
-          <rect x="62" y="88" width="76" height="34" rx="14" className="mascot-visor" />
+          <rect x="64" y="86" width="72" height="32" rx="15" className="mascot-visor" />
           {eyes}
           {mouth}
 
-          <ellipse cx="76" cy="70" rx="16" ry="10" className="mascot-shine" />
+          <ellipse cx="78" cy="66" rx="18" ry="11" className="mascot-shine" />
         </g>
       </svg>
     </div>
@@ -82,35 +94,35 @@ export default function Mascot({ mood, bump }: { mood: MascotMood; bump: number 
 const EYES: Record<MascotMood, React.ReactNode> = {
   idle: (
     <g className="mascot-eyes">
-      <circle cx="84" cy="105" r="7" className="mascot-eye" />
-      <circle cx="116" cy="105" r="7" className="mascot-eye" />
+      <circle cx="84" cy="102" r="7" className="mascot-eye" />
+      <circle cx="116" cy="102" r="7" className="mascot-eye" />
     </g>
   ),
   happy: (
     <g className="mascot-eyes">
-      <path d="M 76 108 Q 84 96 92 108" className="mascot-eye-arc" />
-      <path d="M 108 108 Q 116 96 124 108" className="mascot-eye-arc" />
+      <path d="M 76 105 Q 84 93 92 105" className="mascot-eye-arc" />
+      <path d="M 108 105 Q 116 93 124 105" className="mascot-eye-arc" />
     </g>
   ),
   excited: (
     <g className="mascot-eyes">
-      <circle cx="84" cy="105" r="9" className="mascot-eye mascot-eye-glow" />
-      <circle cx="116" cy="105" r="9" className="mascot-eye mascot-eye-glow" />
+      <circle cx="84" cy="102" r="9" className="mascot-eye mascot-eye-glow" />
+      <circle cx="116" cy="102" r="9" className="mascot-eye mascot-eye-glow" />
     </g>
   ),
   sad: (
     <g className="mascot-eyes">
-      <path d="M 77 100 L 91 106" className="mascot-eye-line" />
-      <path d="M 123 100 L 109 106" className="mascot-eye-line" />
-      <circle cx="84" cy="110" r="5" className="mascot-eye mascot-eye-dim" />
-      <circle cx="116" cy="110" r="5" className="mascot-eye mascot-eye-dim" />
+      <path d="M 77 97 L 91 103" className="mascot-eye-line" />
+      <path d="M 123 97 L 109 103" className="mascot-eye-line" />
+      <circle cx="84" cy="107" r="5" className="mascot-eye mascot-eye-dim" />
+      <circle cx="116" cy="107" r="5" className="mascot-eye mascot-eye-dim" />
     </g>
   ),
 }
 
 const MOUTHS: Record<MascotMood, React.ReactNode> = {
-  idle: <rect x="92" y="114" width="16" height="4" rx="2" className="mascot-mouth" />,
-  happy: <path d="M 90 112 Q 100 120 110 112" className="mascot-mouth-arc" />,
-  excited: <rect x="88" y="111" width="24" height="8" rx="4" className="mascot-mouth mascot-mouth-open" />,
-  sad: <path d="M 90 118 Q 100 111 110 118" className="mascot-mouth-arc" />,
+  idle: <rect x="92" y="111" width="16" height="4" rx="2" className="mascot-mouth" />,
+  happy: <path d="M 90 109 Q 100 117 110 109" className="mascot-mouth-arc" />,
+  excited: <rect x="88" y="108" width="24" height="8" rx="4" className="mascot-mouth mascot-mouth-open" />,
+  sad: <path d="M 90 115 Q 100 108 110 115" className="mascot-mouth-arc" />,
 }

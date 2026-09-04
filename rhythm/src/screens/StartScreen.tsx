@@ -61,7 +61,7 @@ export default function StartScreen({
     return (
       <div className="start-screen">
         <div className="start-card">
-          <h1 className="start-title">내 노래 리듬게임</h1>
+          <h1 className="start-title-sm">음악 파일 선택</h1>
           <p className="start-sub">가지고 있는 mp3(또는 wav) 파일들을 한꺼번에 고르면, 곡마다 자동으로 박자를 분석해서 플레이리스트를 만들어 드려요.</p>
           <p className="start-note">파일은 서버로 전송되지 않고 이 브라우저 안에서만 분석·재생됩니다.</p>
 

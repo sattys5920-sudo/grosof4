@@ -16,6 +16,7 @@ export default function ResultScreen({
   result,
   isNewBest,
   songName,
+  nickname,
   difficulty,
   onRetry,
   onNewSong,
@@ -23,6 +24,7 @@ export default function ResultScreen({
   result: PlayResult
   isNewBest: boolean
   songName: string
+  nickname: string
   difficulty: Difficulty
   onRetry: () => void
   onNewSong: () => void
@@ -36,7 +38,7 @@ export default function ResultScreen({
         <div className="result-grade">{grade.label}</div>
         {isNewBest && <div className="result-newbest">신기록!</div>}
         <div className="result-song">
-          {songName} · {DIFFICULTY_LABEL[difficulty]}
+          {nickname} · {songName} · {DIFFICULTY_LABEL[difficulty]}
         </div>
         <div className="result-score">{result.score.toLocaleString()}점</div>
 

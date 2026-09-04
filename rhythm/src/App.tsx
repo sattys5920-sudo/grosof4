@@ -2,15 +2,17 @@ import { useRef, useState } from 'react'
 import './App.css'
 import type { Chart, Difficulty, PlayResult } from './engine/types'
 import { decodeAndAnalyze } from './engine/analyze'
-import { saveBestIfHigher } from './engine/save'
+import { saveBestIfHigher, loadNickname, saveNickname } from './engine/save'
+import NicknameScreen from './screens/NicknameScreen'
 import StartScreen from './screens/StartScreen'
 import PlayScreen from './screens/PlayScreen'
 import ResultScreen from './screens/ResultScreen'
 
-type Screen = 'start' | 'play' | 'result'
+type Screen = 'nickname' | 'start' | 'play' | 'result'
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('start')
+  const [screen, setScreen] = useState<Screen>('nickname')
+  const [nickname, setNickname] = useState('')
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
   // 플레이 화면으로 넘어가도 목록을 다시 고를 필요 없게, 플레이리스트는
   // StartScreen이 아니라 여기(App)에 둬서 화면이 바뀌어도 유지되게 한다.
@@ -26,6 +28,12 @@ export default function App() {
   function getAudioCtx(): AudioContext {
     if (!audioCtxRef.current) audioCtxRef.current = new AudioContext()
     return audioCtxRef.current
+  }
+
+  function handleNicknameSubmit(name: string) {
+    saveNickname(name)
+    setNickname(name)
+    setScreen('start')
   }
 
   async function handleReady(file: File, diff: Difficulty) {
@@ -68,6 +76,7 @@ export default function App() {
 
   return (
     <div className="app">
+      {screen === 'nickname' && <NicknameScreen initialNickname={loadNickname()} onSubmit={handleNicknameSubmit} />}
       {screen === 'start' && <StartScreen playlist={playlist} onPlaylistChange={setPlaylist} onReady={handleReady} />}
       {screen === 'play' && chart && audioBuffer && (
         <PlayScreen
@@ -76,12 +85,21 @@ export default function App() {
           audioBuffer={audioBuffer}
           audioCtx={getAudioCtx()}
           songName={songInfo?.name ?? ''}
+          nickname={nickname}
           onFinish={handleFinish}
           onQuit={handleNewSong}
         />
       )}
       {screen === 'result' && playResult && (
-        <ResultScreen result={playResult} isNewBest={isNewBest} songName={songInfo?.name ?? ''} difficulty={difficulty} onRetry={handleRetry} onNewSong={handleNewSong} />
+        <ResultScreen
+          result={playResult}
+          isNewBest={isNewBest}
+          songName={songInfo?.name ?? ''}
+          nickname={nickname}
+          difficulty={difficulty}
+          onRetry={handleRetry}
+          onNewSong={handleNewSong}
+        />
       )}
     </div>
   )

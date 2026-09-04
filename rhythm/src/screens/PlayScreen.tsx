@@ -19,6 +19,7 @@ export default function PlayScreen({
   audioBuffer,
   audioCtx,
   songName,
+  nickname,
   onFinish,
   onQuit,
 }: {
@@ -26,6 +27,7 @@ export default function PlayScreen({
   audioBuffer: AudioBuffer
   audioCtx: AudioContext
   songName: string
+  nickname: string
   onFinish: (result: PlayResult) => void
   onQuit: () => void
 }) {
@@ -226,7 +228,9 @@ export default function PlayScreen({
   return (
     <div className="play-screen">
       <div className="play-topbar">
-        <div className="play-song-name">{songName}</div>
+        <div className="play-song-name">
+          <span className="play-nickname">{nickname}</span> · {songName}
+        </div>
         <div className="play-stats">
           <span className="play-score">{liveResult.score.toLocaleString()}</span>
           <span className="play-combo">{combo}콤보</span>

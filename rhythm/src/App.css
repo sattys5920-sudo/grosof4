@@ -8,6 +8,49 @@
   overflow: auto;
 }
 
+/* 휴대폰 가로 모드처럼 세로 폭이 좁을 때는 시작/결과 화면 카드도
+   위아래 여백과 글자 크기를 줄여서 스크롤 없이 한 화면에 들어오게 한다. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .start-screen,
+  .result-screen {
+    padding: 10px 24px;
+    align-items: flex-start;
+  }
+
+  .start-card,
+  .result-card {
+    padding: 16px 24px;
+    max-height: calc(100vh - 20px);
+    overflow-y: auto;
+  }
+
+  .start-title {
+    font-size: 22px;
+    margin-bottom: 4px;
+  }
+
+  .start-sub {
+    display: none;
+  }
+
+  .start-note {
+    margin-bottom: 12px;
+  }
+
+  .file-drop {
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .start-keys {
+    margin-top: 10px;
+  }
+
+  .playlist-list {
+    max-height: 34vh;
+  }
+}
+
 /* ---------------------------------------------------------------- 시작 화면 */
 .start-screen {
   display: flex;
@@ -149,6 +192,23 @@
   color: var(--ink-faint);
   font-size: 11.5px;
   margin: 0 0 22px;
+}
+
+.nickname-input {
+  width: 100%;
+  background: var(--panel-raised);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--ink);
+  font-size: 15px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.nickname-input:focus {
+  outline: none;
+  border-color: #ffd93d;
 }
 
 .file-drop {
@@ -312,6 +372,11 @@
   text-overflow: ellipsis;
 }
 
+.play-nickname {
+  color: var(--accent-bright);
+  font-weight: 700;
+}
+
 .play-stats {
   display: flex;
   gap: 14px;
@@ -369,6 +434,33 @@
 @media (max-width: 640px) {
   .play-canvas-wrap {
     width: min(480px, 92vw);
+  }
+}
+
+/* 휴대폰을 가로로 눕혔을 때: 세로 공간이 부족하니 노트 하이웨이는 높이
+   기준으로 줄이고(폭은 종횡비에 맞춰 자동), 위아래 여백/글자도 줄인다. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .play-screen {
+    padding: 8px 16px;
+    gap: 6px;
+  }
+
+  .play-topbar {
+    padding: 6px 14px;
+  }
+
+  .play-stage {
+    gap: 14px;
+  }
+
+  .play-canvas-wrap {
+    width: auto;
+    /* 상단 바(곡명/점수)와 위아래 여백을 뺀 나머지 높이에 맞춘다 */
+    height: min(460px, calc(100vh - 76px));
+  }
+
+  .play-mascot-slot {
+    width: 104px;
   }
 }
 
@@ -607,10 +699,17 @@
   height: 160px;
 }
 
+@media (orientation: landscape) and (max-height: 520px) {
+  .mascot-svg {
+    width: 100px;
+    height: 114px;
+  }
+}
+
 /* 몸은 가만히, 고개만 계속 까딱까딱 흔든다 */
 .mascot-head-group {
-  transform-box: fill-box;
-  transform-origin: 50% 88%;
+  transform-box: view-box;
+  transform-origin: 100px 210px;
   animation: mascot-nod 1.15s ease-in-out infinite;
 }
 
@@ -647,20 +746,37 @@
   }
 }
 
-.mascot-torso {
-  fill: #eef1f7;
+.mascot-torso,
+.mascot-head {
+  fill: #f7f9fc;
+  stroke: #2540a0;
+  stroke-width: 3.5;
+}
+
+.mascot-skirt {
+  fill: #3a5fe0;
+}
+
+.mascot-chest-ring {
+  fill: none;
+  stroke: #3a5fe0;
+  stroke-width: 3;
+}
+
+.mascot-chest-dot {
+  fill: #ffcb3d;
+}
+
+.mascot-arm {
+  fill: #f7f9fc;
   stroke: #2540a0;
   stroke-width: 3;
 }
 
-.mascot-torso-stripe {
-  fill: #3a5fe0;
-}
-
-.mascot-torso-dot {
-  fill: #ffcb3d;
+.mascot-hand {
+  fill: #ffffff;
   stroke: #2540a0;
-  stroke-width: 2;
+  stroke-width: 3;
 }
 
 .mascot-leg {
@@ -673,38 +789,37 @@
   stroke-width: 2.5;
 }
 
-.mascot-neck {
-  stroke: #b7bfcf;
-  stroke-width: 10;
-}
-
-.mascot-head {
+.mascot-ear {
   fill: #f7f9fc;
   stroke: #2540a0;
-  stroke-width: 3.5;
+  stroke-width: 3;
 }
 
-.mascot-headband {
-  fill: none;
+.mascot-ear-tip {
+  fill: #ff9d3d;
+}
+
+.mascot-spike-a {
+  fill: #ff9d3d;
+  stroke: #2540a0;
+  stroke-width: 2;
+}
+
+.mascot-spike-b {
+  fill: #f7f9fc;
+  stroke: #2540a0;
+  stroke-width: 2;
+}
+
+.mascot-antenna-line {
   stroke: #3a5fe0;
-  stroke-width: 14;
-  stroke-linecap: round;
+  stroke-width: 4;
 }
 
-.mascot-earcup {
+.mascot-antenna-ball {
   fill: #3a5fe0;
   stroke: #2540a0;
   stroke-width: 2.5;
-}
-
-.mascot-earcup-tip {
-  fill: #ffcb3d;
-}
-
-.mascot-antenna-fin {
-  fill: #ffcb3d;
-  stroke: #2540a0;
-  stroke-width: 2;
 }
 
 .mascot-visor {

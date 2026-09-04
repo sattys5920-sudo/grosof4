@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { classifyHit, findNoteToHit, autoMissNotes, scoreForJudgment, summarize, PERFECT_WINDOW, GREAT_WINDOW, GOOD_WINDOW } from './judge'
-import { computeEnergy, pickOnsets, fillGaps, assignLanes, buildChartFromEnergy, mixToMono, DIFFICULTY_PARAMS } from './analyze'
+import { computeEnergy, pickOnsets, fillGaps, assignLanes, buildChartFromEnergy, mixToMono, DIFFICULTY_PARAMS, estimateTempo, DENSE_ONSET_PARAMS } from './analyze'
 import type { NoteState } from './types'
 
 function mockNote(overrides: Partial<NoteState> = {}): NoteState {
@@ -271,5 +271,76 @@ describe('buildChartFromEnergy', () => {
     for (let i = 1; i < chart.notes.length; i++) {
       expect(chart.notes[i].time).toBeGreaterThanOrEqual(chart.notes[i - 1].time)
     }
+  })
+})
+
+describe('estimateTempo', () => {
+  it('일정한 간격의 온셋에서는 그 간격을 박자 주기로 추정한다', () => {
+    const onsets = Array.from({ length: 16 }, (_, i) => 0.5 + i * 0.5) // 0.5초 간격 = 120bpm
+    const tempo = estimateTempo(onsets)
+    expect(tempo).not.toBeNull()
+    expect(tempo!).toBeGreaterThan(0.47)
+    expect(tempo!).toBeLessThan(0.53)
+  })
+
+  it('온셋이 너무 적으면 박자를 추정하지 않는다', () => {
+    expect(estimateTempo([1, 2, 3])).toBeNull()
+  })
+
+  it('간격이 들쭉날쭉하면 박자를 추정하지 않는다', () => {
+    const onsets = [0.3, 0.71, 1.02, 1.9, 2.15, 3.4, 3.55, 4.9]
+    expect(estimateTempo(onsets)).toBeNull()
+  })
+})
+
+describe('박자 그리드 기반 채보 (난이도별 밀도)', () => {
+  // 4분음표(강)/8분음표(중)/16분음표(약) 세 층으로 클릭을 겹쳐 넣어서,
+  // 실제 곡처럼 "강박 + 잔잔한 사이 박자"가 있는 트랙을 흉내낸다.
+  function buildLayeredClickTrack(sampleRate: number, duration: number) {
+    const samples = new Float32Array(Math.floor(sampleRate * duration))
+    const beat = 0.5
+    const sixteenth = beat / 4
+    for (let t = beat; t < duration - beat; t += sixteenth) {
+      const stepIndex = Math.round((t - beat) / sixteenth)
+      const amp = stepIndex % 4 === 0 ? 1.0 : stepIndex % 2 === 0 ? 0.6 : 0.35
+      const start = Math.floor(t * sampleRate)
+      const len = 110
+      for (let i = 0; i < len && start + i < samples.length; i++) {
+        const env = 1 - i / len
+        samples[start + i] += Math.sin((2 * Math.PI * 440 * i) / sampleRate) * env * amp
+      }
+    }
+    return samples
+  }
+
+  it('실제로 곡에서 가장 잘게 쪼개진 박자 단위(16분음표)를 잡아낸다', () => {
+    const sampleRate = 44100
+    const duration = 14
+    const samples = buildLayeredClickTrack(sampleRate, duration)
+    const { energies, times } = computeEnergy(samples, sampleRate)
+    const denseOnsets = pickOnsets(energies, times, DENSE_ONSET_PARAMS)
+    const tempo = estimateTempo(denseOnsets)
+    expect(tempo).not.toBeNull()
+    // 트랙의 가장 촘촘한 층이 16분음표(0.125초) 간격이라, 이 값을 잡아내야
+    // 어려움 난이도가 그 단위 그대로, 보통/쉬움은 2배/4배로 쓸 수 있다.
+    expect(tempo!).toBeGreaterThan(0.11)
+    expect(tempo!).toBeLessThan(0.14)
+  })
+
+  it('어려움이 보통보다, 보통이 쉬움보다 노트를 확실히 더 촘촘하게 넣는다', () => {
+    const sampleRate = 44100
+    const duration = 14
+    const samples = buildLayeredClickTrack(sampleRate, duration)
+    const { energies, times } = computeEnergy(samples, sampleRate)
+
+    const easy = buildChartFromEnergy(energies, times, duration, 'easy')
+    const normal = buildChartFromEnergy(energies, times, duration, 'normal')
+    const hard = buildChartFromEnergy(energies, times, duration, 'hard')
+
+    expect(normal.notes.length).toBeGreaterThan(easy.notes.length)
+    expect(hard.notes.length).toBeGreaterThan(normal.notes.length)
+    // 16분음표까지 채우는 어려움은 최소한 정박(4분음표)의 두 배 이상은 돼야
+    // "진짜 어렵다"고 할 수 있다.
+    expect(hard.notes.length).toBeGreaterThan(easy.notes.length * 2)
   })
 })
