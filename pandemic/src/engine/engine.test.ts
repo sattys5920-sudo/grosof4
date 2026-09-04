@@ -165,7 +165,9 @@ describe('확산과 연쇄 확산', () => {
     // 확산이 서로를 끝없이 되먹임하지 않는지 확인한다.
     const ring: CityId[] = ['algiers', 'istanbul', 'cairo']
     const color: DiseaseColor = 'black'
-    let cubes = { ...s.cubes }
+    // 초기 무작위 감염을 지우고 깨끗한 보드에서 시작한다 (링 밖의 이웃 도시가
+    // 우연히 이미 3개 차 있으면 예상보다 확산이 더 일어나 테스트가 불안정해진다).
+    let cubes: GameState['cubes'] = {}
     for (const c of ring) cubes = { ...cubes, [c]: { [color]: 3 } }
     s = { ...s, cubes }
     // 크래시 없이, 유한 시간 내에 끝나야 한다 (호출 자체가 끝나면 통과)
@@ -290,6 +292,15 @@ describe('직업 능력', () => {
 describe('전염 카드', () => {
   it('감염률을 올리고, 감염 덱 맨 아래 도시에 큐브 3개를 놓고, 버림 더미를 감염 덱 위로 되돌린다', () => {
     let s = freshState()
+    // 검역관이 무작위로 배정되면 애틀랜타/그 인접 도시는 큐브가 안 놓이는 게
+    // 정상 동작이라, 이 테스트에서는 그런 간섭이 없는 직업으로 고정해 둔다.
+    s = {
+      ...s,
+      players: {
+        p1: mockPlayer('p1', { job: 'researcher' }),
+        p2: mockPlayer('p2', { job: 'dispatcher' }),
+      },
+    }
     const bottomCity = s.infectionDeck[s.infectionDeck.length - 1]
     const rng = new Rng(1)
     const before = s.infectionRateIndex

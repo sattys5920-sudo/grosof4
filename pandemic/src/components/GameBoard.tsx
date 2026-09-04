@@ -29,24 +29,27 @@ export default function GameBoard({
 
   const highlightSet = new Set(highlighted)
 
+  // map.ts의 좌표 자체가 이미 라벨/큐브가 안 겹치도록 손으로 간격을 벌려
+  // 잡은 값이라, 여기서는 그대로 쓰고 여백만 더해서 잘리지 않게 한다.
+  const pos = (id: CityId) => ({ x: CITIES[id].x, y: CITIES[id].y })
+
+  const allPos = CITY_IDS.map(pos)
+  const PAD = 90
+  const minX = Math.min(...allPos.map((p) => p.x)) - PAD
+  const maxX = Math.max(...allPos.map((p) => p.x)) + PAD
+  const minY = Math.min(...allPos.map((p) => p.y)) - PAD
+  const maxY = Math.max(...allPos.map((p) => p.y)) + PAD
+
   return (
     <div className="board-wrap">
-      <svg viewBox="0 0 1000 460" className="board-svg" preserveAspectRatio="xMidYMid meet">
+      <svg viewBox={`${minX} ${minY} ${maxX - minX} ${maxY - minY}`} className="board-svg" preserveAspectRatio="xMidYMid meet">
         {edges.map(([a, b]) => (
-          <line
-            key={`${a}-${b}`}
-            x1={CITIES[a].x}
-            y1={CITIES[a].y * 0.75}
-            x2={CITIES[b].x}
-            y2={CITIES[b].y * 0.75}
-            className="board-edge"
-          />
+          <line key={`${a}-${b}`} x1={pos(a).x} y1={pos(a).y} x2={pos(b).x} y2={pos(b).y} className="board-edge" />
         ))}
 
         {CITY_IDS.map((id) => {
           const c = CITIES[id]
-          const cx = c.x
-          const cy = c.y * 0.75
+          const { x: cx, y: cy } = pos(id)
           const cubes = c && (state.cubes[id] ?? {})
           const cubeColors = DISEASE_ORDER.filter((color) => (cubes[color] ?? 0) > 0)
           const hasStation = state.stations.includes(id)
