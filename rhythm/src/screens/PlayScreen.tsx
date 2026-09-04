@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Chart, Lane, NoteState, PlayResult } from '../engine/types'
 import { autoMissNotes, classifyHit, findNoteToHit, summarize } from '../engine/judge'
 import Mascot, { type MascotMood } from '../components/Mascot'
@@ -56,6 +56,49 @@ export default function PlayScreen({
     // liveResult가 바뀔 때만 다시 계산하면 충분하다
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveResult])
+
+  /** 레인 하나를 "지금" 눌렀을 때의 판정 처리. 키보드(D F J K)와 모바일
+   * 터치 버튼이 똑같이 이 함수를 호출한다. */
+  const hitLane = useCallback(
+    (lane: Lane) => {
+      const elapsed = audioCtx.currentTime - startTimeRef.current
+      const note = findNoteToHit(notesRef.current, lane, elapsed)
+      if (!note) return
+      const judgment = classifyHit(note.time - elapsed)
+      if (!judgment) return
+      const updated = notesRef.current.map((n) => (n.id === note.id ? { ...n, judgment, judgedAt: elapsed } : n))
+      notesRef.current = updated
+      const result = summarize(updated)
+      setLiveResult(result)
+      setPopup({ text: judgment.toUpperCase(), key: Date.now() })
+
+      let currentCombo = 0
+      for (let i = updated.length - 1; i >= 0; i--) {
+        const j = updated[i].judgment
+        if (j === null) continue
+        if (j === 'miss') break
+        currentCombo++
+      }
+      if (judgment === 'perfect' && currentCombo > 0 && currentCombo % 10 === 0) {
+        setMascotMood('excited')
+      } else if (currentCombo >= 10) {
+        setMascotMood('happy')
+      } else {
+        setMascotMood('idle')
+      }
+      setMascotBump((b) => b + 1)
+    },
+    [audioCtx],
+  )
+
+  function handleTouchStart(lane: Lane) {
+    setPressed((p) => p.map((v, i) => (i === lane ? true : v)))
+    hitLane(lane)
+  }
+
+  function handleTouchEnd(lane: Lane) {
+    setPressed((p) => p.map((v, i) => (i === lane ? false : v)))
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -139,33 +182,10 @@ export default function PlayScreen({
     function onKeyDown(e: KeyboardEvent) {
       const lane = laneForKey(e.key)
       if (lane === -1) return
-      if (!e.repeat) setPressed((p) => p.map((v, i) => (i === lane ? true : v)))
-      const elapsed = audioCtx.currentTime - startTimeRef.current
-      const note = findNoteToHit(notesRef.current, lane, elapsed)
-      if (!note) return
-      const judgment = classifyHit(note.time - elapsed)
-      if (!judgment) return
-      const updated = notesRef.current.map((n) => (n.id === note.id ? { ...n, judgment, judgedAt: elapsed } : n))
-      notesRef.current = updated
-      const result = summarize(updated)
-      setLiveResult(result)
-      setPopup({ text: judgment.toUpperCase(), key: Date.now() })
-
-      let currentCombo = 0
-      for (let i = updated.length - 1; i >= 0; i--) {
-        const j = updated[i].judgment
-        if (j === null) continue
-        if (j === 'miss') break
-        currentCombo++
+      if (!e.repeat) {
+        setPressed((p) => p.map((v, i) => (i === lane ? true : v)))
+        hitLane(lane)
       }
-      if (judgment === 'perfect' && currentCombo > 0 && currentCombo % 10 === 0) {
-        setMascotMood('excited')
-      } else if (currentCombo >= 10) {
-        setMascotMood('happy')
-      } else {
-        setMascotMood('idle')
-      }
-      setMascotBump((b) => b + 1)
     }
 
     function onKeyUp(e: KeyboardEvent) {
@@ -227,7 +247,18 @@ export default function PlayScreen({
           )}
           <div className="key-hint-row">
             {KEYS.map((k, i) => (
-              <div key={k} className={`key-hint ${pressed[i] ? 'active' : ''}`} style={{ borderColor: LANE_COLORS[i] }}>
+              <div
+                key={k}
+                className={`key-hint ${pressed[i] ? 'active' : ''}`}
+                style={{ borderColor: LANE_COLORS[i] }}
+                onPointerDown={(e) => {
+                  e.preventDefault()
+                  handleTouchStart(i as Lane)
+                }}
+                onPointerUp={() => handleTouchEnd(i as Lane)}
+                onPointerLeave={() => handleTouchEnd(i as Lane)}
+                onPointerCancel={() => handleTouchEnd(i as Lane)}
+              >
                 {k.toUpperCase()}
               </div>
             ))}

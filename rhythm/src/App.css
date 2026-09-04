@@ -264,6 +264,13 @@
   border: 3px solid #3a2f7a;
   box-shadow: 0 0 40px rgba(90, 168, 255, 0.15);
   background: #0c0a1e;
+  touch-action: none;
+}
+
+@media (max-width: 640px) {
+  .play-canvas-wrap {
+    width: min(480px, 92vw);
+  }
 }
 
 .play-canvas {
@@ -281,7 +288,6 @@
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   padding: 0 12px;
-  pointer-events: none;
 }
 
 .key-hint {
@@ -296,6 +302,11 @@
   font-family: var(--font-mono);
   color: var(--ink-dim);
   transition: all 0.06s;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .key-hint.active {

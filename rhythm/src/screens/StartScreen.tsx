@@ -86,7 +86,7 @@ export default function StartScreen({ onReady }: { onReady: (file: File, difficu
           <span className="key-chip">F</span>
           <span className="key-chip">J</span>
           <span className="key-chip">K</span>
-          <span className="start-keys-label">네 개의 키로 내려오는 노트를 판정선에 맞춰 눌러요.</span>
+          <span className="start-keys-label">내려오는 노트를 판정선에 맞춰 키보드로 누르거나, 휴대폰에서는 화면 아래 4개 버튼을 터치하세요.</span>
         </div>
       </div>
     </div>
