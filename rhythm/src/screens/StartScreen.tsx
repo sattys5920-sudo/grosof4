@@ -4,11 +4,6 @@ import { loadBest, fileSongKey, builtinSongKey } from '../engine/save'
 import { BUILTIN_SONGS, type BuiltinSong } from '../engine/songs'
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: '쉬움', normal: '보통', hard: '어려움' }
-const DIFFICULTY_DESC: Record<Difficulty, string> = {
-  easy: '노트 수가 적고 여유롭게 판정합니다.',
-  normal: '적당한 밀도로 표준 판정을 씁니다.',
-  hard: '노트가 촘촘하고 빡빡하게 판정합니다.',
-}
 
 function cleanName(fileName: string): string {
   return fileName.replace(/\.[^./]+$/, '')
@@ -71,7 +66,6 @@ export default function StartScreen({
           {(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => (
             <button key={d} type="button" className={`difficulty-btn ${difficulty === d ? 'active' : ''}`} onClick={() => setDifficulty(d)}>
               <span className="difficulty-name">{DIFFICULTY_LABEL[d]}</span>
-              <span className="difficulty-desc">{DIFFICULTY_DESC[d]}</span>
             </button>
           ))}
         </div>
@@ -91,10 +85,7 @@ export default function StartScreen({
                 onClick={() => run(key, () => onReadyBuiltin(song, difficulty))}
               >
                 <span className="playlist-row-num">{i + 1}</span>
-                <span className="playlist-row-names">
-                  <span className="playlist-row-name">{song.title}</span>
-                  <span className="playlist-row-subname">{song.song}</span>
-                </span>
+                <span className="playlist-row-name">{song.title}</span>
                 <BestBadge songKey={key} difficulty={difficulty} busy={status === 'analyzing' && activeKey === key} />
               </button>
             )
@@ -139,9 +130,10 @@ export default function StartScreen({
         <div className="start-keys">
           <span className="key-chip">D</span>
           <span className="key-chip">F</span>
+          <span className="key-chip">G</span>
+          <span className="key-chip">H</span>
           <span className="key-chip">J</span>
-          <span className="key-chip">K</span>
-          <span className="start-keys-label">내려오는 노트를 판정선에 맞춰 키보드로 누르거나, 휴대폰에서는 화면 아래 4개 버튼을 터치하세요.</span>
+          <span className="start-keys-label">내려오는 노트를 판정선에 맞춰 키보드로 누르거나, 휴대폰에서는 화면 아래 5개 버튼을 터치하세요.</span>
         </div>
       </div>
     </div>

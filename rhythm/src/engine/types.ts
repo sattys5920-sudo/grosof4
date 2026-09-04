@@ -1,9 +1,9 @@
-// 낙하형 4키 리듬게임의 핵심 타입.
+// 낙하형 5키 리듬게임의 핵심 타입.
 // engine/은 오디오 분석(analyze.ts)과 판정/점수(judge.ts)를 담당하는 순수
 // 로직이고, UI(screens/, components/)는 이 타입들을 읽기 전용으로 쓰거나
 // judge.ts의 순수 함수를 호출해서 상태를 갱신한다.
 
-export type Lane = 0 | 1 | 2 | 3
+export type Lane = 0 | 1 | 2 | 3 | 4
 
 export type Difficulty = 'easy' | 'normal' | 'hard'
 

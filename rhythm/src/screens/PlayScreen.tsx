@@ -3,8 +3,8 @@ import type { Chart, Lane, NoteState, PlayResult } from '../engine/types'
 import { autoMissNotes, classifyHit, findNoteToHit, summarize } from '../engine/judge'
 import Mascot, { type MascotMood } from '../components/Mascot'
 
-const KEYS = ['d', 'f', 'j', 'k']
-const LANE_COLORS = ['#ff6b6b', '#ffd93d', '#5ce0a8', '#5aa8ff']
+const KEYS = ['d', 'f', 'g', 'h', 'j']
+const LANE_COLORS = ['#ff6b6b', '#ffd93d', '#5ce0a8', '#5aa8ff', '#ff6b9d']
 const LEAD_TIME = 1.6
 const CANVAS_W = 480
 const CANVAS_H = 700
@@ -40,7 +40,7 @@ export default function PlayScreen({
   const finishedRef = useRef(false)
 
   const [liveResult, setLiveResult] = useState<PlayResult>(() => summarize(notesRef.current))
-  const [pressed, setPressed] = useState([false, false, false, false])
+  const [pressed, setPressed] = useState(KEYS.map(() => false))
   const [mascotMood, setMascotMood] = useState<MascotMood>('idle')
   const [mascotBump, setMascotBump] = useState(0)
   const [popup, setPopup] = useState<{ text: string; key: number } | null>(null)
@@ -118,8 +118,8 @@ export default function PlayScreen({
       if (!canvas || !ctx) return
       ctx.clearRect(0, 0, CANVAS_W, CANVAS_H)
 
-      const laneW = CANVAS_W / 4
-      for (let i = 0; i < 4; i++) {
+      const laneW = CANVAS_W / KEYS.length
+      for (let i = 0; i < KEYS.length; i++) {
         ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.07)'
         ctx.fillRect(i * laneW, 0, laneW, CANVAS_H)
       }

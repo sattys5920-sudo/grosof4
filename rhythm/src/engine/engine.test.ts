@@ -211,11 +211,11 @@ describe('fillGaps', () => {
 })
 
 describe('assignLanes', () => {
-  it('레인은 항상 0~3 사이다', () => {
+  it('레인은 항상 0~4 사이다', () => {
     const notes = assignLanes([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     for (const n of notes) {
       expect(n.lane).toBeGreaterThanOrEqual(0)
-      expect(n.lane).toBeLessThanOrEqual(3)
+      expect(n.lane).toBeLessThanOrEqual(4)
     }
   })
 

@@ -225,7 +225,9 @@ function seededRng(seed: number): () => number {
   return () => (s = (s * 16807) % 2147483647) / 2147483647
 }
 
-/** 온셋 시각들에 레인(0~3)을 배정한다. 같은 파일이면 항상 같은 채보가
+export const LANE_COUNT = 5
+
+/** 온셋 시각들에 레인(0~4)을 배정한다. 같은 파일이면 항상 같은 채보가
  * 나오도록 온셋 시각들 자체로 시드를 만든다 (연습 가능한 고정 채보). */
 export function assignLanes(times: number[]): ChartNote[] {
   const seed = times.reduce((acc, t) => acc + t * 997, 1)
@@ -234,11 +236,11 @@ export function assignLanes(times: number[]): ChartNote[] {
   let last: Lane | null = null
   let streak = 0
   for (const t of times) {
-    let lane = Math.floor(rng() * 4) as Lane
+    let lane = Math.floor(rng() * LANE_COUNT) as Lane
     if (lane === last) {
       streak++
       if (streak >= 2) {
-        lane = ((lane + 1 + Math.floor(rng() * 3)) % 4) as Lane
+        lane = ((lane + 1 + Math.floor(rng() * (LANE_COUNT - 1))) % LANE_COUNT) as Lane
         streak = 0
       }
     } else {
