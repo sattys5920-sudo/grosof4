@@ -3,10 +3,10 @@ import { useEffect, useState } from 'react'
 export type MascotMood = 'idle' | 'happy' | 'excited' | 'sad'
 
 const SPEECH: Record<MascotMood, string[]> = {
-  idle: ['같이 해볼까?', '준비됐어!', '박자 타봐~'],
-  happy: ['좋아좋아!', '이 느낌이야!', '나이스!'],
-  excited: ['완벽해!!', '최고다!!', '불타오르네!'],
-  sad: ['괜찮아, 다시!', '아쉽다…', '집중집중!'],
+  idle: ['리듬 타 바!', '스우파 가 보자고', '박자가 두둥탁'],
+  happy: ['지리는데?', '오지는데?', '개쩔었수다'],
+  excited: ['ㄷㄷ 박자의 신', '오르페우스잖아!!', '추, 춤이 나올 것만 같아'],
+  sad: ['아 님 ㄱ-', '흥이 다 깨져 버렸잖아', '에궁.. 잘 좀 해 보셔요'],
 }
 
 /** 화이트/블루/옐로 톤의 동글동글한 로봇 마스코트.
