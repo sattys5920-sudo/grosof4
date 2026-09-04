@@ -43,6 +43,22 @@ export async function submitRankingIfHigher(songId: string, difficulty: Difficul
   }
 }
 
+export interface RankInfo {
+  rank: number
+  total: number
+}
+
+/** 기록을 저장하고(더 높을 때만), 이 닉네임이 그 곡+난이도 전체에서
+ * 몇 등인지도 함께 돌려준다. Firebase가 없거나 실패하면 null. */
+export async function submitRankingAndGetRank(songId: string, difficulty: Difficulty, nickname: string, result: PlayResult): Promise<RankInfo | null> {
+  await submitRankingIfHigher(songId, difficulty, nickname, result)
+  if (!db || !nickname) return null
+  const entries = await fetchRanking(songId, difficulty)
+  const index = entries.findIndex((e) => e.nickname === nickname)
+  if (index === -1) return null
+  return { rank: index + 1, total: entries.length }
+}
+
 /** 특정 곡+난이도의 전체 랭킹을 점수 내림차순으로 가져온다. */
 export async function fetchRanking(songId: string, difficulty: Difficulty): Promise<RankingEntry[]> {
   if (!db) return []

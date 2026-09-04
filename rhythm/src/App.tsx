@@ -3,7 +3,7 @@ import './App.css'
 import type { Chart, Difficulty, PlayResult } from './engine/types'
 import { decodeAndAnalyzeFromUrl } from './engine/analyze'
 import { saveBestIfHigher, loadNickname, saveNickname, builtinSongKey } from './engine/save'
-import { submitRankingIfHigher } from './engine/ranking'
+import { submitRankingAndGetRank, type RankInfo } from './engine/ranking'
 import type { BuiltinSong } from './engine/songs'
 import NicknameScreen from './screens/NicknameScreen'
 import StartScreen from './screens/StartScreen'
@@ -22,6 +22,8 @@ export default function App() {
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null)
   const [playResult, setPlayResult] = useState<PlayResult | null>(null)
   const [isNewBest, setIsNewBest] = useState(false)
+  const [rankInfo, setRankInfo] = useState<RankInfo | null>(null)
+  const [rankLoading, setRankLoading] = useState(false)
   const [playToken, setPlayToken] = useState(0)
   const audioCtxRef = useRef<AudioContext | null>(null)
 
@@ -58,9 +60,13 @@ export default function App() {
 
   function handleFinish(result: PlayResult) {
     setPlayResult(result)
+    setRankInfo(null)
     if (songInfo) {
       setIsNewBest(saveBestIfHigher(songInfo.key, difficulty, result))
-      submitRankingIfHigher(songInfo.id, difficulty, nickname, result)
+      setRankLoading(true)
+      submitRankingAndGetRank(songInfo.id, difficulty, nickname, result)
+        .then(setRankInfo)
+        .finally(() => setRankLoading(false))
     }
     setScreen('result')
   }
@@ -100,6 +106,8 @@ export default function App() {
         <ResultScreen
           result={playResult}
           isNewBest={isNewBest}
+          rankInfo={rankInfo}
+          rankLoading={rankLoading}
           songName={songInfo?.name ?? ''}
           nickname={nickname}
           difficulty={difficulty}

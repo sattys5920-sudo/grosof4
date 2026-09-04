@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Mascot from '../components/Mascot'
 
 export default function NicknameScreen({ initialNickname, onSubmit }: { initialNickname: string; onSubmit: (nickname: string) => void }) {
   const [value, setValue] = useState(initialNickname)
@@ -13,6 +14,7 @@ export default function NicknameScreen({ initialNickname, onSubmit }: { initialN
   return (
     <div className="start-screen">
       <div className="start-card">
+        <Mascot mood="idle" bump={0} />
         <h1 className="start-title">오투..잼있어?</h1>
         <p className="start-sub">닉네임을 입력하고 시작하세요.</p>
 

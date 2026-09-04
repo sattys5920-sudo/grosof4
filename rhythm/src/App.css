@@ -540,6 +540,16 @@
   margin-bottom: 6px;
 }
 
+.result-rank {
+  color: #5aa8ff;
+  font-size: 12.5px;
+  margin-bottom: 6px;
+}
+
+.result-rank strong {
+  font-size: 14px;
+}
+
 .result-song {
   color: var(--ink-dim);
   font-size: 12px;

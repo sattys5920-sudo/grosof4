@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { Difficulty, PlayResult } from '../engine/types'
+import type { RankInfo } from '../engine/ranking'
 import Mascot, { type MascotMood } from '../components/Mascot'
 
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: '쉬움', normal: '보통', hard: '어려움' }
@@ -15,6 +16,8 @@ function gradeFor(accuracy: number): { label: string; mood: MascotMood } {
 export default function ResultScreen({
   result,
   isNewBest,
+  rankInfo,
+  rankLoading,
   songName,
   nickname,
   difficulty,
@@ -23,6 +26,8 @@ export default function ResultScreen({
 }: {
   result: PlayResult
   isNewBest: boolean
+  rankInfo: RankInfo | null
+  rankLoading: boolean
   songName: string
   nickname: string
   difficulty: Difficulty
@@ -37,6 +42,12 @@ export default function ResultScreen({
         <Mascot mood={grade.mood} bump={1} />
         <div className="result-grade">{grade.label}</div>
         {isNewBest && <div className="result-newbest">신기록!</div>}
+        {rankLoading && <div className="result-rank">순위 확인 중…</div>}
+        {!rankLoading && rankInfo && (
+          <div className="result-rank">
+            이 곡 · {DIFFICULTY_LABEL[difficulty]} 랭킹 {rankInfo.total}명 중 <strong>{rankInfo.rank}위</strong>
+          </div>
+        )}
         <div className="result-song">
           {nickname} · {songName} · {DIFFICULTY_LABEL[difficulty]}
         </div>

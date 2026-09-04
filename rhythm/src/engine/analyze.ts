@@ -13,10 +13,6 @@ export const DIFFICULTY_PARAMS: Record<Difficulty, { thresholdMultiplier: number
   hard: { thresholdMultiplier: 1.05, minSpacing: 0.1 },
 }
 
-/** 감지된 가장 잘게 쪼개진 박자 단위(unitStep)를 난이도별로 몇 배 할지.
- * 어려움=그 단위 그대로(가장 촘촘하게), 보통=1.5배 간격, 쉬움=2.5배 간격. */
-const UNIT_MULTIPLIER: Record<Difficulty, number> = { hard: 1, normal: 1.5, easy: 2.5 }
-
 /** 박자 추정용 "일단 최대한 촘촘하게" 잡는 온셋 후보 — 난이도와 무관하게
  * 한 번만 뽑아서 박자 그리드의 기준으로 쓴다. */
 export const DENSE_ONSET_PARAMS = { thresholdMultiplier: 1.12, minSpacing: 0.05, historySeconds: 1.0 }
@@ -181,40 +177,134 @@ function localBaseline(energies: number[], times: number[], t: number, windowSec
   return sum / (to - from + 1)
 }
 
-/** 감지된 가장 잘게 쪼개진 박자 단위(unitStep)를 난이도별 배수로 늘린
- * 그리드를 곡 전체에 깔고, 각 그리드 지점이 "실제로 소리가 있는 자리"인지
- * 판단해서 노트를 남긴다 — 판단 기준은 (1) 촘촘한 온셋 후보가 근처에
- * 있는지, 그리고 어려움 난이도에서는 (2) 그 자리 에너지가 주변 평균보다
- * 확실히 큰지도 추가로 본다(작은 하이햇 같은 여린 타격도 잡아내기 위해). */
-function buildGridOnsets(
+/** estimateTempo가 돌려주는 unitStep은 곡에 실제로 존재하는 가장 잘게
+ * 쪼개진 규칙적 간격 — 대중음악에서는 거의 항상 16분음표 간격과 일치한다.
+ * 이 값을 4분음표 기준으로 삼아 8분/4분/32분음표와 한 마디(4/4 가정)
+ * 길이까지 전부 유도해서, "그냥 랜덤 timestamp"가 아니라 실제 박자
+ * 그리드에 노트를 앉힌다. */
+interface BeatGrid {
+  sixteenth: number
+  eighth: number
+  quarter: number
+  thirtysecond: number
+  measure: number
+  bpm: number
+}
+
+function buildBeatGrid(unitStep: number): BeatGrid {
+  const sixteenth = unitStep
+  const eighth = unitStep * 2
+  const quarter = unitStep * 4
+  const thirtysecond = unitStep / 2
+  return { sixteenth, eighth, quarter, thirtysecond, measure: quarter * 4, bpm: 60 / quarter }
+}
+
+type Subdivision = 'quarter' | 'eighth' | 'sixteenth' | 'thirtysecond'
+type Tier = 'low' | 'mid' | 'high'
+
+const SUBDIVISION_RANK: Record<Subdivision, number> = { quarter: 0, eighth: 1, sixteenth: 2, thirtysecond: 3 }
+
+/** 마디를 32분음표 32칸으로 나눴을 때, 그 칸이 어느 층위(4분/8분/16분/32분)의
+ * 박자인지 — 표준 메트릭 계층 구조(강박일수록 굵은 단위)를 그대로 따른다. */
+function subdivisionOfStep(stepIndex: number): Subdivision {
+  const m = stepIndex % 32
+  if (m % 8 === 0) return 'quarter'
+  if (m % 4 === 0) return 'eighth'
+  if (m % 2 === 0) return 'sixteenth'
+  return 'thirtysecond'
+}
+
+/** 이 난이도가 이 구간(에너지 tier)에서 어디까지 세분화해서 노트를 넣을지.
+ * 쉬움은 구간과 무관하게 항상 8분음표까지만 — "지나치게 촘촘한 노트 금지".
+ * 보통/어려움은 에너지가 높은(후렴처럼 들리는) 구간일수록 더 잘게 쪼갠다. */
+function subdivisionCap(difficulty: Difficulty, tier: Tier): Subdivision {
+  if (difficulty === 'easy') return 'eighth'
+  if (difficulty === 'normal') return tier === 'low' ? 'eighth' : 'sixteenth'
+  if (tier === 'high') return 'thirtysecond'
+  if (tier === 'mid') return 'sixteenth'
+  return 'eighth'
+}
+
+function averageEnergyInRange(energies: number[], times: number[], start: number, end: number): number {
+  const hop = times.length >= 2 ? times[1] - times[0] : 0.01
+  const fromIdx = Math.max(0, Math.round((start - times[0]) / hop))
+  const toIdx = Math.min(energies.length - 1, Math.round((end - times[0]) / hop))
+  if (toIdx <= fromIdx) return energies[Math.min(fromIdx, energies.length - 1)] ?? 0
+  let sum = 0
+  for (let i = fromIdx; i <= toIdx; i++) sum += energies[i]
+  return sum / (toIdx - fromIdx + 1)
+}
+
+/** 마디별 평균 에너지로 곡을 조용한/보통/시끄러운 구간(대략 벌스/코러스에
+ * 해당)으로 나눈다 — 곡 전체를 처음부터 끝까지 같은 밀도로 채우지 않고,
+ * 에너지가 높은 구간일수록 더 촘촘한 박자 분할을 쓰게 하기 위한 기준. */
+function tierThresholds(measureEnergies: number[]): { low: number; high: number } {
+  const sorted = [...measureEnergies].filter((e) => e > 0).sort((a, b) => a - b)
+  if (sorted.length === 0) return { low: 0, high: 0 }
+  const pick = (p: number) => sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))]
+  return { low: pick(0.35), high: pick(0.7) }
+}
+
+function tierFor(energy: number, thresholds: { low: number; high: number }): Tier {
+  if (energy >= thresholds.high) return 'high'
+  if (energy >= thresholds.low) return 'mid'
+  return 'low'
+}
+
+/** BPM 그리드(마디 -> 4분/8분/16분/32분음표)를 곡 전체에 깔고, 난이도와
+ * 구간별 에너지 tier로 이번 마디에서 어디까지 세분화할지 정한 뒤, 그
+ * 세분화 등급까지의 그리드 지점 중 실제로 소리가 있는 자리(촘촘한 온셋
+ * 후보가 근처에 있거나, 어려움에서는 에너지가 주변 평균보다 확실히 튀는
+ * 자리)만 노트로 남긴다. 완전 랜덤 timestamp/레인 생성은 쓰지 않는다. */
+function buildPatternedGridOnsets(
   denseOnsets: number[],
   energies: number[],
   times: number[],
   duration: number,
-  unitStep: number,
+  grid: BeatGrid,
   difficulty: Difficulty,
+  rng: () => number,
 ): number[] {
-  const step = unitStep * UNIT_MULTIPLIER[difficulty]
-  const phase = denseOnsets[0] ?? step
-  const matchTolerance = step * 0.5
+  const endTime = duration - END_MARGIN_SECONDS
+  const phaseRaw = denseOnsets[0] ?? grid.quarter
+  let firstMeasureStart = phaseRaw
+  while (firstMeasureStart > LEAD_IN_SECONDS - grid.measure) firstMeasureStart -= grid.measure
+
+  const measureEnergies: number[] = []
+  for (let t = firstMeasureStart; t < endTime; t += grid.measure) {
+    measureEnergies.push(averageEnergyInRange(energies, times, t, Math.min(endTime, t + grid.measure)))
+  }
+  const thresholds = tierThresholds(measureEnergies)
   const useEnergyGate = difficulty === 'hard'
-  const energyGateMultiplier = 1.25
+  const energyGateMultiplier = 1.2
+  const step = grid.thirtysecond
+  const matchTolerance = step * 0.6
 
   const out: number[] = []
-  const endTime = duration - END_MARGIN_SECONDS
-  const startIndex = Math.floor((LEAD_IN_SECONDS - phase) / step) - 1
-  for (let i = startIndex; ; i++) {
-    const t = phase + i * step
-    if (t > endTime) break
-    if (t < LEAD_IN_SECONDS) continue
+  let measureIndex = 0
+  for (let measureStart = firstMeasureStart; measureStart < endTime; measureStart += grid.measure, measureIndex++) {
+    const tier = tierFor(measureEnergies[measureIndex] ?? 0, thresholds)
+    const capRank = SUBDIVISION_RANK[subdivisionCap(difficulty, tier)]
 
-    let accept = denseOnsets.some((o) => Math.abs(o - t) <= matchTolerance)
-    if (!accept && useEnergyGate) {
-      const baseline = localBaseline(energies, times, t)
-      const here = energies[nearestEnergyIndex(times, t)] ?? 0
-      if (baseline > 1e-6 && here > baseline * energyGateMultiplier) accept = true
+    for (let stepIndex = 0; stepIndex < 32; stepIndex++) {
+      const t = measureStart + stepIndex * step
+      if (t < LEAD_IN_SECONDS) continue
+      if (t >= endTime) break
+
+      const subdivision = subdivisionOfStep(stepIndex)
+      if (SUBDIVISION_RANK[subdivision] > capRank) continue
+
+      let accept = denseOnsets.some((o) => Math.abs(o - t) <= matchTolerance)
+      if (!accept && useEnergyGate && subdivision !== 'quarter') {
+        const baseline = localBaseline(energies, times, t)
+        const here = energies[nearestEnergyIndex(times, t)] ?? 0
+        if (baseline > 1e-6 && here > baseline * energyGateMultiplier) accept = true
+      }
+      // 32분음표는 "제한적으로만" 쓴다 — 맞아떨어져도 일부만 채택한다.
+      if (accept && subdivision === 'thirtysecond' && rng() > 0.45) accept = false
+
+      if (accept) out.push(t)
     }
-    if (accept) out.push(t)
   }
   return out
 }
@@ -252,26 +342,32 @@ export function assignLanes(times: number[]): ChartNote[] {
   return notes
 }
 
-/** 롱노트(꾹 누르기) 길이 범위. 다음에 같은 레인에 노트가 바로 이어지면
- * 그 전까지만 늘린다 — 너무 짧으면 안 만든다. */
-const MIN_HOLD_DURATION = 0.35
-const MAX_HOLD_DURATION = 0.75
-
 export interface HoldChordParams {
   holdChance: number
+  minHoldDuration: number
+  maxHoldDuration: number
   chordChance: number
+  /** 이미 2키 코드가 만들어진 뒤, 거기에 세 번째 레인을 더 얹을 확률
+   * (어려움에서만 0보다 커서 다중 동시 입력을 허용한다). */
+  secondChordChance: number
 }
 
-/** 난이도별 롱노트/코드 발생 확률. 쉬움은 아예 없고, 보통은 코드만
- * 약간, 어려움은 롱노트와 코드를 둘 다 확실히 넣는다. */
+/** 난이도별 롱노트/코드 발생 확률. 쉬움은 아예 없고("사용하지 않거나
+ * 매우 제한적"), 보통은 짧고 단순한 롱노트 + 2키 코드까지, 어려움은
+ * 더 길고 복잡한 롱노트(다른 레인 노트와 겹치는 것도 허용) + 최대 3키
+ * 동시 입력까지 쓴다. */
 export const HOLD_CHORD_PARAMS: Record<Difficulty, HoldChordParams | null> = {
   easy: null,
-  normal: { holdChance: 0, chordChance: 0.14 },
-  hard: { holdChance: 0.22, chordChance: 0.3 },
+  normal: { holdChance: 0.12, minHoldDuration: 0.25, maxHoldDuration: 0.42, chordChance: 0.14, secondChordChance: 0 },
+  hard: { holdChance: 0.24, minHoldDuration: 0.35, maxHoldDuration: 0.85, chordChance: 0.3, secondChordChance: 0.3 },
 }
 
-/** 일부 노트를 롱노트로 늘리거나, 다른 레인에 동시 입력 노트를 하나 더
- * 얹어서(코드) 더 까다롭게 만든다. 난이도별 확률은 HOLD_CHORD_PARAMS. */
+/** 일부 노트를 롱노트로 늘리거나, 다른 레인에 동시 입력 노트를 하나(또는
+ * 어려움에서는 둘) 더 얹어서(코드) 더 까다롭게 만든다. 롱노트는 다음에
+ * 같은 레인에 노트가 바로 이어지면 그 전까지만 늘어난다(너무 짧으면
+ * 아예 안 만든다) — 단, 다른 레인의 노트와는 겹쳐도 되므로(오히려
+ * 어려움에서는 "롱노트를 누른 채 다른 키 입력"이 자연스럽게 생긴다),
+ * 같은 레인끼리만 검사한다. */
 export function addHoldsAndChords(notes: ChartNote[], duration: number, seed: number, params: HoldChordParams): ChartNote[] {
   const rng = seededRng(seed + 30011)
   const sorted = [...notes].sort((a, b) => a.time - b.time)
@@ -282,31 +378,47 @@ export function addHoldsAndChords(notes: ChartNote[], duration: number, seed: nu
     let holdDuration: number | undefined
 
     if (params.holdChance > 0 && rng() < params.holdChance) {
-      let cap = Math.min(MAX_HOLD_DURATION, duration - END_MARGIN_SECONDS - n.time)
+      let cap = Math.min(params.maxHoldDuration, duration - END_MARGIN_SECONDS - n.time)
       for (let j = i + 1; j < sorted.length; j++) {
         if (sorted[j].lane === n.lane) {
           cap = Math.min(cap, sorted[j].time - n.time - 0.12)
           break
         }
       }
-      if (cap >= MIN_HOLD_DURATION) {
-        holdDuration = MIN_HOLD_DURATION + rng() * (cap - MIN_HOLD_DURATION)
+      if (cap >= params.minHoldDuration) {
+        holdDuration = params.minHoldDuration + rng() * (cap - params.minHoldDuration)
       }
     }
 
     result.push(holdDuration ? { ...n, holdDuration } : n)
 
     // 롱노트가 아닐 때만 코드(동시 입력)를 얹는다 — 롱노트를 누른 채로
-    // 다른 손가락이 다른 레인을 처리하게 하면 너무 정신없어진다.
+    // 다른 손가락이 다른 레인을 처리하는 건 이미 서로 다른 시각의 노트가
+    // 자연스럽게 겹쳐서 생기게 두고, 같은 시각에 시작하는 코드까지 더하진
+    // 않는다(너무 정신없어진다).
     if (!holdDuration && rng() < params.chordChance) {
+      const usedLanes = new Set<Lane>([n.lane])
       let extraLane = Math.floor(rng() * LANE_COUNT) as Lane
       let tries = 0
-      while (extraLane === n.lane && tries < 10) {
+      while (usedLanes.has(extraLane) && tries < 10) {
         extraLane = Math.floor(rng() * LANE_COUNT) as Lane
         tries++
       }
-      if (extraLane !== n.lane) {
+      if (!usedLanes.has(extraLane)) {
         result.push({ time: n.time, lane: extraLane })
+        usedLanes.add(extraLane)
+
+        if (params.secondChordChance > 0 && rng() < params.secondChordChance) {
+          let thirdLane = Math.floor(rng() * LANE_COUNT) as Lane
+          let tries2 = 0
+          while (usedLanes.has(thirdLane) && tries2 < 10) {
+            thirdLane = Math.floor(rng() * LANE_COUNT) as Lane
+            tries2++
+          }
+          if (!usedLanes.has(thirdLane)) {
+            result.push({ time: n.time, lane: thirdLane })
+          }
+        }
       }
     }
   }
@@ -314,13 +426,19 @@ export function addHoldsAndChords(notes: ChartNote[], duration: number, seed: nu
   return result.sort((a, b) => a.time - b.time)
 }
 
+const DIFFICULTY_SEED_OFFSET: Record<Difficulty, number> = { easy: 0, normal: 4231, hard: 9587 }
+
 export function buildChartFromEnergy(energies: number[], times: number[], duration: number, difficulty: Difficulty): Chart {
   const params = DIFFICULTY_PARAMS[difficulty]
   const denseOnsets = pickOnsets(energies, times, DENSE_ONSET_PARAMS)
   const unitStep = estimateTempo(denseOnsets)
 
-  let onsets: number[] =
-    unitStep !== null ? buildGridOnsets(denseOnsets, energies, times, duration, unitStep, difficulty) : []
+  let onsets: number[] = []
+  if (unitStep !== null) {
+    const grid = buildBeatGrid(unitStep)
+    const gridSeed = denseOnsets.reduce((acc, t) => acc + t * 733, 1) + DIFFICULTY_SEED_OFFSET[difficulty]
+    onsets = buildPatternedGridOnsets(denseOnsets, energies, times, duration, grid, difficulty, seededRng(gridSeed))
+  }
   if (onsets.length === 0) {
     // 박자가 뚜렷하지 않거나(말소리 등) 그리드가 완전히 비면, 예전처럼
     // 피크 검출만으로 노트를 배치한다.

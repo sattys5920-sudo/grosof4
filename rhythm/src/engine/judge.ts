@@ -6,7 +6,7 @@ import type { Judgment, JudgmentCounts, NoteState, PlayResult } from './types'
 /** 판정 윈도우 (초). 이보다 벗어나면 그 노트에 대한 히트로 인정하지 않는다. */
 export const PERFECT_WINDOW = 0.05
 export const GREAT_WINDOW = 0.1
-export const GOOD_WINDOW = 0.18
+export const GOOD_WINDOW = 0.15
 /** 롱노트 끝나기 이만큼 전부터는 놓아도 성공으로 쳐 주는 여유. */
 export const HOLD_RELEASE_TOLERANCE = 0.12
 
