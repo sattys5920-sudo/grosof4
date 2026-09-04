@@ -28,6 +28,10 @@
   text-align: center;
 }
 
+.start-card-wide {
+  max-width: 480px;
+}
+
 .start-title {
   font-family: var(--font-display);
   font-size: 30px;
@@ -37,6 +41,101 @@
   background-clip: text;
   color: transparent;
   letter-spacing: 1px;
+}
+
+.playlist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.start-title-sm {
+  font-family: var(--font-display);
+  font-size: 20px;
+  margin: 0;
+  background: linear-gradient(90deg, #ffd93d, #ff6b9d, #5aa8ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 0.5px;
+}
+
+.playlist-reset-btn {
+  border: 1px solid var(--line);
+  background: var(--panel-raised);
+  color: var(--ink-dim);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.playlist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin-bottom: 18px;
+  padding-right: 2px;
+}
+
+.playlist-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1.5px solid var(--line);
+  background: var(--panel-raised);
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.playlist-row:hover:not(:disabled) {
+  border-color: #ffd93d;
+  background: rgba(255, 217, 61, 0.08);
+}
+
+.playlist-row:disabled {
+  opacity: 0.55;
+}
+
+.playlist-row-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.playlist-row-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-row-best {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: #ffd93d;
+  flex-shrink: 0;
+}
+
+.playlist-row-best-empty {
+  color: var(--ink-faint);
+}
+
+.playlist-row-busy {
+  font-size: 11px;
+  color: var(--accent-bright);
+  flex-shrink: 0;
 }
 
 .start-sub {
@@ -504,102 +603,160 @@
 }
 
 .mascot-svg {
-  width: 130px;
-  height: 130px;
-  animation: mascot-bob 2.2s ease-in-out infinite;
+  width: 140px;
+  height: 160px;
 }
 
-.mascot-jump .mascot-svg {
-  animation: mascot-jump 0.36s ease-out;
+/* 몸은 가만히, 고개만 계속 까딱까딱 흔든다 */
+.mascot-head-group {
+  transform-box: fill-box;
+  transform-origin: 50% 88%;
+  animation: mascot-nod 1.15s ease-in-out infinite;
 }
 
-@keyframes mascot-bob {
+.mascot-excited .mascot-head-group {
+  animation-duration: 0.7s;
+}
+
+.mascot-head-group.mascot-head-bump {
+  animation: mascot-nod-bump 0.32s ease-out;
+}
+
+@keyframes mascot-nod {
   0%,
   100% {
-    transform: translateY(0);
+    transform: rotate(-7deg);
   }
   50% {
-    transform: translateY(-6px);
+    transform: rotate(7deg);
   }
 }
 
-@keyframes mascot-jump {
+@keyframes mascot-nod-bump {
   0% {
-    transform: translateY(0) scale(1, 1);
+    transform: rotate(0deg) scale(1);
   }
-  35% {
-    transform: translateY(-22px) scale(0.92, 1.1);
+  30% {
+    transform: rotate(-14deg) scale(1.06);
   }
-  70% {
-    transform: translateY(0) scale(1.08, 0.9);
+  65% {
+    transform: rotate(10deg) scale(1.03);
   }
   100% {
-    transform: translateY(0) scale(1, 1);
+    transform: rotate(-7deg) scale(1);
   }
 }
 
-.mascot-body {
-  fill: #5ce0a8;
-  stroke: #1c1030;
-  stroke-width: 4;
+.mascot-torso {
+  fill: #eef1f7;
+  stroke: #2540a0;
+  stroke-width: 3;
 }
 
-.mascot-sad .mascot-body {
-  fill: #7fd0e0;
+.mascot-torso-stripe {
+  fill: #3a5fe0;
 }
 
-.mascot-excited .mascot-body {
-  fill: #ffd93d;
+.mascot-torso-dot {
+  fill: #ffcb3d;
+  stroke: #2540a0;
+  stroke-width: 2;
+}
+
+.mascot-leg {
+  fill: #2540a0;
+}
+
+.mascot-foot {
+  fill: #eef1f7;
+  stroke: #2540a0;
+  stroke-width: 2.5;
+}
+
+.mascot-neck {
+  stroke: #b7bfcf;
+  stroke-width: 10;
+}
+
+.mascot-head {
+  fill: #f7f9fc;
+  stroke: #2540a0;
+  stroke-width: 3.5;
+}
+
+.mascot-headband {
+  fill: none;
+  stroke: #3a5fe0;
+  stroke-width: 14;
+  stroke-linecap: round;
+}
+
+.mascot-earcup {
+  fill: #3a5fe0;
+  stroke: #2540a0;
+  stroke-width: 2.5;
+}
+
+.mascot-earcup-tip {
+  fill: #ffcb3d;
+}
+
+.mascot-antenna-fin {
+  fill: #ffcb3d;
+  stroke: #2540a0;
+  stroke-width: 2;
+}
+
+.mascot-visor {
+  fill: #1c2430;
 }
 
 .mascot-shine {
-  fill: rgba(255, 255, 255, 0.35);
-}
-
-.mascot-cheek {
-  fill: rgba(255, 130, 150, 0.55);
+  fill: rgba(255, 255, 255, 0.5);
 }
 
 .mascot-eye {
-  fill: #1c1030;
+  fill: #6cd8ff;
+}
+
+.mascot-eye-glow {
+  fill: #ffd93d;
+  filter: drop-shadow(0 0 4px #ffd93d);
+}
+
+.mascot-eye-dim {
+  fill: #5a76a8;
 }
 
 .mascot-eye-arc,
 .mascot-eye-line {
   fill: none;
-  stroke: #1c1030;
-  stroke-width: 6;
+  stroke: #6cd8ff;
+  stroke-width: 4;
   stroke-linecap: round;
+}
+
+.mascot-sad .mascot-eye-line {
+  stroke: #5a76a8;
 }
 
 .mascot-mouth {
+  fill: #6cd8ff;
+}
+
+.mascot-mouth.mascot-mouth-open {
+  fill: #ffd93d;
+}
+
+.mascot-mouth-arc {
   fill: none;
-  stroke: #1c1030;
-  stroke-width: 6;
+  stroke: #6cd8ff;
+  stroke-width: 4;
   stroke-linecap: round;
 }
 
-.mascot-mouth-open {
-  fill: #1c1030;
-}
-
-.mascot-tear {
-  fill: #5aa8ff;
-}
-
-.mascot-foot {
-  fill: #3a2f7a;
-}
-
-.mascot-antenna-line {
-  stroke: #1c1030;
-  stroke-width: 4;
-}
-
-.mascot-antenna-ball {
-  fill: #ff6b9d;
-  stroke: #1c1030;
-  stroke-width: 3;
+.mascot-sad .mascot-mouth-arc {
+  stroke: #5a76a8;
 }
 
 .mascot-sparkles circle {

@@ -12,6 +12,9 @@ type Screen = 'start' | 'play' | 'result'
 export default function App() {
   const [screen, setScreen] = useState<Screen>('start')
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
+  // 플레이 화면으로 넘어가도 목록을 다시 고를 필요 없게, 플레이리스트는
+  // StartScreen이 아니라 여기(App)에 둬서 화면이 바뀌어도 유지되게 한다.
+  const [playlist, setPlaylist] = useState<File[]>([])
   const [songInfo, setSongInfo] = useState<{ name: string; size: number } | null>(null)
   const [chart, setChart] = useState<Chart | null>(null)
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null)
@@ -65,7 +68,7 @@ export default function App() {
 
   return (
     <div className="app">
-      {screen === 'start' && <StartScreen onReady={handleReady} />}
+      {screen === 'start' && <StartScreen playlist={playlist} onPlaylistChange={setPlaylist} onReady={handleReady} />}
       {screen === 'play' && chart && audioBuffer && (
         <PlayScreen
           key={playToken}
