@@ -7,8 +7,9 @@ import { CITIES, CITY_IDS } from '../engine/map'
 import { INFECTION_RATE_TRACK } from '../engine/infection'
 import { discardCard } from '../engine/gameEngine'
 import { playAirlift, playForecast, playGovernmentGrant, playOneQuietNight, playResilientPopulation } from '../engine/events'
+import { EVENT_INFO } from '../engine/eventCards'
 import { saveGame, clearGame } from '../engine/save'
-import type { CityId, EventId, GameState, PlayerCard } from '../engine/types'
+import type { CityId, GameState, PlayerCard } from '../engine/types'
 
 const COLOR_LABEL: Record<string, string> = { blue: '파란색', yellow: '노란색', black: '검은색', red: '빨간색' }
 
@@ -61,7 +62,7 @@ export default function GameScreen({ state, onChange, onRestart }: { state: Game
           <div className="picker-grid">
             {hand.map((card, i) => (
               <button key={i} className="picker-item" onClick={() => onChange(discardCard(state, pid, i))}>
-                {card.kind === 'city' ? CITIES[card.city].name : card.kind === 'event' ? eventLabel(card.event) : '전염'}
+                {card.kind === 'city' ? CITIES[card.city].name : card.kind === 'event' ? EVENT_INFO[card.event].name : '전염'}
               </button>
             ))}
           </div>
@@ -74,7 +75,8 @@ export default function GameScreen({ state, onChange, onRestart }: { state: Game
     return (
       <div className="game discard-overlay">
         <div className="discard-modal">
-          <h2>이벤트 카드</h2>
+          <h2>{EVENT_INFO[eventPending.event].name}</h2>
+          <p className="event-modal-desc">{EVENT_INFO[eventPending.event].description}</p>
           {renderEvent()}
           <button className="picker-cancel" onClick={() => setEventPending(null)}>취소</button>
         </div>
@@ -198,20 +200,5 @@ export default function GameScreen({ state, onChange, onRestart }: { state: Game
         </button>
       </div>
     )
-  }
-}
-
-function eventLabel(id: EventId): string {
-  switch (id) {
-    case 'airlift':
-      return '긴급 공중 수송'
-    case 'governmentGrant':
-      return '정부 보조금'
-    case 'oneQuietNight':
-      return '평온한 하룻밤'
-    case 'forecast':
-      return '예측'
-    case 'resilientPopulation':
-      return '항체 보유자'
   }
 }

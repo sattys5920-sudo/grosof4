@@ -1,22 +1,12 @@
 import { CITIES } from '../engine/map'
 import { JOBS } from '../engine/jobs'
+import { EVENT_INFO } from '../engine/eventCards'
 import type { GameState, PlayerCard } from '../engine/types'
 
 function cardLabel(card: PlayerCard): string {
   if (card.kind === 'city') return CITIES[card.city].name
   if (card.kind === 'epidemic') return '전염'
-  switch (card.event) {
-    case 'airlift':
-      return '긴급 공중 수송'
-    case 'governmentGrant':
-      return '정부 보조금'
-    case 'oneQuietNight':
-      return '평온한 하룻밤'
-    case 'forecast':
-      return '예측'
-    case 'resilientPopulation':
-      return '항체 보유자'
-  }
+  return EVENT_INFO[card.event].name
 }
 
 function cardColor(card: PlayerCard): string {
@@ -49,18 +39,28 @@ export default function PlayerPanel({
       </div>
       <div className="player-panel-location">📍 {CITIES[p.location].name}</div>
       <div className="player-panel-ability">{job.description}</div>
-      {p.contingencyCard && <div className="player-panel-contingency">보관 중: {cardLabel({ kind: 'event', event: p.contingencyCard })}</div>}
+      {p.contingencyCard && (
+        <div className="player-panel-contingency">
+          보관 중: <strong>{EVENT_INFO[p.contingencyCard].name}</strong> — {EVENT_INFO[p.contingencyCard].description}
+        </div>
+      )}
 
       <div className="player-panel-hand-label">손패 {p.hand.length}장</div>
       <div className="player-panel-hand">
         {p.hand.map((card, i) => (
           <div key={i} className={`hand-card color-${cardColor(card)}`}>
-            <span className="hand-card-label">{cardLabel(card)}</span>
-            {card.kind === 'event' && onPlayEvent && (
-              <button className="hand-card-play" onClick={() => onPlayEvent(card as Extract<PlayerCard, { kind: 'event' }>)}>
-                사용
-              </button>
-            )}
+            <div className="hand-card-top">
+              <span className="hand-card-label">
+                {card.kind === 'event' && '📌 '}
+                {cardLabel(card)}
+              </span>
+              {card.kind === 'event' && onPlayEvent && (
+                <button className="hand-card-play" onClick={() => onPlayEvent(card as Extract<PlayerCard, { kind: 'event' }>)}>
+                  사용
+                </button>
+              )}
+            </div>
+            {card.kind === 'event' && <div className="hand-card-desc">{EVENT_INFO[card.event].description}</div>}
           </div>
         ))}
         {p.hand.length === 0 && <div className="muted">손패 없음</div>}

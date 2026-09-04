@@ -7,7 +7,8 @@ import { buildDecks } from './deck'
 import { Rng, freshSeed } from './rng'
 import { cityInfectionStep, resolveEpidemic } from './infection'
 import { otherPlayerId, playerLabel } from './actions'
-import type { Difficulty, EventId, GameState, JobId, PlayerCard, PlayerState } from './types'
+import { EVENT_INFO } from './eventCards'
+import type { Difficulty, GameState, JobId, PlayerCard, PlayerState } from './types'
 
 const INITIAL_CUBES_PER_COLOR = 24
 export const STATIONS_MAX = 6
@@ -143,27 +144,12 @@ function drawOneCard(state: GameState, card: PlayerCard, rng: Rng): GameState {
   }
   const p = state.players[pid]
   let s: GameState = { ...state, players: { ...state.players, [pid]: { ...p, hand: [...p.hand, card] } } }
-  const label = card.kind === 'city' ? CITIES[card.city].name + ' 카드' : eventCardName(card.event)
+  const label = card.kind === 'city' ? CITIES[card.city].name + ' 카드' : EVENT_INFO[card.event].name
   s = log(s, `${playerLabel(pid)}이(가) ${label}를 뽑았습니다.`, 'action')
   if (s.players[pid].hand.length > 7 && !s.pendingDiscards.includes(pid)) {
     s = { ...s, pendingDiscards: [...s.pendingDiscards, pid] }
   }
   return s
-}
-
-export function eventCardName(id: EventId): string {
-  switch (id) {
-    case 'airlift':
-      return '긴급 공중 수송'
-    case 'governmentGrant':
-      return '정부 보조금'
-    case 'oneQuietNight':
-      return '평온한 하룻밤'
-    case 'forecast':
-      return '예측'
-    case 'resilientPopulation':
-      return '항체 보유자'
-  }
 }
 
 /** 손패 제한 처리 중 카드를 하나 버린다. 대기열의 해당 플레이어 손패가
