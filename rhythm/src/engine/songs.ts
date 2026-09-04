@@ -14,6 +14,7 @@ export interface BuiltinSong {
 export const BUILTIN_SONGS: BuiltinSong[] = [
   { id: 'hani', title: '하니 스테이지', song: 'PiKi - Kawaii Kaiwai (かわいいかいわい)', file: 'piki-kawaii-kaiwai.mp3' },
   { id: 'minji', title: '민지 스테이지', song: 'Mrs. GREEN APPLE - 青と夏', file: 'mrs-green-apple-track.mp3' },
+  { id: 'doa', title: '도아 스테이지', song: "Crystal Waters - Gypsy Woman (She's Homeless)", file: 'crystal-waters-gypsy-woman.mp3' },
   { id: 'eina', title: '에이나 스테이지', song: 'Vampire Weekend - A-Punk', file: 'vampire-weekend-a-punk.mp3' },
   { id: 'james', title: '제임스 스테이지', song: 'Billie Eilish - bad guy', file: 'billie-eilish-bad-guy.mp3' },
   { id: 'taesan', title: '태산 스테이지', song: 'Jamiroquai - Virtual Insanity', file: 'jamiroquai-virtual-insanity.mp3' },
