@@ -746,7 +746,7 @@
 /* 몸은 가만히, 고개만 계속 까딱까딱 흔든다 */
 .mascot-head-group {
   transform-box: view-box;
-  transform-origin: 100px 210px;
+  transform-origin: 100px 205px;
   animation: mascot-nod 1.15s ease-in-out infinite;
 }
 
@@ -790,6 +790,12 @@
   stroke-width: 3.5;
 }
 
+.mascot-torso-edge {
+  fill: none;
+  stroke: #2540a0;
+  stroke-width: 3.5;
+}
+
 .mascot-skirt {
   fill: #3a5fe0;
 }
@@ -816,10 +822,6 @@
   stroke-width: 3;
 }
 
-.mascot-leg {
-  fill: #2540a0;
-}
-
 .mascot-foot {
   fill: #eef1f7;
   stroke: #2540a0;
@@ -836,18 +838,6 @@
   fill: #ff9d3d;
 }
 
-.mascot-spike-a {
-  fill: #ff9d3d;
-  stroke: #2540a0;
-  stroke-width: 2;
-}
-
-.mascot-spike-b {
-  fill: #f7f9fc;
-  stroke: #2540a0;
-  stroke-width: 2;
-}
-
 .mascot-antenna-line {
   stroke: #3a5fe0;
   stroke-width: 4;
@@ -860,7 +850,9 @@
 }
 
 .mascot-visor {
-  fill: #1c2430;
+  fill: #0d1420;
+  stroke: #243255;
+  stroke-width: 1.5;
 }
 
 .mascot-shine {
@@ -880,18 +872,6 @@
   fill: #5a76a8;
 }
 
-.mascot-eye-arc,
-.mascot-eye-line {
-  fill: none;
-  stroke: #6cd8ff;
-  stroke-width: 4;
-  stroke-linecap: round;
-}
-
-.mascot-sad .mascot-eye-line {
-  stroke: #5a76a8;
-}
-
 .mascot-mouth {
   fill: #6cd8ff;
 }
@@ -900,15 +880,8 @@
   fill: #ffd93d;
 }
 
-.mascot-mouth-arc {
-  fill: none;
-  stroke: #6cd8ff;
-  stroke-width: 4;
-  stroke-linecap: round;
-}
-
-.mascot-sad .mascot-mouth-arc {
-  stroke: #5a76a8;
+.mascot-mouth.mascot-mouth-dim {
+  fill: #5a76a8;
 }
 
 .mascot-sparkles circle {
