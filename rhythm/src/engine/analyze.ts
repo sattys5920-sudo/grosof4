@@ -270,15 +270,32 @@ export function buildChartFromEnergy(energies: number[], times: number[], durati
   return { notes, duration, difficulty }
 }
 
+/** 이미 디코딩된 AudioBuffer에서 채보를 만든다. 사용자가 고른 파일이든
+ * public/songs/의 수록곡이든, 디코딩만 끝나면 이후 과정은 동일하다. */
+export function analyzeAudioBuffer(audioBuffer: AudioBuffer, difficulty: Difficulty): Chart {
+  const channels: Float32Array[] = []
+  for (let c = 0; c < audioBuffer.numberOfChannels; c++) channels.push(audioBuffer.getChannelData(c))
+  const mono = mixToMono(channels)
+  const { energies, times } = computeEnergy(mono, audioBuffer.sampleRate)
+  return buildChartFromEnergy(energies, times, audioBuffer.duration, difficulty)
+}
+
 /** 오디오 파일을 디코딩하고 채보까지 만든다. 재생에도 같은 AudioContext를
  * 재사용해야 브라우저의 컨텍스트 개수 제한/자동재생 정책에 걸리지 않는다. */
 export async function decodeAndAnalyze(file: File, difficulty: Difficulty, audioCtx: AudioContext): Promise<{ chart: Chart; audioBuffer: AudioBuffer }> {
   const arrayBuffer = await file.arrayBuffer()
   const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer)
-  const channels: Float32Array[] = []
-  for (let c = 0; c < audioBuffer.numberOfChannels; c++) channels.push(audioBuffer.getChannelData(c))
-  const mono = mixToMono(channels)
-  const { energies, times } = computeEnergy(mono, audioBuffer.sampleRate)
-  const chart = buildChartFromEnergy(energies, times, audioBuffer.duration, difficulty)
+  const chart = analyzeAudioBuffer(audioBuffer, difficulty)
+  return { chart, audioBuffer }
+}
+
+/** public/songs/의 수록곡처럼 URL로 제공되는 오디오를 받아와 디코딩하고
+ * 채보까지 만든다. */
+export async function decodeAndAnalyzeFromUrl(url: string, difficulty: Difficulty, audioCtx: AudioContext): Promise<{ chart: Chart; audioBuffer: AudioBuffer }> {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`수록곡을 불러오지 못했어요 (${res.status}).`)
+  const arrayBuffer = await res.arrayBuffer()
+  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer)
+  const chart = analyzeAudioBuffer(audioBuffer, difficulty)
   return { chart, audioBuffer }
 }
