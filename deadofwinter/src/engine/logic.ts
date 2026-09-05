@@ -19,3 +19,23 @@ export function generateRoomCode(rng: () => number = Math.random, length = 4): s
 export function allReady(players: PlayerSlot[], maxPlayers: number): boolean {
   return players.length === maxPlayers && players.every((p) => p.ready)
 }
+
+export interface AdvanceTurnResult {
+  nextPlayerIndex: number
+  roundOver: boolean
+}
+
+/** 현재 플레이어의 턴을 끝낸다. turnOrder의 마지막 사람이었다면 라운드가
+ * 끝난 것 — 콜로니 단계로 넘어가야 한다는 신호만 돌려주고, 실제 콜로니
+ * 단계 처리는 STEP 8~9에서 구현한다. */
+export function advanceTurn(turnOrder: string[], currentPlayerIndex: number): AdvanceTurnResult {
+  const next = currentPlayerIndex + 1
+  if (next >= turnOrder.length) return { nextPlayerIndex: currentPlayerIndex, roundOver: true }
+  return { nextPlayerIndex: next, roundOver: false }
+}
+
+/** 다음 라운드의 선 플레이어 자리를 한 칸 돌린다(섹션 13 ⑦ 선 플레이어
+ * 변경). */
+export function nextFirstPlayerIndex(turnOrder: string[], firstPlayerIndex: number): number {
+  return (firstPlayerIndex + 1) % turnOrder.length
+}

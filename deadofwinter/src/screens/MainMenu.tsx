@@ -3,17 +3,19 @@ import { useState } from 'react'
 export default function MainMenu({
   busy,
   errorMsg,
+  initialCode,
   onCreate,
   onJoin,
 }: {
   busy: boolean
   errorMsg: string
+  initialCode?: string
   onCreate: (name: string) => void
   onJoin: (code: string, name: string) => void
 }) {
   const [name, setName] = useState('')
-  const [mode, setMode] = useState<'idle' | 'join'>('idle')
-  const [code, setCode] = useState('')
+  const [mode, setMode] = useState<'idle' | 'join'>(initialCode ? 'join' : 'idle')
+  const [code, setCode] = useState(initialCode ?? '')
 
   return (
     <div className="menu-screen">

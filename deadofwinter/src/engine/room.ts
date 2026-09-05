@@ -1,10 +1,9 @@
-// Firestore와 엮인 방 생성/입장/준비/시작 함수. STEP 1 범위: 로비까지만
-// 다룬다 — 게임 본편 상태(장소, 생존자, 위기 등)는 이후 STEP에서 이
-// 문서에 이어 붙인다.
+// Firestore와 엮인 방 생성/입장/준비/시작/턴 진행 함수. 게임 본편 상태
+// (장소, 생존자, 위기 등)는 각 STEP에서 이 문서에 이어 붙인다.
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore'
 import { db, ensureSignedIn, SignInFailedError } from '../firebase'
-import { generateRoomCode, allReady } from './logic'
-import { MAX_PLAYERS, type RoomDoc } from './types'
+import { generateRoomCode, allReady, advanceTurn } from './logic'
+import { MAX_PLAYERS, type LogEntry, type RoomDoc } from './types'
 
 const ROOMS = 'deadofwinterRooms'
 
@@ -81,9 +80,45 @@ export async function toggleReady(code: string, room: RoomDoc, uid: string): Pro
   await updateDoc(roomRef(code), { players: nextPlayers })
 }
 
-/** 방장만 호출 가능. 4명 전원 준비된 상태여야 시작한다 — 게임 본편 상태는
- * 이후 STEP에서 이 시점에 함께 만든다. */
+function nowLog(text: string): LogEntry {
+  return { at: Date.now(), text }
+}
+
+/** 방장만 호출 가능. 4명 전원 준비된 상태여야 시작한다. 턴 순서는 로비에
+ * 모인 순서 그대로 고정하고, 방장이 1라운드 선 플레이어가 된다 — 장소·
+ * 생존자·위기 같은 게임 본편 상태는 STEP 3~9에서 이 시점에 함께 채운다. */
 export async function startGame(code: string, room: RoomDoc): Promise<void> {
   if (!allReady(room.players, MAX_PLAYERS)) throw new Error('4명 전원이 준비되어야 시작할 수 있어요.')
-  await updateDoc(roomRef(code), { phase: 'playing' })
+  const turnOrder = room.players.map((p) => p.uid)
+  await updateDoc(roomRef(code), {
+    phase: 'playing',
+    round: 1,
+    turnOrder,
+    firstPlayerIndex: 0,
+    currentPlayerIndex: 0,
+    roundPhase: 'turns',
+    log: [nowLog('생존자들이 콜로니에 모였습니다. 1라운드를 시작합니다.')],
+  })
+}
+
+/** 지금 턴인 사람만 호출 가능. 순서상 마지막 사람이었다면 라운드 단계를
+ * 'colony'로 넘긴다 — 실제 콜로니 단계 처리는 STEP 8~9에서 구현한다. */
+export async function endTurn(code: string, room: RoomDoc, uid: string): Promise<void> {
+  if (!room.turnOrder || room.currentPlayerIndex === undefined) throw new Error('아직 게임이 시작되지 않았어요.')
+  if (room.turnOrder[room.currentPlayerIndex] !== uid) throw new Error('지금은 당신의 턴이 아니에요.')
+
+  const name = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
+  const { nextPlayerIndex, roundOver } = advanceTurn(room.turnOrder, room.currentPlayerIndex)
+  const log = [...(room.log ?? []), nowLog(`${name}의 턴이 끝났습니다.`)]
+
+  if (roundOver) {
+    await updateDoc(roomRef(code), {
+      roundPhase: 'colony',
+      currentPlayerIndex: nextPlayerIndex,
+      log: [...log, nowLog('전원의 턴이 끝났습니다. 콜로니 단계로 넘어갑니다.')],
+    })
+    return
+  }
+
+  await updateDoc(roomRef(code), { currentPlayerIndex: nextPlayerIndex, log })
 }

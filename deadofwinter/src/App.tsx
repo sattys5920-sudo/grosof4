@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import MainMenu from './screens/MainMenu'
 import Lobby from './screens/Lobby'
-import { createRoom, joinRoom, watchRoom, toggleReady, startGame } from './engine/room'
+import GameScreen from './screens/GameScreen'
+import { createRoom, joinRoom, watchRoom, toggleReady, startGame, endTurn } from './engine/room'
 import { ensureSignedIn } from './firebase'
 import type { RoomDoc } from './engine/types'
 import type { Unsubscribe } from 'firebase/firestore'
@@ -13,15 +14,14 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('menu')
   const [busy, setBusy] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
-  const [code, setCode] = useState('')
+  // 첫 렌더보다 먼저 읽어야 한다 — useEffect로 나중에 세팅하면 MainMenu가
+  // 이미 빈 값으로 마운트된 뒤라 내부 상태가 갱신되지 않는다.
+  const [initialCode] = useState(() => new URLSearchParams(window.location.search).get('join')?.toUpperCase() ?? '')
   const [room, setRoom] = useState<RoomDoc | null>(null)
   const [myUid, setMyUid] = useState('')
   const unsubRef = useRef<Unsubscribe | null>(null)
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const joinCode = params.get('join')
-    if (joinCode) setCode(joinCode.toUpperCase())
     return () => {
       unsubRef.current?.()
     }
@@ -29,7 +29,6 @@ export default function App() {
 
   function watchAndEnter(roomCode: string) {
     unsubRef.current?.()
-    setCode(roomCode)
     unsubRef.current = watchRoom(roomCode, (next) => {
       setRoom(next)
       if (next?.phase === 'playing') setScreen('playing')
@@ -95,6 +94,19 @@ export default function App() {
     }
   }
 
+  async function handleEndTurn() {
+    if (!room) return
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      await endTurn(room.code, room, myUid)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '턴을 종료하지 못했어요.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function handleLeave() {
     unsubRef.current?.()
     unsubRef.current = null
@@ -105,7 +117,9 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      {screen === 'menu' && <MainMenu busy={busy} errorMsg={errorMsg} onCreate={handleCreate} onJoin={handleJoin} />}
+      {screen === 'menu' && (
+        <MainMenu busy={busy} errorMsg={errorMsg} initialCode={initialCode} onCreate={handleCreate} onJoin={handleJoin} />
+      )}
       {screen === 'lobby' && room && (
         <Lobby
           room={room}
@@ -117,15 +131,8 @@ export default function App() {
           onLeave={handleLeave}
         />
       )}
-      {screen === 'playing' && (
-        <div className="menu-screen">
-          <div className="menu-emblem">🚧</div>
-          <h1 className="menu-title">공사 중</h1>
-          <p className="menu-desc">
-            방 {code}, 4명 전원 준비 완료! 실제 게임 진행(행동 주사위·이동·좀비·위기·크로스로드)은 다음 단계에서 이어서
-            구현합니다.
-          </p>
-        </div>
+      {screen === 'playing' && room && (
+        <GameScreen room={room} myUid={myUid} busy={busy} errorMsg={errorMsg} onEndTurn={handleEndTurn} />
       )}
     </div>
   )

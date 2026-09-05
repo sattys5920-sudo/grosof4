@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateRoomCode, allReady } from './logic'
+import { generateRoomCode, allReady, advanceTurn, nextFirstPlayerIndex } from './logic'
 import type { PlayerSlot } from './types'
 import { MAX_PLAYERS } from './types'
 
@@ -40,5 +40,27 @@ describe('allReady', () => {
   it('4명 전원 준비되면 true', () => {
     const players = [mkPlayer('a', true), mkPlayer('b', true), mkPlayer('c', true), mkPlayer('d', true)]
     expect(allReady(players, MAX_PLAYERS)).toBe(true)
+  })
+})
+
+describe('advanceTurn', () => {
+  const order = ['a', 'b', 'c', 'd']
+
+  it('마지막 사람이 아니면 다음 인덱스로 넘어가고 라운드는 안 끝난다', () => {
+    expect(advanceTurn(order, 0)).toEqual({ nextPlayerIndex: 1, roundOver: false })
+    expect(advanceTurn(order, 2)).toEqual({ nextPlayerIndex: 3, roundOver: false })
+  })
+
+  it('마지막 사람 턴이 끝나면 라운드가 끝난다', () => {
+    expect(advanceTurn(order, 3)).toEqual({ nextPlayerIndex: 3, roundOver: true })
+  })
+})
+
+describe('nextFirstPlayerIndex', () => {
+  const order = ['a', 'b', 'c', 'd']
+
+  it('한 칸씩 돌아간다', () => {
+    expect(nextFirstPlayerIndex(order, 0)).toBe(1)
+    expect(nextFirstPlayerIndex(order, 3)).toBe(0)
   })
 })
