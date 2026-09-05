@@ -679,3 +679,18 @@
   font-size: 11px;
   color: var(--ink-faint);
 }
+
+/* ---------------------------------------------------------------- 크로스로드 (STEP 10) */
+.crossroad-panel {
+  background: linear-gradient(160deg, var(--frost-dim), var(--panel));
+  border: 1px solid var(--frost-bright);
+  border-radius: 16px;
+  padding: 14px;
+}
+.crossroad-prompt {
+  font-weight: 700;
+  color: var(--frost-bright);
+}
+.crossroad-panel .action-buttons {
+  margin-bottom: 0;
+}

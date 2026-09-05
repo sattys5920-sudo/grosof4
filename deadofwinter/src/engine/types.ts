@@ -72,6 +72,24 @@ export interface RoomDoc {
   // 원작처럼 카드 자체를 뒤집어 숨기는 보안 구조는 아니고, 결과 화면에
   // 공개 전까지 목록을 안 보여주는 정도로 단순화했다.
   crisisContributions?: Record<string, string[]>
+
+  // 이번 라운드의 크로스로드 카드(섹션 15). 원작은 카드마다 정해진
+  // 생존자에게만 매치되는 손패지만, 이 구현은 생존자별 손패를 아직 안
+  // 만들었으므로 라운드마다 카드 하나를 공용으로 뽑고 "카드가 지정한
+  // 장소에서 이동/탐색이 일어나면 발동" 조건만 남겨 단순화했다(STEP 10
+  // 범위, 아직 발동 안 한 카드 내용 자체는 다른 플레이어에게도 보이지
+  // 않게 UI에서만 감춘다).
+  crossroad?: CrossroadId
+  crossroadTriggered?: boolean
+  // 카드가 발동해서 해당 생존자의 주인이 예/아니오를 골라야 하는 상태.
+  // null/미정의면 대기 중인 크로스로드가 없다.
+  crossroadPending?: CrossroadPending | null
+}
+
+export interface CrossroadPending {
+  cardId: CrossroadId
+  uid: string
+  survivorId: string
 }
 
 export interface PendingBite {
@@ -151,5 +169,32 @@ export interface Crisis {
   title: string
   description: string
   requiredCategory: ItemCategory
+  icon: string
+}
+
+export type CrossroadId = string
+
+/** 예/아니오 선택에 따른 효과. STEP 10 범위: 식량/사기 증감과 특정
+ * 장소 좀비 증감만 — 카드 뽑기·아이템 파괴 등은 아직 없다. */
+export interface CrossroadEffect {
+  foodDelta?: number
+  moraleDelta?: number
+  zombieDelta?: { locationId: LocationId; amount: number }
+}
+
+/** 크로스로드 카드 원형(섹션 15). 원작처럼 특정 생존자 전용 손패가
+ * 아니라, 라운드마다 공용으로 하나 뽑고 "지정한 장소에서 이동/탐색이
+ * 일어나면 발동"으로 단순화했다 — 카드 내용 자체는 발동 전까지 다른
+ * 플레이어에게 안 보이게 UI에서만 감춘다(보안 규칙으로 막지는 않음). */
+export interface CrossroadCard {
+  id: CrossroadId
+  title: string
+  triggerLocationId: SearchableLocationId
+  description: string
+  prompt: string
+  yesLabel: string
+  noLabel: string
+  yesEffect: CrossroadEffect
+  noEffect: CrossroadEffect
   icon: string
 }

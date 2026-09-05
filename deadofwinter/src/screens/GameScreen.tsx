@@ -6,6 +6,7 @@ import { LOCATIONS, LOCATION_MAP } from '../engine/locations'
 import { ITEM_TYPE_MAP } from '../engine/items'
 import { SURVIVOR_MAP } from '../engine/survivors'
 import { CRISIS_MAP } from '../engine/crises'
+import { CROSSROAD_MAP } from '../engine/crossroads'
 
 const CATEGORY_LABEL: Record<string, string> = {
   weapon: '무기',
@@ -31,6 +32,7 @@ export default function GameScreen({
   onResolveBite,
   onResolveColonyPhase,
   onContribute,
+  onResolveCrossroad,
 }: {
   room: RoomDoc
   myUid: string
@@ -43,6 +45,7 @@ export default function GameScreen({
   onResolveBite: (choice: 'die' | 'reroll') => void
   onResolveColonyPhase: () => void
   onContribute: (itemTypeId: string) => void
+  onResolveCrossroad: (choice: 'yes' | 'no') => void
 }) {
   const [selectedSurvivorId, setSelectedSurvivorId] = useState<string | null>(null)
 
@@ -69,6 +72,10 @@ export default function GameScreen({
   const totalContributions = Object.values(room.crisisContributions ?? {}).reduce((sum, list) => sum + list.length, 0)
   const myContributions = room.crisisContributions?.[myUid]?.length ?? 0
   const canContribute = room.roundPhase === 'turns'
+
+  const crossroadPending = room.crossroadPending
+  const myCrossroadChoice = crossroadPending?.uid === myUid
+  const crossroadCard = crossroadPending ? CROSSROAD_MAP[crossroadPending.cardId] : undefined
 
   return (
     <div className="game-screen">
@@ -128,6 +135,32 @@ export default function GameScreen({
             </>
           ) : (
             <p className="turn-hint">🧟 {biteTargetName}의 주인이 물림 전염 판정을 하는 중이에요…</p>
+          )}
+        </div>
+      )}
+
+      {crossroadCard && (
+        <div className="crossroad-panel">
+          {myCrossroadChoice ? (
+            <>
+              <span className="panel-label">
+                {crossroadCard.icon} 크로스로드 — {crossroadCard.title}
+              </span>
+              <p className="turn-hint">{crossroadCard.description}</p>
+              <p className="turn-hint crossroad-prompt">{crossroadCard.prompt}</p>
+              <div className="action-buttons">
+                <button type="button" className="menu-btn primary" disabled={busy} onClick={() => onResolveCrossroad('yes')}>
+                  {crossroadCard.yesLabel}
+                </button>
+                <button type="button" className="menu-btn" disabled={busy} onClick={() => onResolveCrossroad('no')}>
+                  {crossroadCard.noLabel}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="turn-hint">
+              {crossroadCard.icon} 크로스로드 카드 "{crossroadCard.title}"가 발동했어요 — {nameOf(crossroadPending!.uid)}이(가) 고르는 중이에요…
+            </p>
           )}
         </div>
       )}

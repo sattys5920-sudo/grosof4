@@ -16,6 +16,7 @@ import {
   resolveBiteChoice,
   resolveColonyPhase,
   contributeToCrisis,
+  resolveCrossroadChoice,
 } from './engine/room'
 import { ensureSignedIn } from './firebase'
 import type { LocationId, RoomDoc } from './engine/types'
@@ -185,6 +186,19 @@ export default function App() {
     }
   }
 
+  async function handleResolveCrossroad(choice: 'yes' | 'no') {
+    if (!room) return
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      await resolveCrossroadChoice(room.code, room, myUid, choice)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '크로스로드 카드를 처리하지 못했어요.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function handleResolveColonyPhase() {
     if (!room) return
     setBusy(true)
@@ -235,6 +249,7 @@ export default function App() {
           onResolveBite={handleResolveBite}
           onResolveColonyPhase={handleResolveColonyPhase}
           onContribute={handleContribute}
+          onResolveCrossroad={handleResolveCrossroad}
         />
       )}
     </div>

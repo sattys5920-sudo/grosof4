@@ -23,11 +23,15 @@ import {
   STARTING_MORALE,
   pickCrisis,
   resolveCrisis,
+  pickCrossroad,
+  checkCrossroadTrigger,
+  applyCrossroadEffect,
   type ExposureResolution,
 } from './logic'
 import { SURVIVORS, SURVIVOR_MAP } from './survivors'
 import { itemsForLocation, ITEM_TYPE_MAP } from './items'
 import { CRISES, CRISIS_MAP } from './crises'
+import { CROSSROADS, CROSSROAD_MAP } from './crossroads'
 import type { ExposureFace } from './types'
 import { MAX_PLAYERS, type LocationId, type LogEntry, type RoomDoc, type SearchableLocationId } from './types'
 
@@ -142,6 +146,9 @@ export async function startGame(code: string, room: RoomDoc): Promise<void> {
     morale: STARTING_MORALE,
     crisis: pickCrisis(CRISES).id,
     crisisContributions: Object.fromEntries(room.players.map((p) => [p.uid, []])),
+    crossroad: pickCrossroad(CROSSROADS).id,
+    crossroadTriggered: false,
+    crossroadPending: null,
     log: [nowLog('생존자들이 콜로니에 모였습니다. 1라운드를 시작합니다.')],
   })
 }
@@ -155,6 +162,24 @@ function requireMyTurn(room: RoomDoc, uid: string): asserts room is RoomDoc & { 
  * 사람이 먼저 선택해야 한다(섹션 9). */
 function requireNoPendingBite(room: RoomDoc) {
   if (room.pendingBite) throw new Error('물림 전염 판정을 먼저 처리해야 해요.')
+}
+
+/** 크로스로드 카드가 발동해서 예/아니오 선택을 기다리는 동안은 다른
+ * 행동을 막는다(섹션 15) — 지목된 생존자의 주인이 먼저 골라야 한다. */
+function requireNoPendingCrossroad(room: RoomDoc) {
+  if (room.crossroadPending) throw new Error('크로스로드 카드를 먼저 처리해야 해요.')
+}
+
+/** 이동/탐색으로 도착·체류한 장소가 이번 라운드 크로스로드 카드의 발동
+ * 조건과 맞으면, 그 자리에서 카드를 공개하고 선택을 기다리는 상태로
+ * 만들 Firestore 갱신 필드를 만들어 돌려준다. 안 맞으면 빈 객체. */
+function crossroadTriggerUpdate(room: RoomDoc, uid: string, survivorId: string, locationId: LocationId): { crossroadTriggered?: boolean; crossroadPending?: { cardId: string; uid: string; survivorId: string } } {
+  const card = room.crossroad ? CROSSROAD_MAP[room.crossroad] : undefined
+  if (!checkCrossroadTrigger(card, room.crossroadTriggered ?? false, locationId)) return {}
+  return {
+    crossroadTriggered: true,
+    crossroadPending: { cardId: card!.id, uid, survivorId },
+  }
 }
 
 const EXPOSURE_TEXT: Record<ExposureFace, string> = {
@@ -183,6 +208,7 @@ export async function moveSurvivor(
 ): Promise<void> {
   requireMyTurn(room, uid)
   requireNoPendingBite(room)
+  requireNoPendingCrossroad(room)
   const diceUsed = room.diceUsed?.[uid]
   if (!diceUsed) throw new Error('주사위 정보를 찾을 수 없어요.')
   const consumed = consumeAnyDie(diceUsed)
@@ -192,12 +218,20 @@ export async function moveSurvivor(
   const survivorName = SURVIVOR_MAP[survivorId]?.name ?? '생존자'
   const playerName = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
   const exposure = resolveExposure(moved, survivorId, SURVIVOR_MAP)
+  const crossroadUpdate = crossroadTriggerUpdate(room, uid, survivorId, destination)
+  const crossroadCard = crossroadUpdate.crossroadPending ? CROSSROAD_MAP[crossroadUpdate.crossroadPending.cardId] : null
 
   await updateDoc(roomRef(code), {
     survivors: exposure.survivors,
     [`diceUsed.${uid}`]: consumed.nextDiceUsed,
     pendingBite: exposure.pendingBite,
-    log: [...(room.log ?? []), nowLog(`${playerName}의 ${survivorName}이(가) 이동했습니다.`), ...describeExposure(survivorName, exposure)],
+    ...crossroadUpdate,
+    log: [
+      ...(room.log ?? []),
+      nowLog(`${playerName}의 ${survivorName}이(가) 이동했습니다.`),
+      ...describeExposure(survivorName, exposure),
+      ...(crossroadCard ? [nowLog(`크로스로드 카드 공개: "${crossroadCard.title}"`)] : []),
+    ],
   })
 }
 
@@ -206,6 +240,7 @@ export async function moveSurvivor(
 export async function searchLocation(code: string, room: RoomDoc, uid: string, survivorId: string): Promise<void> {
   requireMyTurn(room, uid)
   requireNoPendingBite(room)
+  requireNoPendingCrossroad(room)
   const survivor = room.survivors?.find((s) => s.survivorId === survivorId)
   if (!survivor) throw new Error('생존자를 찾을 수 없어요.')
   if (survivor.ownerUid !== uid) throw new Error('내 생존자가 아니에요.')
@@ -221,14 +256,18 @@ export async function searchLocation(code: string, room: RoomDoc, uid: string, s
   const { drawn, remaining } = drawFromDeck(deck)
   const playerName = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
   const itemName = drawn ? (ITEM_TYPE_MAP[drawn]?.name ?? drawn) : null
+  const crossroadUpdate = crossroadTriggerUpdate(room, uid, survivorId, survivor.locationId)
+  const crossroadCard = crossroadUpdate.crossroadPending ? CROSSROAD_MAP[crossroadUpdate.crossroadPending.cardId] : null
 
   await updateDoc(roomRef(code), {
     [`itemDecks.${survivor.locationId}`]: remaining,
     ...(drawn ? { [`itemsByPlayer.${uid}`]: [...(room.itemsByPlayer?.[uid] ?? []), drawn] } : {}),
     [`diceUsed.${uid}`]: consumed.nextDiceUsed,
+    ...crossroadUpdate,
     log: [
       ...(room.log ?? []),
       nowLog(drawn ? `${playerName}이(가) 탐색해서 ${itemName}을(를) 찾았습니다.` : `${playerName}이(가) 탐색했지만 아무것도 찾지 못했습니다.`),
+      ...(crossroadCard ? [nowLog(`크로스로드 카드 공개: "${crossroadCard.title}"`)] : []),
     ],
   })
 }
@@ -259,6 +298,7 @@ export async function contributeToCrisis(code: string, room: RoomDoc, uid: strin
 export async function attackZombie(code: string, room: RoomDoc, uid: string, survivorId: string): Promise<void> {
   requireMyTurn(room, uid)
   requireNoPendingBite(room)
+  requireNoPendingCrossroad(room)
   const survivor = room.survivors?.find((s) => s.survivorId === survivorId)
   if (!survivor) throw new Error('생존자를 찾을 수 없어요.')
   if (survivor.ownerUid !== uid) throw new Error('내 생존자가 아니에요.')
@@ -308,12 +348,36 @@ export async function resolveBiteChoice(code: string, room: RoomDoc, uid: string
   })
 }
 
+/** 크로스로드 카드가 발동했을 때 지목된 생존자의 주인만 호출 가능(섹션
+ * 15). 예/아니오 선택에 따른 효과를 콜로니 자원에 바로 반영한다. */
+export async function resolveCrossroadChoice(code: string, room: RoomDoc, uid: string, choice: 'yes' | 'no'): Promise<void> {
+  const pending = room.crossroadPending
+  if (!pending) throw new Error('처리할 크로스로드 카드가 없어요.')
+  if (pending.uid !== uid) throw new Error('이 선택은 당신 몫이 아니에요.')
+
+  const card = CROSSROAD_MAP[pending.cardId]
+  if (!card) throw new Error('카드 정보를 찾을 수 없어요.')
+  const effect = choice === 'yes' ? card.yesEffect : card.noEffect
+  const next = applyCrossroadEffect({ food: room.food ?? STARTING_FOOD, morale: room.morale ?? STARTING_MORALE, zombies: room.zombies ?? {} }, effect)
+  const playerName = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
+  const choiceLabel = choice === 'yes' ? card.yesLabel : card.noLabel
+
+  await updateDoc(roomRef(code), {
+    food: next.food,
+    morale: next.morale,
+    zombies: next.zombies,
+    crossroadPending: null,
+    log: [...(room.log ?? []), nowLog(`${playerName}의 선택: "${choiceLabel}" — ${card.description}`)],
+  })
+}
+
 /** 지금 턴인 사람만 호출 가능. 순서상 마지막 사람이었다면 라운드 단계를
  * 'colony'로 넘긴다 — 방장이 resolveColonyPhase를 눌러야 다음 라운드로
  * 넘어간다. */
 export async function endTurn(code: string, room: RoomDoc, uid: string): Promise<void> {
   requireMyTurn(room, uid)
   requireNoPendingBite(room)
+  requireNoPendingCrossroad(room)
   const name = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
   const { nextPlayerIndex, roundOver } = advanceTurn(room.turnOrder, room.currentPlayerIndex)
   const log = [...(room.log ?? []), nowLog(`${name}의 턴이 끝났습니다.`)]
@@ -357,6 +421,7 @@ export async function resolveColonyPhase(code: string, room: RoomDoc, uid: strin
   const dice = rollAllPlayerDice(room.players, survivors)
   const round = room.round ?? 1
   const nextCrisis = pickCrisis(CRISES)
+  const nextCrossroad = pickCrossroad(CROSSROADS)
 
   const log: LogEntry[] = [
     nowLog(
@@ -390,6 +455,9 @@ export async function resolveColonyPhase(code: string, room: RoomDoc, uid: strin
     diceUsed: initialDiceUsed(dice),
     crisis: nextCrisis.id,
     crisisContributions: Object.fromEntries(room.players.map((p) => [p.uid, []])),
+    crossroad: nextCrossroad.id,
+    crossroadTriggered: false,
+    crossroadPending: null,
     log: [...(room.log ?? []), ...log],
   })
 }

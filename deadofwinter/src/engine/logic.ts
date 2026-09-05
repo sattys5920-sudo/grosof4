@@ -1,6 +1,18 @@
 // Firestore/네트워크와 무관한 순수 로직. STEP이 늘어날 때마다 이 파일에
 // 셔플·판정 함수를 추가해서 vitest로 검증한다.
-import type { Crisis, ExposureFace, ItemCategory, ItemType, LocationId, PlayerSlot, SearchableLocationId, Survivor, SurvivorInstance } from './types'
+import type {
+  Crisis,
+  CrossroadCard,
+  CrossroadEffect,
+  ExposureFace,
+  ItemCategory,
+  ItemType,
+  LocationId,
+  PlayerSlot,
+  SearchableLocationId,
+  Survivor,
+  SurvivorInstance,
+} from './types'
 
 /** 콜로니 자원 시작값. 원작은 인원수·시나리오마다 다르지만, 여기서는
  * 4인 고정에 맞춘 값 하나로 단순화했다. */
@@ -354,4 +366,40 @@ export function resolveCrisis(
     score += item.category === requiredCategory ? 1 : -1
   }
   return { success: score >= activePlayerCount, score, threshold: activePlayerCount }
+}
+
+/** 이번 라운드의 크로스로드 카드를 뽑는다(섹션 15). */
+export function pickCrossroad(cards: CrossroadCard[], rng: () => number = Math.random): CrossroadCard {
+  return cards[Math.floor(rng() * cards.length)]
+}
+
+/** 지금 카드가 발동 조건(도착한/탐색한 장소)에 맞는지 판정한다. 이미
+ * 이번 라운드에 한 번 발동했으면(카드는 라운드에 한 번만 쓴다) 다시
+ * 발동하지 않는다. */
+export function checkCrossroadTrigger(
+  card: CrossroadCard | undefined,
+  alreadyTriggered: boolean,
+  locationId: LocationId,
+): boolean {
+  if (!card || alreadyTriggered) return false
+  return card.triggerLocationId === locationId
+}
+
+export interface CrossroadResourceState {
+  food: number
+  morale: number
+  zombies: Partial<Record<LocationId, number>>
+}
+
+/** 예/아니오 선택 결과를 콜로니 자원에 반영한다. 식량/사기는 음수로
+ * 안 내려가게 클램프한다. */
+export function applyCrossroadEffect(state: CrossroadResourceState, effect: CrossroadEffect): CrossroadResourceState {
+  const food = Math.max(0, state.food + (effect.foodDelta ?? 0))
+  const morale = Math.max(0, state.morale + (effect.moraleDelta ?? 0))
+  const zombies = { ...state.zombies }
+  if (effect.zombieDelta) {
+    const { locationId, amount } = effect.zombieDelta
+    zombies[locationId] = Math.max(0, (zombies[locationId] ?? 0) + amount)
+  }
+  return { food, morale, zombies }
 }

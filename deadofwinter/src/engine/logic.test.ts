@@ -22,10 +22,14 @@ import {
   addRoundZombies,
   pickCrisis,
   resolveCrisis,
+  pickCrossroad,
+  checkCrossroadTrigger,
+  applyCrossroadEffect,
 } from './logic'
 import { SURVIVORS, SURVIVOR_MAP } from './survivors'
 import { ITEM_TYPES, ITEM_TYPE_MAP, itemsForLocation } from './items'
 import { CRISES } from './crises'
+import { CROSSROADS, CROSSROAD_MAP } from './crossroads'
 import type { PlayerSlot, SurvivorInstance } from './types'
 import { MAX_PLAYERS } from './types'
 
@@ -456,5 +460,60 @@ describe('resolveCrisis', () => {
   it('기여가 하나도 없으면 점수 0으로 실패(활동 인원 1명 이상일 때)', () => {
     const result = resolveCrisis([], 'weapon', ITEM_TYPE_MAP, 1)
     expect(result).toEqual({ success: false, score: 0, threshold: 1 })
+  })
+})
+
+describe('pickCrossroad', () => {
+  it('카드 풀에서 하나를 뽑는다', () => {
+    const c = pickCrossroad(CROSSROADS, () => 0)
+    expect(CROSSROADS).toContainEqual(c)
+    expect(c).toEqual(CROSSROADS[0])
+  })
+})
+
+describe('checkCrossroadTrigger', () => {
+  const card = CROSSROAD_MAP.strangerAtPolice // triggerLocationId: 'police'
+
+  it('카드의 지정 장소와 일치하고 아직 발동 전이면 true', () => {
+    expect(checkCrossroadTrigger(card, false, 'police')).toBe(true)
+  })
+
+  it('다른 장소면 false', () => {
+    expect(checkCrossroadTrigger(card, false, 'grocery')).toBe(false)
+  })
+
+  it('이미 발동했으면 장소가 맞아도 false', () => {
+    expect(checkCrossroadTrigger(card, true, 'police')).toBe(false)
+  })
+
+  it('카드가 없으면 false', () => {
+    expect(checkCrossroadTrigger(undefined, false, 'police')).toBe(false)
+  })
+})
+
+describe('applyCrossroadEffect', () => {
+  it('식량/사기 증감을 반영한다', () => {
+    const result = applyCrossroadEffect({ food: 5, morale: 5, zombies: {} }, { foodDelta: -2, moraleDelta: 1 })
+    expect(result.food).toBe(3)
+    expect(result.morale).toBe(6)
+  })
+
+  it('0 밑으로는 안 내려간다', () => {
+    const result = applyCrossroadEffect({ food: 1, morale: 0, zombies: {} }, { foodDelta: -5, moraleDelta: -3 })
+    expect(result.food).toBe(0)
+    expect(result.morale).toBe(0)
+  })
+
+  it('지정한 장소의 좀비 수를 늘린다', () => {
+    const result = applyCrossroadEffect(
+      { food: 5, morale: 5, zombies: { school: 1 } },
+      { zombieDelta: { locationId: 'school', amount: 2 } },
+    )
+    expect(result.zombies.school).toBe(3)
+  })
+
+  it('효과가 없는 필드는 그대로 둔다', () => {
+    const result = applyCrossroadEffect({ food: 5, morale: 5, zombies: {} }, {})
+    expect(result).toEqual({ food: 5, morale: 5, zombies: {} })
   })
 })
