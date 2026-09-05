@@ -69,8 +69,8 @@ export default function App() {
         return
       }
       enterRoom(inputCode.trim().toUpperCase(), joined.role)
-    } catch {
-      setErrorMsg('입장하지 못했어요. 다시 시도해 주세요.')
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '입장하지 못했어요. 다시 시도해 주세요.')
     } finally {
       setBusy(false)
     }

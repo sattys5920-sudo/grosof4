@@ -3,12 +3,32 @@
 // 정의한다 — "상대 손패를 아예 안 읽는다", "범인 카드는 고발을 확정
 // 지은 뒤에만 읽는다" 같은 약속을 여기서 지킨다.
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, type Unsubscribe } from 'firebase/firestore'
-import { db, ensureSignedIn } from '../firebase'
+import { db, ensureSignedIn, SignInFailedError } from '../firebase'
 import { dealGame, generateRoomCode } from './logic'
 import { SUSPECTS } from './suspects'
 import type { Accusation, CentralSecretDoc, GameResult, HandDoc, LastAnswer, LogEntry, Role, RoomDoc, SecretDoc, SuspectId, TraitId } from './types'
 
 const ROOMS = 'sherlock13Rooms'
+
+/** 로그인 실패 사유를 사람이 읽을 수 있는 안내로 바꾼다 — "설정 자체가
+ * 없음"과 "설정은 됐는데 로그인만 실패함(대개 콘솔에서 익명 로그인을 아직
+ * 안 켰음)"을 서로 다른 문장으로 알려줘야 사용자가 뭘 고쳐야 할지 알 수
+ * 있다. */
+async function requireUid(): Promise<string> {
+  if (!db) throw new Error('Firebase 설정이 없어요. 배포 설정을 확인해 주세요.')
+  try {
+    const uid = await ensureSignedIn()
+    if (!uid) throw new Error('Firebase 설정이 없어요. 배포 설정을 확인해 주세요.')
+    return uid
+  } catch (err) {
+    if (err instanceof SignInFailedError) {
+      throw new Error(
+        `익명 로그인에 실패했어요 (${err.code}). Firebase 콘솔 → Authentication → Sign-in method에서 "익명(Anonymous)" 로그인을 켰는지 확인해 주세요.`,
+      )
+    }
+    throw err
+  }
+}
 
 function roomRef(code: string) {
   if (!db) throw new Error('오프라인 상태예요.')
@@ -27,8 +47,7 @@ function nowLog(text: string): LogEntry {
  * 몫을 각각 다른 경로에 써 둔다 — 이 순간 이후로는 만든 사람도 상대
  * 손패나 범인 카드를 다시 읽지 않는다(보안 규칙이 막아 준다). */
 export async function createRoom(): Promise<string> {
-  const uid = await ensureSignedIn()
-  if (!uid || !db) throw new Error('오프라인 상태예요.')
+  const uid = await requireUid()
 
   let code = generateRoomCode()
   for (let tries = 0; tries < 5; tries++) {
@@ -66,8 +85,7 @@ export async function createRoom(): Promise<string> {
 /** 초대 코드로 두 번째 자리에 들어간다. 방이 이미 꽉 찼거나 없으면
  * null. */
 export async function joinRoom(code: string): Promise<{ role: Role } | null> {
-  const uid = await ensureSignedIn()
-  if (!uid) return null
+  const uid = await requireUid()
   const upper = code.trim().toUpperCase()
   const snap = await getDoc(roomRef(upper))
   if (!snap.exists()) return null
