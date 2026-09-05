@@ -18,6 +18,8 @@ import {
   resolveBiteReroll,
   applyBiteDeath,
   WOUND_LIMIT,
+  resolveFoodPayment,
+  addRoundZombies,
 } from './logic'
 import { SURVIVORS, SURVIVOR_MAP } from './survivors'
 import { ITEM_TYPES, itemsForLocation } from './items'
@@ -380,5 +382,45 @@ describe('applyBiteDeath', () => {
     expect(result.died).toBe(true)
     expect(result.survivors.find((s) => s.survivorId === 'sv3')?.alive).toBe(false)
     expect(result.pendingBite?.targetSurvivorId).toBe('sv4')
+  })
+})
+
+describe('resolveFoodPayment', () => {
+  it('식량이 충분하면 필요한 만큼만 줄어들고 기아는 없다', () => {
+    expect(resolveFoodPayment(8, 4)).toEqual({ nextFood: 6, starvation: 0 }) // 4명 -> 2 필요
+  })
+
+  it('홀수 인원이면 올림해서 계산한다', () => {
+    expect(resolveFoodPayment(8, 5)).toEqual({ nextFood: 5, starvation: 0 }) // 5명 -> 3 필요
+  })
+
+  it('식량이 모자라면 0이 되고 부족분만큼 기아가 생긴다', () => {
+    expect(resolveFoodPayment(1, 5)).toEqual({ nextFood: 0, starvation: 2 }) // 3 필요, 1 있음 -> 2 부족
+  })
+
+  it('콜로니에 아무도 없으면 식량을 안 쓴다', () => {
+    expect(resolveFoodPayment(3, 0)).toEqual({ nextFood: 3, starvation: 0 })
+  })
+})
+
+describe('addRoundZombies', () => {
+  const locations: Array<'police' | 'grocery' | 'school' | 'gasStation' | 'library' | 'hospital'> = [
+    'police',
+    'grocery',
+    'school',
+    'gasStation',
+    'library',
+    'hospital',
+  ]
+
+  it('6개 장소 전부에 1마리씩 늘어난다', () => {
+    const next = addRoundZombies({}, locations)
+    for (const loc of locations) expect(next[loc]).toBe(1)
+  })
+
+  it('기존 좀비 수에 누적된다', () => {
+    const next = addRoundZombies({ police: 2 }, locations)
+    expect(next.police).toBe(3)
+    expect(next.grocery).toBe(1)
   })
 })

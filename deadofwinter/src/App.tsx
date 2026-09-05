@@ -3,7 +3,19 @@ import './App.css'
 import MainMenu from './screens/MainMenu'
 import Lobby from './screens/Lobby'
 import GameScreen from './screens/GameScreen'
-import { createRoom, joinRoom, watchRoom, toggleReady, startGame, endTurn, moveSurvivor, searchLocation, attackZombie, resolveBiteChoice } from './engine/room'
+import {
+  createRoom,
+  joinRoom,
+  watchRoom,
+  toggleReady,
+  startGame,
+  endTurn,
+  moveSurvivor,
+  searchLocation,
+  attackZombie,
+  resolveBiteChoice,
+  resolveColonyPhase,
+} from './engine/room'
 import { ensureSignedIn } from './firebase'
 import type { LocationId, RoomDoc } from './engine/types'
 import type { Unsubscribe } from 'firebase/firestore'
@@ -159,6 +171,19 @@ export default function App() {
     }
   }
 
+  async function handleResolveColonyPhase() {
+    if (!room) return
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      await resolveColonyPhase(room.code, room, myUid)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '콜로니 단계를 진행하지 못했어요.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function handleLeave() {
     unsubRef.current?.()
     unsubRef.current = null
@@ -194,6 +219,7 @@ export default function App() {
           onSearch={handleSearch}
           onAttack={handleAttack}
           onResolveBite={handleResolveBite}
+          onResolveColonyPhase={handleResolveColonyPhase}
         />
       )}
     </div>

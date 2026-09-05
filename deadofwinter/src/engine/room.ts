@@ -6,6 +6,7 @@ import {
   generateRoomCode,
   allReady,
   advanceTurn,
+  nextFirstPlayerIndex,
   dealSurvivors,
   rollAllPlayerDice,
   initialDiceUsed,
@@ -16,6 +17,10 @@ import {
   resolveExposure,
   resolveBiteReroll,
   applyBiteDeath,
+  resolveFoodPayment,
+  addRoundZombies,
+  STARTING_FOOD,
+  STARTING_MORALE,
   type ExposureResolution,
 } from './logic'
 import { SURVIVORS, SURVIVOR_MAP } from './survivors'
@@ -113,9 +118,8 @@ export async function startGame(code: string, room: RoomDoc): Promise<void> {
   const survivors = dealSurvivors(room.players, SURVIVORS)
   const dice = rollAllPlayerDice(room.players, survivors)
   const itemDecks = buildAllItemDecks(SEARCHABLE_LOCATIONS, itemsForLocation)
-  // 매 라운드 콜로니 단계에서 자동으로 늘어나는 좀비(섹션 11)는 콜로니
-  // 단계 자체를 만드는 STEP 8~9에서 구현한다 — 여기서는 공격·노출을 바로
-  // 테스트할 수 있게 외부 장소마다 1마리씩만 깔아 둔다.
+  // 첫 라운드는 공격·노출을 바로 테스트할 수 있게 외부 장소마다 1마리씩
+  // 깔아 둔다. 그 다음부터는 콜로니 단계마다 addRoundZombies가 늘린다.
   const zombies = Object.fromEntries(SEARCHABLE_LOCATIONS.map((loc) => [loc, 1]))
   await updateDoc(roomRef(code), {
     phase: 'playing',
@@ -131,6 +135,8 @@ export async function startGame(code: string, room: RoomDoc): Promise<void> {
     itemsByPlayer: Object.fromEntries(room.players.map((p) => [p.uid, []])),
     zombies,
     pendingBite: null,
+    food: STARTING_FOOD,
+    morale: STARTING_MORALE,
     log: [nowLog('생존자들이 콜로니에 모였습니다. 1라운드를 시작합니다.')],
   })
 }
@@ -277,7 +283,8 @@ export async function resolveBiteChoice(code: string, room: RoomDoc, uid: string
 }
 
 /** 지금 턴인 사람만 호출 가능. 순서상 마지막 사람이었다면 라운드 단계를
- * 'colony'로 넘긴다 — 실제 콜로니 단계 처리는 STEP 8~9에서 구현한다. */
+ * 'colony'로 넘긴다 — 방장이 resolveColonyPhase를 눌러야 다음 라운드로
+ * 넘어간다. */
 export async function endTurn(code: string, room: RoomDoc, uid: string): Promise<void> {
   requireMyTurn(room, uid)
   requireNoPendingBite(room)
@@ -295,4 +302,47 @@ export async function endTurn(code: string, room: RoomDoc, uid: string): Promise
   }
 
   await updateDoc(roomRef(code), { currentPlayerIndex: nextPlayerIndex, log })
+}
+
+/** 방장만 호출 가능. 콜로니 단계(섹션 13)를 한 번에 처리하고 다음
+ * 라운드를 연다: ① 식량 지불(부족하면 사기 감소) → ④ 좀비 추가(단순화:
+ * 외부 6곳에 1마리씩) → ⑥ 라운드 +1 → ⑦ 선 플레이어 한 칸 이동 → 새
+ * 주사위 굴리기. 위기 해결(③)은 STEP 9, 메인 목표 확인(⑤)은 게임 종료를
+ * 만드는 STEP 13에서 이 사이에 끼워 넣는다. */
+export async function resolveColonyPhase(code: string, room: RoomDoc, uid: string): Promise<void> {
+  if (room.hostUid !== uid) throw new Error('방장만 콜로니 단계를 진행할 수 있어요.')
+  if (room.roundPhase !== 'colony') throw new Error('지금은 콜로니 단계가 아니에요.')
+  if (!room.turnOrder || room.firstPlayerIndex === undefined) throw new Error('아직 게임이 시작되지 않았어요.')
+
+  const survivors = room.survivors ?? []
+  const atColony = survivors.filter((s) => s.alive && s.locationId === 'colony').length
+  const { nextFood, starvation } = resolveFoodPayment(room.food ?? STARTING_FOOD, atColony)
+  const nextMorale = (room.morale ?? STARTING_MORALE) - starvation
+  const nextZombies = addRoundZombies(room.zombies ?? {}, SEARCHABLE_LOCATIONS)
+  const nextFirstIndex = nextFirstPlayerIndex(room.turnOrder, room.firstPlayerIndex)
+  const dice = rollAllPlayerDice(room.players, survivors)
+  const round = room.round ?? 1
+
+  const log: LogEntry[] = [
+    nowLog(
+      starvation > 0
+        ? `콜로니 단계: 생존자 ${atColony}명 부양에 식량이 ${starvation}개 부족해 사기가 ${starvation} 줄었습니다.`
+        : `콜로니 단계: 생존자 ${atColony}명분 식량을 지불했습니다.`,
+    ),
+    nowLog('외부 6개 장소에 좀비가 한 마리씩 늘어났습니다.'),
+    nowLog(`${round}라운드가 끝났습니다. ${round + 1}라운드를 시작합니다.`),
+  ]
+
+  await updateDoc(roomRef(code), {
+    food: nextFood,
+    morale: nextMorale,
+    zombies: nextZombies,
+    round: round + 1,
+    firstPlayerIndex: nextFirstIndex,
+    currentPlayerIndex: nextFirstIndex,
+    roundPhase: 'turns',
+    dice,
+    diceUsed: initialDiceUsed(dice),
+    log: [...(room.log ?? []), ...log],
+  })
 }

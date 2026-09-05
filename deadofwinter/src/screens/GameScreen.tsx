@@ -6,9 +6,9 @@ import { LOCATIONS, LOCATION_MAP } from '../engine/locations'
 import { ITEM_TYPE_MAP } from '../engine/items'
 import { SURVIVOR_MAP } from '../engine/survivors'
 
-/** STEP 7 범위: 라운드/턴 진행 + 보드 + 생존자·주사위 + 이동·탐색·공격 +
- * 노출/물림 전염 판정까지. 매 라운드 자동으로 늘어나는 좀비(콜로니 단계)는
- * STEP 8~9에서 이어서 구현한다. */
+/** STEP 8 범위: 라운드/턴 진행 + 보드 + 생존자·주사위 + 이동·탐색·공격 +
+ * 노출/물림 전염 판정 + 콜로니 단계(식량·사기·좀비·라운드 넘김)까지.
+ * 위기 해결은 STEP 9에서 콜로니 단계 흐름에 끼워 넣는다. */
 export default function GameScreen({
   room,
   myUid,
@@ -19,6 +19,7 @@ export default function GameScreen({
   onSearch,
   onAttack,
   onResolveBite,
+  onResolveColonyPhase,
 }: {
   room: RoomDoc
   myUid: string
@@ -29,6 +30,7 @@ export default function GameScreen({
   onSearch: (survivorId: string) => void
   onAttack: (survivorId: string) => void
   onResolveBite: (choice: 'die' | 'reroll') => void
+  onResolveColonyPhase: () => void
 }) {
   const [selectedSurvivorId, setSelectedSurvivorId] = useState<string | null>(null)
 
@@ -49,11 +51,14 @@ export default function GameScreen({
   const pendingBite = room.pendingBite
   const myBiteChoice = pendingBite?.targetOwnerUid === myUid
   const biteTargetName = pendingBite ? (SURVIVOR_MAP[pendingBite.targetSurvivorId]?.name ?? '생존자') : ''
+  const isHost = room.hostUid === myUid
 
   return (
     <div className="game-screen">
       <div className="game-hud">
         <span className="hud-round">ROUND {room.round ?? 1}</span>
+        <span className="hud-resource">🍖 {room.food ?? 0}</span>
+        <span className="hud-resource">❤️ {room.morale ?? 0}</span>
         <span className={`hud-phase phase-${room.roundPhase}`}>
           {room.roundPhase === 'colony' ? '콜로니 단계' : '플레이어 턴'}
         </span>
@@ -196,7 +201,18 @@ export default function GameScreen({
       {room.roundPhase === 'colony' && (
         <div className="turn-panel">
           <p className="turn-status">🏕 전원의 턴이 끝났습니다.</p>
-          <p className="turn-hint">식량 지불 · 폐기물 확인 · 위기 해결 · 좀비 추가 등 콜로니 단계는 다음 단계에서 구현됩니다.</p>
+          <p className="turn-hint">
+            콜로니에 있는 생존자만큼 식량을 지불하고, 외부 장소에 좀비가 늘어난 뒤 다음 라운드가 시작됩니다. 위기 해결은
+            다음 단계에서 구현됩니다.
+          </p>
+          {errorMsg && <p className="menu-error">{errorMsg}</p>}
+          {isHost ? (
+            <button type="button" className="menu-btn primary" disabled={busy} onClick={onResolveColonyPhase}>
+              콜로니 단계 진행
+            </button>
+          ) : (
+            <p className="turn-hint">방장이 콜로니 단계를 진행하는 중이에요…</p>
+          )}
         </div>
       )}
 

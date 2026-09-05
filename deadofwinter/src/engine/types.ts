@@ -15,9 +15,9 @@ export type LogEntry = {
 }
 
 /** 라운드 안에서의 진행 단계. 'turns' = 선 플레이어부터 한 명씩 턴 진행,
- * 'colony' = 전원 턴이 끝난 뒤 콜로니 단계(STEP 8~9에서 구현). 위기 공개·
- * 주사위 굴리기 단계는 그 기능을 만드는 STEP(5, 9)에서 이 유니언에
- * 끼워 넣는다. */
+ * 'colony' = 전원 턴이 끝난 뒤 콜로니 단계(식량 지불→좀비 추가→라운드
+ * 넘김, STEP 8에서 구현) — 방장이 진행 버튼을 누르면 다시 'turns'로
+ * 돌아간다. 위기 공개는 STEP 9에서 이 유니언에 끼워 넣는다. */
 export type RoundPhase = 'turns' | 'colony'
 
 export interface RoomDoc {
@@ -58,6 +58,12 @@ export interface RoomDoc {
   // 물림 전염(섹션 9) 진행 중에는 다른 행동을 막고, 지목된 생존자의
   // 주인이 선택해야 한다. null/미정의면 전염 판정이 없는 상태.
   pendingBite?: PendingBite | null
+
+  // 콜로니 공용 자원(섹션 13). 시작값은 원작처럼 인원수·시나리오별로
+  // 달라지지 않고 고정값으로 단순화했다 — STEP 8 범위에서는 라운드마다
+  // 자동으로 줄고 늘어나는 흐름 자체가 중요해서다.
+  food?: number
+  morale?: number
 }
 
 export interface PendingBite {

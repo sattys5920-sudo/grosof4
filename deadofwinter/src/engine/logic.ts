@@ -2,6 +2,11 @@
 // 셔플·판정 함수를 추가해서 vitest로 검증한다.
 import type { ExposureFace, ItemType, LocationId, PlayerSlot, SearchableLocationId, Survivor, SurvivorInstance } from './types'
 
+/** 콜로니 자원 시작값. 원작은 인원수·시나리오마다 다르지만, 여기서는
+ * 4인 고정에 맞춘 값 하나로 단순화했다. */
+export const STARTING_FOOD = 8
+export const STARTING_MORALE = 10
+
 /** 주사위 하나를 굴린다(1~6). */
 function rollDie(rng: () => number): number {
   return Math.floor(rng() * 6) + 1
@@ -292,4 +297,31 @@ export function applyBiteDeath(survivors: SurvivorInstance[], survivorId: string
     died: true,
     pendingBite: target ? { locationId: before!.locationId, targetSurvivorId: target.survivorId, targetOwnerUid: target.ownerUid } : null,
   }
+}
+
+export interface FoodPaymentResult {
+  nextFood: number
+  starvation: number
+}
+
+/** 콜로니 단계 ① 식량 지불(섹션 13). 콜로니에 있는 생존자 2명당 식량 1개를
+ * 낸다(나머지는 반올림해서 더 필요한 쪽으로). 모자라면 부족한 만큼 기아
+ * 토큰이 생기고, 그 개수만큼 나중에 사기가 깎인다. */
+export function resolveFoodPayment(food: number, survivorsAtColony: number): FoodPaymentResult {
+  const needed = Math.ceil(survivorsAtColony / 2)
+  if (food >= needed) return { nextFood: food - needed, starvation: 0 }
+  return { nextFood: 0, starvation: needed - food }
+}
+
+/** 콜로니 단계 ④ 좀비 추가(섹션 11)를 단순화한 버전 — 매 라운드 6개
+ * 외부 장소 전부에 좀비를 1마리씩 늘린다. 원작처럼 장소별 생존자 수·
+ * 소음 토큰에 따라 달라지는 정교한 공식은 아니다(소음 토큰 자체를 이
+ * 구현에 안 만들었다). */
+export function addRoundZombies(
+  zombies: Partial<Record<LocationId, number>>,
+  locations: SearchableLocationId[],
+): Partial<Record<LocationId, number>> {
+  const next = { ...zombies }
+  for (const loc of locations) next[loc] = (next[loc] ?? 0) + 1
+  return next
 }
