@@ -7,7 +7,8 @@ export type PlayerSlot = {
   ready: boolean
 }
 
-export type RoomPhase = 'lobby' | 'playing'
+/** 'ended'는 STEP 13에서 승패가 갈렸을 때(gameResult가 채워진다). */
+export type RoomPhase = 'lobby' | 'playing' | 'ended'
 
 export type LogEntry = {
   at: number
@@ -87,6 +88,24 @@ export interface RoomDoc {
 
   // 추방 투표(섹션 14) 진행 중인 안건. null/미정의면 없음.
   banishmentVote?: BanishmentVote | null
+
+  // 메인 목표(섹션 5) 진행도 — 위기 카드를 성공시킨 누적 횟수. 이
+  // 값이 MAIN_OBJECTIVE_CRISIS_TARGET에 도달하면 승리한다.
+  crisisSuccessCount?: number
+  // 게임이 끝났으면(phase==='ended') 결과가 여기 채워진다.
+  gameResult?: GameResult | null
+}
+
+/** 게임이 끝난 이유(섹션 5, 13). 원작은 시나리오마다 메인 목표가
+ * 다르고 실패 조건도 다양하지만, 여기서는 "사기 0이면 즉시 패배",
+ * "위기를 정해진 횟수만큼 해결하면 승리", "그 전에 라운드 제한을
+ * 넘기면 패배"로 단순화했다(STEP 13 범위). */
+export type GameEndReason = 'mainObjective' | 'moraleZero' | 'roundLimit'
+
+export interface GameResult {
+  outcome: 'win' | 'loss'
+  reason: GameEndReason
+  round: number
 }
 
 export interface CrossroadPending {

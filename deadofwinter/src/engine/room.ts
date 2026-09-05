@@ -30,6 +30,8 @@ import {
   allVoted,
   tallyBanishmentVote,
   applyBanishment,
+  checkGameEnd,
+  MAIN_OBJECTIVE_CRISIS_TARGET,
   type ExposureResolution,
 } from './logic'
 import { SURVIVORS, SURVIVOR_MAP } from './survivors'
@@ -172,6 +174,8 @@ export async function startGame(code: string, room: RoomDoc): Promise<void> {
     crossroadTriggered: false,
     crossroadPending: null,
     banishmentVote: null,
+    crisisSuccessCount: 0,
+    gameResult: null,
     log: [nowLog('생존자들이 콜로니에 모였습니다. 1라운드를 시작합니다.')],
   })
 }
@@ -394,12 +398,17 @@ export async function resolveCrossroadChoice(code: string, room: RoomDoc, uid: s
   const playerName = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
   const choiceLabel = choice === 'yes' ? card.yesLabel : card.noLabel
 
+  const gameResult = checkGameEnd(next.morale, room.crisisSuccessCount ?? 0, room.round ?? 1)
+  const log = [...(room.log ?? []), nowLog(`${playerName}의 선택: "${choiceLabel}" — ${card.description}`)]
+  if (gameResult) log.push(nowLog(gameResult.outcome === 'win' ? '콜로니가 승리했습니다!' : '콜로니가 무너졌습니다…'))
+
   await updateDoc(roomRef(code), {
     food: next.food,
     morale: next.morale,
     zombies: next.zombies,
     crossroadPending: null,
-    log: [...(room.log ?? []), nowLog(`${playerName}의 선택: "${choiceLabel}" — ${card.description}`)],
+    ...(gameResult ? { phase: 'ended', gameResult } : {}),
+    log,
   })
 }
 
@@ -493,9 +502,11 @@ export async function endTurn(code: string, room: RoomDoc, uid: string): Promise
 /** 방장만 호출 가능. 콜로니 단계(섹션 13)를 한 번에 처리하고 다음
  * 라운드를 연다: ① 식량 지불(부족하면 사기 감소) → ③ 위기 해결(성공/실패
  * 에 따라 사기 증감, 새 위기 카드 공개) → ④ 좀비 추가(단순화: 외부
- * 6곳에 1마리씩) → ⑥ 라운드 +1 → ⑦ 선 플레이어 한 칸 이동 → 새 주사위
- * 굴리기. 폐기물 확인(②)과 메인 목표 확인(⑤)은 각각 이 구현에 없는
- * 폐기물 더미, 게임 종료를 만드는 STEP 13에서 다룬다. */
+ * 6곳에 1마리씩) → ⑤ 메인 목표 확인 → ⑥ 라운드 +1 → ⑦ 선 플레이어 한 칸
+ * 이동 → 새 주사위 굴리기. 폐기물 확인(②)은 이 구현에 없는 폐기물
+ * 더미라 여전히 미구현이다. 승패가 갈리면(사기 0 또는 라운드 제한
+ * 초과, 혹은 위기 성공 횟수가 목표에 도달) 다음 라운드로 넘기지 않고
+ * phase를 'ended'로 바꾼 채 멈춘다. */
 export async function resolveColonyPhase(code: string, room: RoomDoc, uid: string): Promise<void> {
   if (room.hostUid !== uid) throw new Error('방장만 콜로니 단계를 진행할 수 있어요.')
   if (room.roundPhase !== 'colony') throw new Error('지금은 콜로니 단계가 아니에요.')
@@ -514,10 +525,9 @@ export async function resolveColonyPhase(code: string, room: RoomDoc, uid: strin
   const nextMorale = (room.morale ?? STARTING_MORALE) - starvation + crisisMoraleDelta
   const nextZombies = addRoundZombies(room.zombies ?? {}, SEARCHABLE_LOCATIONS)
   const nextFirstIndex = nextFirstPlayerIndex(room.turnOrder, room.firstPlayerIndex)
-  const dice = rollAllPlayerDice(room.players, survivors)
   const round = room.round ?? 1
-  const nextCrisis = pickCrisis(CRISES)
-  const nextCrossroad = pickCrossroad(CROSSROADS)
+  const nextCrisisSuccessCount = (room.crisisSuccessCount ?? 0) + (crisisResult?.success ? 1 : 0)
+  const gameResult = checkGameEnd(nextMorale, nextCrisisSuccessCount, round + 1)
 
   const log: LogEntry[] = [
     nowLog(
@@ -530,13 +540,32 @@ export async function resolveColonyPhase(code: string, room: RoomDoc, uid: strin
     log.push(
       nowLog(
         crisisResult.success
-          ? `위기 "${currentCrisis.title}" 해결! (점수 ${crisisResult.score}/${crisisResult.threshold}) 사기 +1`
+          ? `위기 "${currentCrisis.title}" 해결! (점수 ${crisisResult.score}/${crisisResult.threshold}) 사기 +1 (메인 목표 진행도 ${nextCrisisSuccessCount}/${MAIN_OBJECTIVE_CRISIS_TARGET})`
           : `위기 "${currentCrisis.title}" 실패... (점수 ${crisisResult.score}/${crisisResult.threshold}) 사기 -1`,
       ),
     )
   }
-  log.push(nowLog(`새 위기 카드: "${nextCrisis.title}"`))
   log.push(nowLog('외부 6개 장소에 좀비가 한 마리씩 늘어났습니다.'))
+
+  if (gameResult) {
+    log.push(nowLog(gameResult.outcome === 'win' ? '메인 목표를 달성해 콜로니가 승리했습니다!' : '콜로니가 무너졌습니다…'))
+    await updateDoc(roomRef(code), {
+      food: nextFood,
+      morale: nextMorale,
+      zombies: nextZombies,
+      round: round + 1,
+      crisisSuccessCount: nextCrisisSuccessCount,
+      phase: 'ended',
+      gameResult,
+      log: [...(room.log ?? []), ...log],
+    })
+    return
+  }
+
+  const dice = rollAllPlayerDice(room.players, survivors)
+  const nextCrisis = pickCrisis(CRISES)
+  const nextCrossroad = pickCrossroad(CROSSROADS)
+  log.push(nowLog(`새 위기 카드: "${nextCrisis.title}"`))
   log.push(nowLog(`${round}라운드가 끝났습니다. ${round + 1}라운드를 시작합니다.`))
 
   await updateDoc(roomRef(code), {
@@ -544,6 +573,7 @@ export async function resolveColonyPhase(code: string, room: RoomDoc, uid: strin
     morale: nextMorale,
     zombies: nextZombies,
     round: round + 1,
+    crisisSuccessCount: nextCrisisSuccessCount,
     firstPlayerIndex: nextFirstIndex,
     currentPlayerIndex: nextFirstIndex,
     roundPhase: 'turns',

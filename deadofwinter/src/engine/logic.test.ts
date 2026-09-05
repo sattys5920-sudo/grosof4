@@ -29,6 +29,9 @@ import {
   allVoted,
   tallyBanishmentVote,
   applyBanishment,
+  checkGameEnd,
+  MAIN_OBJECTIVE_CRISIS_TARGET,
+  ROUND_LIMIT,
 } from './logic'
 import { SURVIVORS, SURVIVOR_MAP } from './survivors'
 import { ITEM_TYPES, ITEM_TYPE_MAP, itemsForLocation } from './items'
@@ -582,5 +585,31 @@ describe('applyBanishment', () => {
     const result = applyBanishment(survivors, 'sv1')
     expect(result[0]).toEqual({ ...survivors[0], alive: false, banished: true })
     expect(result[1]).toEqual(survivors[1])
+  })
+})
+
+describe('checkGameEnd', () => {
+  it('사기가 0이면 다른 조건과 상관없이 즉시 패배한다', () => {
+    expect(checkGameEnd(0, MAIN_OBJECTIVE_CRISIS_TARGET, 1)).toEqual({ outcome: 'loss', reason: 'moraleZero', round: 1 })
+  })
+
+  it('사기가 음수여도 패배로 취급한다', () => {
+    expect(checkGameEnd(-1, 0, 1)).toEqual({ outcome: 'loss', reason: 'moraleZero', round: 1 })
+  })
+
+  it('사기가 남아있고 위기 성공 횟수가 목표치에 도달하면 승리한다', () => {
+    expect(checkGameEnd(5, MAIN_OBJECTIVE_CRISIS_TARGET, 3)).toEqual({ outcome: 'win', reason: 'mainObjective', round: 3 })
+  })
+
+  it('목표를 못 채운 채 라운드 제한을 넘기면 패배한다', () => {
+    expect(checkGameEnd(5, MAIN_OBJECTIVE_CRISIS_TARGET - 1, ROUND_LIMIT + 1)).toEqual({
+      outcome: 'loss',
+      reason: 'roundLimit',
+      round: ROUND_LIMIT + 1,
+    })
+  })
+
+  it('아직 끝날 조건이 아니면 null이다', () => {
+    expect(checkGameEnd(5, 0, ROUND_LIMIT)).toBeNull()
   })
 })

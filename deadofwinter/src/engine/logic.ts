@@ -6,6 +6,7 @@ import type {
   CrossroadCard,
   CrossroadEffect,
   ExposureFace,
+  GameResult,
   ItemCategory,
   ItemType,
   LocationId,
@@ -445,4 +446,20 @@ export function tallyBanishmentVote(vote: BanishmentVote, playerUids: string[]):
  * 구분할 수 있게 banished 플래그를 남긴다. */
 export function applyBanishment(survivors: SurvivorInstance[], survivorId: string): SurvivorInstance[] {
   return survivors.map((s) => (s.survivorId === survivorId ? { ...s, alive: false, banished: true } : s))
+}
+
+/** 메인 목표(섹션 5): 위기 카드를 이만큼 성공시키면 승리한다. */
+export const MAIN_OBJECTIVE_CRISIS_TARGET = 5
+/** 이 라운드까지 목표를 못 이루면 패배한다. */
+export const ROUND_LIMIT = 10
+
+/** 사기·위기 성공 누적·라운드로 게임이 끝났는지 판정한다(섹션 5, 13).
+ * 사기가 0이 되면 다른 조건과 상관없이 즉시 패배, 그 전에 목표
+ * 횟수만큼 위기를 해결하면 승리, 그것도 아니면서 라운드 제한을
+ * 넘기면 패배다. 아직 안 끝났으면 null. */
+export function checkGameEnd(morale: number, crisisSuccessCount: number, round: number): GameResult | null {
+  if (morale <= 0) return { outcome: 'loss', reason: 'moraleZero', round }
+  if (crisisSuccessCount >= MAIN_OBJECTIVE_CRISIS_TARGET) return { outcome: 'win', reason: 'mainObjective', round }
+  if (round > ROUND_LIMIT) return { outcome: 'loss', reason: 'roundLimit', round }
+  return null
 }

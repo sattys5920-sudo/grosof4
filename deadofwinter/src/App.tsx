@@ -3,6 +3,7 @@ import './App.css'
 import MainMenu from './screens/MainMenu'
 import Lobby from './screens/Lobby'
 import GameScreen from './screens/GameScreen'
+import EndScreen from './screens/EndScreen'
 import {
   createRoom,
   joinRoom,
@@ -25,7 +26,7 @@ import { ensureSignedIn } from './firebase'
 import type { LocationId, PlayerSecret, RoomDoc } from './engine/types'
 import type { Unsubscribe } from 'firebase/firestore'
 
-type Screen = 'menu' | 'lobby' | 'playing'
+type Screen = 'menu' | 'lobby' | 'playing' | 'ended'
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('menu')
@@ -52,6 +53,7 @@ export default function App() {
     unsubRef.current = watchRoom(roomCode, (next) => {
       setRoom(next)
       if (next?.phase === 'playing') setScreen('playing')
+      if (next?.phase === 'ended') setScreen('ended')
     })
     secretUnsubRef.current?.()
     secretUnsubRef.current = watchMySecret(roomCode, uid, setMySecret)
@@ -294,6 +296,7 @@ export default function App() {
           onCastBanishmentVote={handleCastBanishmentVote}
         />
       )}
+      {screen === 'ended' && room && <EndScreen room={room} mySecret={mySecret} onLeave={handleLeave} />}
     </div>
   )
 }
