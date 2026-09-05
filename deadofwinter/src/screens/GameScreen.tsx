@@ -137,7 +137,7 @@ export default function GameScreen({
       {currentCrisis && (
         <div className="crisis-panel">
           <span className="panel-label">위기 카드</span>
-          <div className="crisis-card">
+          <div className="crisis-card" key={currentCrisis.id}>
             <span className="crisis-icon">{currentCrisis.icon}</span>
             <div className="crisis-body">
               <p className="crisis-title">{currentCrisis.title}</p>
@@ -278,7 +278,7 @@ export default function GameScreen({
           <span className="panel-label">내 행동 주사위 ({diceLeft}/{myDice.length} 남음)</span>
           <div className="my-dice-row">
             {myDice.map((value, i) => (
-              <span key={i} className={`dice-face${myDiceUsed[i] ? ' used' : ''}`}>
+              <span key={`${room.round}-${i}`} className={`dice-face${myDiceUsed[i] ? ' used' : ''}`} style={{ animationDelay: `${i * 60}ms` }}>
                 🎲 {value}
               </span>
             ))}
@@ -358,7 +358,7 @@ export default function GameScreen({
           {myTurn && !selected && noBlockingState && <p className="turn-hint">위에서 생존자를 먼저 선택하세요.</p>}
           {errorMsg && <p className="menu-error">{errorMsg}</p>}
           <button type="button" className="menu-btn primary" disabled={!myTurn || busy || !noBlockingState} onClick={onEndTurn}>
-            턴 종료
+            {busy && myTurn ? '처리 중…' : '턴 종료'}
           </button>
         </div>
       )}
@@ -373,7 +373,7 @@ export default function GameScreen({
           {errorMsg && <p className="menu-error">{errorMsg}</p>}
           {isHost ? (
             <button type="button" className="menu-btn primary" disabled={busy} onClick={onResolveColonyPhase}>
-              콜로니 단계 진행
+              {busy ? '처리 중…' : '콜로니 단계 진행'}
             </button>
           ) : (
             <p className="turn-hint">방장이 콜로니 단계를 진행하는 중이에요…</p>

@@ -75,7 +75,7 @@ export default function Lobby({
         </button>
         {isHost && (
           <button type="button" className="menu-btn" disabled={busy || !ready} onClick={onStart}>
-            {ready ? '게임 시작' : `전원 준비 대기 중 (${room.players.length}/${MAX_PLAYERS})`}
+            {busy ? '시작하는 중…' : ready ? '게임 시작' : `전원 준비 대기 중 (${room.players.length}/${MAX_PLAYERS})`}
           </button>
         )}
         <button type="button" className="menu-btn ghost" disabled={busy} onClick={onLeave}>
