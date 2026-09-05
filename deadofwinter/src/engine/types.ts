@@ -35,6 +35,12 @@ export interface RoomDoc {
   roundPhase?: RoundPhase
   log?: LogEntry[]
   survivors?: SurvivorInstance[] // STEP 4에서 startGame이 2명씩 배분해 채운다.
+
+  // uid → 이번 라운드에 굴린 주사위 눈(1~6) 배열. 개수는 "생존자 수 + 1"
+  // (섹션 3). STEP 5 범위: 굴려서 보여주기만 — 실제로 행동에 소모하는
+  // 처리(diceUsed를 true로 바꾸는 것)는 STEP 6(이동·공격·탐색)에서 한다.
+  dice?: Record<string, number[]>
+  diceUsed?: Record<string, boolean[]>
 }
 
 export const MAX_PLAYERS = 4

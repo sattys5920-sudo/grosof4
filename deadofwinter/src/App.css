@@ -471,3 +471,29 @@
   color: var(--ink-dim);
   margin: 0;
 }
+
+/* ---------------------------------------------------------------- 행동 주사위 (STEP 5) */
+.my-dice-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dice-face {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 11px;
+  border-radius: 10px;
+  border: 1.5px solid var(--frost-dim);
+  background: linear-gradient(160deg, var(--panel-raised), var(--panel));
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--frost-bright);
+}
+.dice-face.used {
+  opacity: 0.4;
+  border-color: var(--line-soft);
+  color: var(--ink-faint);
+  text-decoration: line-through;
+}

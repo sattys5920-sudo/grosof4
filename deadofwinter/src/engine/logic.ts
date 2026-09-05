@@ -2,6 +2,11 @@
 // 셔플·판정 함수를 추가해서 vitest로 검증한다.
 import type { PlayerSlot, Survivor, SurvivorInstance } from './types'
 
+/** 주사위 하나를 굴린다(1~6). */
+function rollDie(rng: () => number): number {
+  return Math.floor(rng() * 6) + 1
+}
+
 /** 피셔-예이츠 셔플. rng를 주입할 수 있어 테스트에서 결정적으로 검증한다. */
 export function shuffle<T>(arr: T[], rng: () => number = Math.random): T[] {
   const a = arr.slice()
@@ -66,4 +71,29 @@ export function dealSurvivors(players: PlayerSlot[], pool: Survivor[], rng: () =
     )
   })
   return instances
+}
+
+/** 각 플레이어가 이번 라운드에 받을 행동 주사위를 굴린다. 개수는 "생존자
+ * 수 + 1"(섹션 3) — 죽은 생존자는 세지 않는다. */
+export function rollAllPlayerDice(
+  players: PlayerSlot[],
+  survivors: SurvivorInstance[],
+  rng: () => number = Math.random,
+): Record<string, number[]> {
+  const dice: Record<string, number[]> = {}
+  for (const p of players) {
+    const aliveCount = survivors.filter((s) => s.ownerUid === p.uid && s.alive).length
+    const count = aliveCount + 1
+    dice[p.uid] = Array.from({ length: count }, () => rollDie(rng))
+  }
+  return dice
+}
+
+/** 주사위 결과와 짝이 맞는 "전부 안 쓴" 초기 사용 여부 배열을 만든다. */
+export function initialDiceUsed(dice: Record<string, number[]>): Record<string, boolean[]> {
+  const used: Record<string, boolean[]> = {}
+  for (const uid of Object.keys(dice)) {
+    used[uid] = dice[uid].map(() => false)
+  }
+  return used
 }

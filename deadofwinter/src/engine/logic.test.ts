@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { generateRoomCode, allReady, advanceTurn, nextFirstPlayerIndex, dealSurvivors } from './logic'
+import { generateRoomCode, allReady, advanceTurn, nextFirstPlayerIndex, dealSurvivors, rollAllPlayerDice, initialDiceUsed } from './logic'
 import { SURVIVORS } from './survivors'
-import type { PlayerSlot } from './types'
+import type { PlayerSlot, SurvivorInstance } from './types'
 import { MAX_PLAYERS } from './types'
 
 describe('generateRoomCode', () => {
@@ -102,5 +102,44 @@ describe('dealSurvivors', () => {
 
   it('풀이 부족하면 던진다', () => {
     expect(() => dealSurvivors(players, SURVIVORS.slice(0, 4))).toThrow()
+  })
+})
+
+function mkSurvivor(ownerUid: string, alive: boolean): SurvivorInstance {
+  return { survivorId: 'sv1', ownerUid, locationId: 'colony', wounds: 0, frostbite: false, alive, isLeader: false }
+}
+
+describe('rollAllPlayerDice', () => {
+  const players = [mkPlayer('a', true), mkPlayer('b', true)]
+
+  it('살아있는 생존자 수 + 1개를 굴린다', () => {
+    const survivors = [mkSurvivor('a', true), mkSurvivor('a', true), mkSurvivor('b', true)]
+    const dice = rollAllPlayerDice(players, survivors)
+    expect(dice.a).toHaveLength(3)
+    expect(dice.b).toHaveLength(2)
+  })
+
+  it('죽은 생존자는 세지 않는다', () => {
+    const survivors = [mkSurvivor('a', true), mkSurvivor('a', false), mkSurvivor('b', true)]
+    const dice = rollAllPlayerDice(players, survivors)
+    expect(dice.a).toHaveLength(2)
+  })
+
+  it('눈은 항상 1~6이다', () => {
+    const survivors = [mkSurvivor('a', true), mkSurvivor('b', true)]
+    const dice = rollAllPlayerDice(players, survivors, Math.random)
+    for (const values of Object.values(dice)) {
+      for (const v of values) {
+        expect(v).toBeGreaterThanOrEqual(1)
+        expect(v).toBeLessThanOrEqual(6)
+      }
+    }
+  })
+})
+
+describe('initialDiceUsed', () => {
+  it('주사위 개수와 같은 길이의 false 배열을 만든다', () => {
+    const dice = { a: [1, 2, 3], b: [4, 5] }
+    expect(initialDiceUsed(dice)).toEqual({ a: [false, false, false], b: [false, false] })
   })
 })

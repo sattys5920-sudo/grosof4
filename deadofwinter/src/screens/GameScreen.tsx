@@ -2,8 +2,9 @@ import type { RoomDoc } from '../engine/types'
 import Board from '../components/Board'
 import SurvivorCard from '../components/SurvivorCard'
 
-/** STEP 4 범위: 라운드/턴 진행 + 보드 + 내 생존자 카드까지. 이동·공격·
- * 탐색 같은 실제 행동은 STEP 5~6에서 이 화면에 이어 붙인다. */
+/** STEP 5 범위: 라운드/턴 진행 + 보드 + 내 생존자 카드 + 이번 라운드에
+ * 받은 행동 주사위 표시까지. 주사위를 실제 행동(이동·공격·탐색)에
+ * 소모하는 처리는 STEP 6에서 이 화면에 이어 붙인다. */
 export default function GameScreen({
   room,
   myUid,
@@ -22,6 +23,8 @@ export default function GameScreen({
   const myTurn = currentUid === myUid
   const nameOf = (uid: string) => room.players.find((p) => p.uid === uid)?.name ?? '???'
   const mySurvivors = (room.survivors ?? []).filter((s) => s.ownerUid === myUid)
+  const myDice = room.dice?.[myUid] ?? []
+  const myDiceUsed = room.diceUsed?.[myUid] ?? []
 
   return (
     <div className="game-screen">
@@ -49,6 +52,21 @@ export default function GameScreen({
           <div className="my-survivors-row">
             {mySurvivors.map((s, i) => (
               <SurvivorCard key={`${s.survivorId}-${i}`} instance={s} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {myDice.length > 0 && (
+        <div className="my-dice">
+          <span className="panel-label">
+            내 행동 주사위 ({myDiceUsed.filter((u) => !u).length}/{myDice.length} 남음)
+          </span>
+          <div className="my-dice-row">
+            {myDice.map((value, i) => (
+              <span key={i} className={`dice-face${myDiceUsed[i] ? ' used' : ''}`}>
+                🎲 {value}
+              </span>
             ))}
           </div>
         </div>
