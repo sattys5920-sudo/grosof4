@@ -48,12 +48,26 @@ jobs:
           VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-      - name: 배포용 사이트 구성 (괴이는 루트, 리듬게임은 /rhythm/)
+      - name: 셜록 13 빌드 (/sherlock13/ 하위 경로)
+        working-directory: sherlock13
+        run: |
+          npm ci
+          npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+      - name: 배포용 사이트 구성 (괴이는 루트, 리듬게임은 /rhythm/, 셜록13은 /sherlock13/)
         run: |
           mkdir -p site
           cp -r dist/. site/
           mkdir -p site/rhythm
           cp -r rhythm/dist/. site/rhythm/
+          mkdir -p site/sherlock13
+          cp -r sherlock13/dist/. site/sherlock13/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

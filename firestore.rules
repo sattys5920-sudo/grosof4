@@ -26,6 +26,52 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // 셜록 13(sherlock13/) 2인 대전방 — 공개 상태는 열어 두되(허위 방
+    // 생성 정도만 막게 로그인은 요구), 손패/범인/미공개 중앙 카드는
+    // private/* 아래에 따로 둬서 본인(또는 고발이 확정된 뒤에는 둘 다)만
+    // 읽을 수 있게 한다. 익명 로그인(anonymous auth)으로 브라우저마다
+    // 고유 uid를 받아 이 규칙의 기준으로 쓴다.
+    match /sherlock13Rooms/{roomId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+
+      match /private/host {
+        allow read: if request.auth != null
+          && request.auth.uid == get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.hostUid;
+        allow write: if request.auth != null
+          && request.auth.uid == get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.hostUid;
+      }
+
+      match /private/guest {
+        allow read: if request.auth != null
+          && request.auth.uid == get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.guestUid;
+        allow write: if request.auth != null
+          && (request.auth.uid == get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.hostUid
+              || request.auth.uid == get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.guestUid);
+      }
+
+      match /private/secret {
+        allow read: if request.auth != null
+          && get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.accusation != null
+          && (request.auth.uid == get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.hostUid
+              || request.auth.uid == get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.guestUid);
+        allow write: if request.auth != null
+          && request.auth.uid == get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.hostUid;
+      }
+
+      match /private/central {
+        allow read: if request.auth != null
+          && get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.phase == 'playing'
+          && get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.exchangeCount < 2
+          && ((request.auth.uid == get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.hostUid
+               && get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.currentPlayer == 'host')
+              || (request.auth.uid == get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.guestUid
+                  && get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.currentPlayer == 'guest'));
+        allow write: if request.auth != null
+          && request.auth.uid == get(/databases/$(database)/documents/sherlock13Rooms/$(roomId)).data.hostUid;
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -1,0 +1,75 @@
+:root {
+  --void: #14100c;
+  --panel: #1d160f;
+  --panel-raised: #291e14;
+  --line: #4a3826;
+  --line-soft: #2c2116;
+
+  --paper: #ede2c8;
+  --paper-dim: #d9c9a3;
+  --paper-ink: #241a0f;
+
+  --ink: #f1e7d3;
+  --ink-dim: #b7a684;
+  --ink-faint: #776649;
+
+  --brass: #c9a24a;
+  --brass-bright: #e8ca7c;
+  --brass-dim: #5f4c26;
+
+  --danger: #9c3b34;
+  --danger-bright: #d15c50;
+  --danger-dim: #341714;
+
+  --ok: #5f7d4e;
+  --ok-bright: #8bb473;
+  --ok-dim: #22301a;
+
+  --font-display: 'Playfair Display', 'Noto Serif KR', serif;
+  --font-body: 'Noto Sans KR', -apple-system, 'Malgun Gothic', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  color-scheme: dark;
+  color: var(--ink);
+  background: var(--void);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--void);
+  color: var(--ink);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--brass-bright);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--brass-dim);
+  color: var(--brass-bright);
+}
