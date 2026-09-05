@@ -37,3 +37,15 @@ export interface RoomDoc {
 }
 
 export const MAX_PLAYERS = 4
+
+/** 콜로니(본진) + 6개 외부 장소. STEP 3 범위: 장소 자체와 보드 표시만 —
+ * 생존자 배치(STEP 4), 이동(STEP 6), 좀비/입구(STEP 7)는 각 STEP에서
+ * 이 데이터에 상태를 얹는다. */
+export type LocationId = 'colony' | 'police' | 'grocery' | 'school' | 'gasStation' | 'library' | 'hospital'
+
+export interface Location {
+  id: LocationId
+  name: string
+  icon: string
+  description: string
+}

@@ -356,3 +356,47 @@
   line-height: 1.6;
   margin: 0;
 }
+
+/* ---------------------------------------------------------------- 보드 (STEP 3: 콜로니 + 6개 장소) */
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.board-colony {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1.5px solid var(--frost-dim);
+  background: linear-gradient(160deg, var(--frost-dim), var(--panel));
+}
+.board-colony .board-tile-name {
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--frost-bright);
+}
+.board-outer {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.board-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border-radius: 12px;
+  border: 1px solid var(--line-soft);
+  background: var(--panel);
+}
+.board-tile-icon {
+  font-size: 18px;
+}
+.board-tile-name {
+  font-size: 10.5px;
+  color: var(--ink-dim);
+  text-align: center;
+}

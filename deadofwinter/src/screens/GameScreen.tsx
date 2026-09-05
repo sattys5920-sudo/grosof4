@@ -1,7 +1,8 @@
 import type { RoomDoc } from '../engine/types'
+import Board from '../components/Board'
 
-/** STEP 2 범위: 라운드/턴 진행만 보여준다. 보드(장소·생존자·좀비 등)는
- * STEP 3~4에서, 실제 행동(이동·공격·탐색)은 STEP 5~6에서 이 화면에 이어
+/** STEP 3 범위: 라운드/턴 진행 + 보드(장소 7곳 표시)까지. 생존자 배치는
+ * STEP 4, 실제 행동(이동·공격·탐색)은 STEP 5~6에서 이 화면에 이어
  * 붙인다. */
 export default function GameScreen({
   room,
@@ -38,6 +39,8 @@ export default function GameScreen({
           </div>
         ))}
       </div>
+
+      <Board />
 
       {room.roundPhase === 'turns' && (
         <div className="turn-panel">
