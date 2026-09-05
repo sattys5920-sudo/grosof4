@@ -7,6 +7,8 @@ import { ITEM_TYPE_MAP } from '../engine/items'
 import { SURVIVOR_MAP } from '../engine/survivors'
 import { CRISIS_MAP } from '../engine/crises'
 import { CROSSROAD_MAP } from '../engine/crossroads'
+import { SECRET_OBJECTIVE_MAP } from '../engine/secretObjectives'
+import type { PlayerSecret } from '../engine/types'
 
 const CATEGORY_LABEL: Record<string, string> = {
   weapon: '무기',
@@ -23,6 +25,7 @@ const CATEGORY_LABEL: Record<string, string> = {
 export default function GameScreen({
   room,
   myUid,
+  mySecret,
   busy,
   errorMsg,
   onEndTurn,
@@ -36,6 +39,7 @@ export default function GameScreen({
 }: {
   room: RoomDoc
   myUid: string
+  mySecret: PlayerSecret | null
   busy: boolean
   errorMsg: string
   onEndTurn: () => void
@@ -48,6 +52,7 @@ export default function GameScreen({
   onResolveCrossroad: (choice: 'yes' | 'no') => void
 }) {
   const [selectedSurvivorId, setSelectedSurvivorId] = useState<string | null>(null)
+  const [showSecret, setShowSecret] = useState(false)
 
   const turnOrder = room.turnOrder ?? []
   const currentUid = room.currentPlayerIndex !== undefined ? turnOrder[room.currentPlayerIndex] : undefined
@@ -77,6 +82,8 @@ export default function GameScreen({
   const myCrossroadChoice = crossroadPending?.uid === myUid
   const crossroadCard = crossroadPending ? CROSSROAD_MAP[crossroadPending.cardId] : undefined
 
+  const mySecretObjective = mySecret ? SECRET_OBJECTIVE_MAP[mySecret.objectiveId] : undefined
+
   return (
     <div className="game-screen">
       <div className="game-hud">
@@ -96,6 +103,23 @@ export default function GameScreen({
           </div>
         ))}
       </div>
+
+      {mySecretObjective && (
+        <div className="secret-panel">
+          <button type="button" className="secret-toggle" onClick={() => setShowSecret((v) => !v)}>
+            🔒 내 비밀 목표 {showSecret ? '숨기기' : '보기'} (나만 볼 수 있어요)
+          </button>
+          {showSecret && (
+            <div className={`secret-card${mySecretObjective.isBetrayer ? ' betrayer' : ''}`}>
+              <span className="secret-icon">{mySecretObjective.icon}</span>
+              <div className="secret-body">
+                <p className="secret-title">{mySecretObjective.title}</p>
+                <p className="secret-desc">{mySecretObjective.description}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {currentCrisis && (
         <div className="crisis-panel">

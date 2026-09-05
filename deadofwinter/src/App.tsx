@@ -17,9 +17,10 @@ import {
   resolveColonyPhase,
   contributeToCrisis,
   resolveCrossroadChoice,
+  watchMySecret,
 } from './engine/room'
 import { ensureSignedIn } from './firebase'
-import type { LocationId, RoomDoc } from './engine/types'
+import type { LocationId, PlayerSecret, RoomDoc } from './engine/types'
 import type { Unsubscribe } from 'firebase/firestore'
 
 type Screen = 'menu' | 'lobby' | 'playing'
@@ -33,20 +34,25 @@ export default function App() {
   const [initialCode] = useState(() => new URLSearchParams(window.location.search).get('join')?.toUpperCase() ?? '')
   const [room, setRoom] = useState<RoomDoc | null>(null)
   const [myUid, setMyUid] = useState('')
+  const [mySecret, setMySecret] = useState<PlayerSecret | null>(null)
   const unsubRef = useRef<Unsubscribe | null>(null)
+  const secretUnsubRef = useRef<Unsubscribe | null>(null)
 
   useEffect(() => {
     return () => {
       unsubRef.current?.()
+      secretUnsubRef.current?.()
     }
   }, [])
 
-  function watchAndEnter(roomCode: string) {
+  function watchAndEnter(roomCode: string, uid: string) {
     unsubRef.current?.()
     unsubRef.current = watchRoom(roomCode, (next) => {
       setRoom(next)
       if (next?.phase === 'playing') setScreen('playing')
     })
+    secretUnsubRef.current?.()
+    secretUnsubRef.current = watchMySecret(roomCode, uid, setMySecret)
     setScreen('lobby')
   }
 
@@ -55,9 +61,10 @@ export default function App() {
     setErrorMsg('')
     try {
       const uid = await ensureSignedIn()
-      if (uid) setMyUid(uid)
+      if (!uid) return
+      setMyUid(uid)
       const newCode = await createRoom(name)
-      watchAndEnter(newCode)
+      watchAndEnter(newCode, uid)
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : '방을 만들지 못했어요.')
     } finally {
@@ -70,13 +77,14 @@ export default function App() {
     setErrorMsg('')
     try {
       const uid = await ensureSignedIn()
-      if (uid) setMyUid(uid)
+      if (!uid) return
+      setMyUid(uid)
       const joined = await joinRoom(inputCode, name)
       if (!joined) {
         setErrorMsg('입장할 수 없는 코드예요. 방이 없거나, 이미 4명이 모였거나, 게임이 이미 시작됐어요.')
         return
       }
-      watchAndEnter(inputCode.trim().toUpperCase())
+      watchAndEnter(inputCode.trim().toUpperCase(), uid)
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : '입장하지 못했어요. 다시 시도해 주세요.')
     } finally {
@@ -215,7 +223,10 @@ export default function App() {
   function handleLeave() {
     unsubRef.current?.()
     unsubRef.current = null
+    secretUnsubRef.current?.()
+    secretUnsubRef.current = null
     setRoom(null)
+    setMySecret(null)
     setScreen('menu')
     setErrorMsg('')
   }
@@ -240,6 +251,7 @@ export default function App() {
         <GameScreen
           room={room}
           myUid={myUid}
+          mySecret={mySecret}
           busy={busy}
           errorMsg={errorMsg}
           onEndTurn={handleEndTurn}

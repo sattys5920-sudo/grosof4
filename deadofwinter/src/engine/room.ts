@@ -26,13 +26,15 @@ import {
   pickCrossroad,
   checkCrossroadTrigger,
   applyCrossroadEffect,
+  dealSecretObjectives,
   type ExposureResolution,
 } from './logic'
 import { SURVIVORS, SURVIVOR_MAP } from './survivors'
 import { itemsForLocation, ITEM_TYPE_MAP } from './items'
 import { CRISES, CRISIS_MAP } from './crises'
 import { CROSSROADS, CROSSROAD_MAP } from './crossroads'
-import type { ExposureFace } from './types'
+import { SECRET_OBJECTIVES } from './secretObjectives'
+import type { ExposureFace, PlayerSecret } from './types'
 import { MAX_PLAYERS, type LocationId, type LogEntry, type RoomDoc, type SearchableLocationId } from './types'
 
 const SEARCHABLE_LOCATIONS: SearchableLocationId[] = ['police', 'grocery', 'school', 'gasStation', 'library', 'hospital']
@@ -59,6 +61,19 @@ async function requireUid(): Promise<string> {
 function roomRef(code: string) {
   if (!db) throw new Error('오프라인 상태예요.')
   return doc(db, ROOMS, code)
+}
+
+/** 비밀 목표(섹션 16) 하나를 담는 서브컬렉션 문서. 보안 규칙상 문서 id와
+ * 같은 uid를 가진 사람만 읽을 수 있고, 쓰기는 방장(게임 시작을 실행하는
+ * 사람)만 할 수 있다. */
+function secretRef(code: string, uid: string) {
+  if (!db) throw new Error('오프라인 상태예요.')
+  return doc(db, ROOMS, code, 'secrets', uid)
+}
+
+/** 내 비밀 목표를 구독한다. 아직 배분 전(로비 등)이면 null. */
+export function watchMySecret(code: string, uid: string, onChange: (secret: PlayerSecret | null) => void): Unsubscribe {
+  return onSnapshot(secretRef(code, uid), (snap) => onChange(snap.exists() ? (snap.data() as PlayerSecret) : null))
 }
 
 /** 새 방을 만든다. 만든 사람이 자동으로 첫 번째 슬롯(방장)에 들어간다. */
@@ -128,6 +143,10 @@ export async function startGame(code: string, room: RoomDoc): Promise<void> {
   // 첫 라운드는 공격·노출을 바로 테스트할 수 있게 외부 장소마다 1마리씩
   // 깔아 둔다. 그 다음부터는 콜로니 단계마다 addRoundZombies가 늘린다.
   const zombies = Object.fromEntries(SEARCHABLE_LOCATIONS.map((loc) => [loc, 1]))
+  const secretAssignments = dealSecretObjectives(room.players, SECRET_OBJECTIVES)
+  await Promise.all(
+    Object.entries(secretAssignments).map(([uid, objectiveId]) => setDoc(secretRef(code, uid), { objectiveId } satisfies PlayerSecret)),
+  )
   await updateDoc(roomRef(code), {
     phase: 'playing',
     round: 1,

@@ -694,3 +694,50 @@
 .crossroad-panel .action-buttons {
   margin-bottom: 0;
 }
+
+/* ---------------------------------------------------------------- 비밀 목표 (STEP 11) */
+.secret-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.secret-toggle {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px dashed var(--line);
+  background: var(--panel);
+  color: var(--ink-dim);
+  font-size: 11px;
+  cursor: pointer;
+}
+.secret-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: linear-gradient(160deg, var(--panel-raised), var(--panel));
+  border: 1px solid var(--frost-dim);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+.secret-card.betrayer {
+  border-color: var(--danger);
+  background: linear-gradient(160deg, var(--danger-dim), var(--panel));
+}
+.secret-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+.secret-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--frost-bright);
+}
+.secret-card.betrayer .secret-title {
+  color: var(--danger-bright);
+}
+.secret-desc {
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin-top: 4px;
+}

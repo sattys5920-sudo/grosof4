@@ -198,3 +198,23 @@ export interface CrossroadCard {
   noEffect: CrossroadEffect
   icon: string
 }
+
+export type SecretObjectiveId = string
+
+/** 비밀 목표 카드(섹션 16). isBetrayer가 true면 "콜로니가 패배해야
+ * 승리"하는 배신자 목표다 — 방 문서(공개)가 아니라 secrets/{uid}
+ * 서브컬렉션에 비공개로 저장해서 본인만 읽을 수 있게 막는다(STEP 11
+ * 범위: 배분과 개인 열람까지 — 게임 종료 시 달성 여부 채점과 배신자
+ * 승리 조건 판정은 게임 종료를 만드는 STEP 13에서 한다). */
+export interface SecretObjective {
+  id: SecretObjectiveId
+  title: string
+  description: string
+  isBetrayer: boolean
+  icon: string
+}
+
+/** secrets/{uid} 서브컬렉션 문서 하나의 모양. */
+export interface PlayerSecret {
+  objectiveId: SecretObjectiveId
+}

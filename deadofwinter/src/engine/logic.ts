@@ -10,6 +10,7 @@ import type {
   LocationId,
   PlayerSlot,
   SearchableLocationId,
+  SecretObjective,
   Survivor,
   SurvivorInstance,
 } from './types'
@@ -402,4 +403,21 @@ export function applyCrossroadEffect(state: CrossroadResourceState, effect: Cros
     zombies[locationId] = Math.max(0, (zombies[locationId] ?? 0) + amount)
   }
   return { food, morale, zombies }
+}
+
+/** 비밀 목표 카드를 섞어서 플레이어마다 서로 다른 카드 하나씩 배분한다
+ * (섹션 16). 카드 풀이 인원수보다 적으면 던진다 — 8종을 4인 고정에
+ * 맞춰 뒀으니 실제로는 안 일어난다. */
+export function dealSecretObjectives(
+  players: PlayerSlot[],
+  pool: SecretObjective[],
+  rng: () => number = Math.random,
+): Record<string, string> {
+  if (pool.length < players.length) throw new Error('비밀 목표 카드가 인원수보다 적어요.')
+  const shuffled = shuffle(pool, rng)
+  const result: Record<string, string> = {}
+  players.forEach((p, i) => {
+    result[p.uid] = shuffled[i].id
+  })
+  return result
 }

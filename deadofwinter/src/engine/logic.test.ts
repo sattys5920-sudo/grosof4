@@ -25,11 +25,13 @@ import {
   pickCrossroad,
   checkCrossroadTrigger,
   applyCrossroadEffect,
+  dealSecretObjectives,
 } from './logic'
 import { SURVIVORS, SURVIVOR_MAP } from './survivors'
 import { ITEM_TYPES, ITEM_TYPE_MAP, itemsForLocation } from './items'
 import { CRISES } from './crises'
 import { CROSSROADS, CROSSROAD_MAP } from './crossroads'
+import { SECRET_OBJECTIVES } from './secretObjectives'
 import type { PlayerSlot, SurvivorInstance } from './types'
 import { MAX_PLAYERS } from './types'
 
@@ -515,5 +517,26 @@ describe('applyCrossroadEffect', () => {
   it('효과가 없는 필드는 그대로 둔다', () => {
     const result = applyCrossroadEffect({ food: 5, morale: 5, zombies: {} }, {})
     expect(result).toEqual({ food: 5, morale: 5, zombies: {} })
+  })
+})
+
+describe('dealSecretObjectives', () => {
+  const players: PlayerSlot[] = [
+    { uid: 'u1', name: '철수', ready: true },
+    { uid: 'u2', name: '민지', ready: true },
+    { uid: 'u3', name: '서준', ready: true },
+    { uid: 'u4', name: '유진', ready: true },
+  ]
+
+  it('플레이어마다 서로 다른 카드를 하나씩 배분한다', () => {
+    const result = dealSecretObjectives(players, SECRET_OBJECTIVES, () => 0.5)
+    expect(Object.keys(result).sort()).toEqual(['u1', 'u2', 'u3', 'u4'])
+    const ids = Object.values(result)
+    expect(new Set(ids).size).toBe(4)
+    for (const id of ids) expect(SECRET_OBJECTIVES.some((o) => o.id === id)).toBe(true)
+  })
+
+  it('카드 풀이 인원수보다 적으면 던진다', () => {
+    expect(() => dealSecretObjectives(players, SECRET_OBJECTIVES.slice(0, 2))).toThrow()
   })
 })
