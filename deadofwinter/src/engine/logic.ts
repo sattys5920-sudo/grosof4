@@ -1,6 +1,6 @@
 // Firestore/네트워크와 무관한 순수 로직. STEP이 늘어날 때마다 이 파일에
 // 셔플·판정 함수를 추가해서 vitest로 검증한다.
-import type { ItemType, LocationId, PlayerSlot, SearchableLocationId, Survivor, SurvivorInstance } from './types'
+import type { ExposureFace, ItemType, LocationId, PlayerSlot, SearchableLocationId, Survivor, SurvivorInstance } from './types'
 
 /** 주사위 하나를 굴린다(1~6). */
 function rollDie(rng: () => number): number {
@@ -157,4 +157,139 @@ export function drawFromDeck(deck: string[]): DrawResult {
   if (deck.length === 0) return { drawn: null, remaining: [] }
   const [drawn, ...remaining] = deck
   return { drawn, remaining }
+}
+
+/** 상처를 몇 번 입어야 죽는지 — 원작은 생존자 카드마다 다르지만, 이
+ * 구현에서는 전부 2로 단순화했다. */
+export const WOUND_LIMIT = 2
+
+// 6면 중 빈 면 2, 상처 2, 동상 1, 물림 1 — 원작 노출 다이의 대략적인
+// 비율을 따랐다(섹션 8).
+const EXPOSURE_FACES: ExposureFace[] = ['blank', 'blank', 'wound', 'wound', 'frostbite', 'bite']
+
+/** 노출 주사위를 굴린다(섹션 8) — 이동했거나 좀비를 처치했을 때. */
+export function rollExposure(rng: () => number = Math.random): ExposureFace {
+  return EXPOSURE_FACES[Math.floor(rng() * EXPOSURE_FACES.length)]
+}
+
+/** 이 주인에게 살아있는 리더가 없으면, 살아있는 생존자 중 첫 번째를 새
+ * 리더로 세운다(섹션 10). 죽지 않은 상태 변경에는 영향 없다. */
+function ensureLeader(survivors: SurvivorInstance[], ownerUid: string): SurvivorInstance[] {
+  const mine = survivors.filter((s) => s.ownerUid === ownerUid)
+  if (mine.some((s) => s.isLeader && s.alive)) return survivors
+  const promoted = mine.find((s) => s.alive)
+  if (!promoted) return survivors
+  return survivors.map((s) => (s.ownerUid === ownerUid ? { ...s, isLeader: s.survivorId === promoted.survivorId } : s))
+}
+
+/** 노출 결과 한 개를 생존자 한 명에게 적용한다(섹션 8). 물림은 그 자리에서
+ * 사망, 상처는 누적되다 한계에 도달하면 사망 — 어느 쪽이든 죽으면 리더를
+ * 다시 세운다. */
+export function applyExposureFace(survivors: SurvivorInstance[], survivorId: string, face: ExposureFace): SurvivorInstance[] {
+  const idx = survivors.findIndex((s) => s.survivorId === survivorId)
+  if (idx === -1) return survivors
+  const s = survivors[idx]
+
+  if (face === 'blank') return survivors
+  if (face === 'frostbite') {
+    const next = survivors.slice()
+    next[idx] = { ...s, frostbite: true }
+    return next
+  }
+  if (face === 'wound') {
+    const wounds = s.wounds + 1
+    const next = survivors.slice()
+    next[idx] = wounds >= WOUND_LIMIT ? { ...s, wounds, alive: false } : { ...s, wounds }
+    return wounds >= WOUND_LIMIT ? ensureLeader(next, s.ownerUid) : next
+  }
+  // bite
+  const next = survivors.slice()
+  next[idx] = { ...s, alive: false }
+  return ensureLeader(next, s.ownerUid)
+}
+
+/** 물림으로 죽은 생존자와 같은 장소에서, 살아있는 생존자 중 영향력이
+ * 가장 낮은 사람을 찾는다(섹션 9). 동률이면 배열 순서상 먼저 나온 쪽.
+ * 영향력은 SurvivorInstance가 아니라 원형 데이터(Survivor)에 있어서
+ * survivorMap으로 조회한다. */
+export function findBiteContagionTarget(
+  survivors: SurvivorInstance[],
+  locationId: LocationId,
+  excludeSurvivorId: string,
+  survivorMap: Record<string, Survivor>,
+): SurvivorInstance | null {
+  const candidates = survivors.filter((s) => s.locationId === locationId && s.alive && s.survivorId !== excludeSurvivorId)
+  if (candidates.length === 0) return null
+  const influenceOf = (s: SurvivorInstance) => survivorMap[s.survivorId]?.influence ?? Infinity
+  return candidates.reduce((lowest, s) => (influenceOf(s) < influenceOf(lowest) ? s : lowest))
+}
+
+export interface ExposureResolution {
+  survivors: SurvivorInstance[]
+  face: ExposureFace
+  died: boolean
+  pendingBite: { locationId: LocationId; targetSurvivorId: string; targetOwnerUid: string } | null
+}
+
+/** 이동했거나 좀비를 처치한 생존자에게 노출 주사위를 굴려서 적용하고,
+ * 물림으로 죽었다면 같은 장소의 다음 전염 대상을 찾는다(있으면 그 사람의
+ * 선택을 기다려야 하므로 pendingBite로 돌려준다). */
+export function resolveExposure(
+  survivors: SurvivorInstance[],
+  survivorId: string,
+  survivorMap: Record<string, Survivor>,
+  rng: () => number = Math.random,
+): ExposureResolution {
+  const before = survivors.find((s) => s.survivorId === survivorId)
+  const face = rollExposure(rng)
+  const next = applyExposureFace(survivors, survivorId, face)
+  const after = next.find((s) => s.survivorId === survivorId)
+  const died = Boolean(before?.alive && after && !after.alive)
+
+  let pendingBite: ExposureResolution['pendingBite'] = null
+  if (face === 'bite' && before) {
+    const target = findBiteContagionTarget(next, before.locationId, survivorId, survivorMap)
+    if (target) pendingBite = { locationId: before.locationId, targetSurvivorId: target.survivorId, targetOwnerUid: target.ownerUid }
+  }
+
+  return { survivors: next, face, died, pendingBite }
+}
+
+/** 물림 전염 대상이 "다시 굴리기"를 골랐을 때(섹션 9 선택 B). 빈 면이면
+ * 살아남고, 그 외 전부는 (실제 상처/동상 여부와 무관하게) 전염이 확정돼
+ * 죽는다 — 룰 원문 그대로 구현했다. 죽으면 다음 대상을 또 찾는다. */
+export function resolveBiteReroll(
+  survivors: SurvivorInstance[],
+  survivorId: string,
+  survivorMap: Record<string, Survivor>,
+  rng: () => number = Math.random,
+): ExposureResolution {
+  const before = survivors.find((s) => s.survivorId === survivorId)
+  const face = rollExposure(rng)
+
+  if (face === 'blank' || !before) {
+    return { survivors, face, died: false, pendingBite: null }
+  }
+
+  const next = applyExposureFace(survivors, survivorId, 'bite')
+  const target = findBiteContagionTarget(next, before.locationId, survivorId, survivorMap)
+  return {
+    survivors: next,
+    face,
+    died: true,
+    pendingBite: target ? { locationId: before.locationId, targetSurvivorId: target.survivorId, targetOwnerUid: target.ownerUid } : null,
+  }
+}
+
+/** 전염 대상이 "즉시 사망"을 골랐을 때(섹션 9 선택 A). */
+export function applyBiteDeath(survivors: SurvivorInstance[], survivorId: string, survivorMap: Record<string, Survivor>): ExposureResolution {
+  const before = survivors.find((s) => s.survivorId === survivorId)
+  const next = applyExposureFace(survivors, survivorId, 'bite')
+  const target = before ? findBiteContagionTarget(next, before.locationId, survivorId, survivorMap) : null
+  return {
+    survivors: next,
+    face: 'bite',
+    died: true,
+    pendingBite: target ? { locationId: before!.locationId, targetSurvivorId: target.survivorId, targetOwnerUid: target.ownerUid } : null,
+  }
 }

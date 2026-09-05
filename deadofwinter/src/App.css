@@ -36,6 +36,11 @@
   border-color: var(--line-soft);
   color: var(--ink-faint);
 }
+.menu-btn.danger {
+  border: none;
+  background: linear-gradient(180deg, var(--danger-bright), var(--danger));
+  color: #2a0e0b;
+}
 .menu-btn:disabled {
   opacity: 0.45;
 }
@@ -562,4 +567,51 @@
 }
 .move-btn:disabled {
   opacity: 0.4;
+}
+
+/* ---------------------------------------------------------------- 좀비/노출/상처 (STEP 7) */
+.board-tile-zombies {
+  font-size: 10px;
+  color: var(--danger-bright);
+  font-weight: 700;
+}
+
+.survivor-card.dead {
+  opacity: 0.55;
+}
+.survivor-card-dead-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--danger-bright);
+  margin-bottom: 6px;
+}
+.survivor-card-condition {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.condition-badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+.condition-badge.wound {
+  color: var(--danger-bright);
+  border-color: var(--danger);
+}
+.condition-badge.frostbite {
+  color: var(--frost-bright);
+  border-color: var(--frost-dim);
+}
+
+.bite-panel {
+  background: linear-gradient(160deg, var(--danger-dim), var(--panel));
+  border: 1px solid var(--danger);
+  border-radius: 16px;
+  padding: 14px;
+}
+.bite-panel .action-buttons {
+  margin-bottom: 0;
 }

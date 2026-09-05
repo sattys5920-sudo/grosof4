@@ -4,9 +4,11 @@ import Board from '../components/Board'
 import SurvivorCard from '../components/SurvivorCard'
 import { LOCATIONS, LOCATION_MAP } from '../engine/locations'
 import { ITEM_TYPE_MAP } from '../engine/items'
+import { SURVIVOR_MAP } from '../engine/survivors'
 
-/** STEP 6 범위: 라운드/턴 진행 + 보드 + 생존자·주사위 + 이동·탐색까지.
- * 공격은 좀비가 아직 없어서(STEP 7에서 추가) 자리만 만들어 둔다. */
+/** STEP 7 범위: 라운드/턴 진행 + 보드 + 생존자·주사위 + 이동·탐색·공격 +
+ * 노출/물림 전염 판정까지. 매 라운드 자동으로 늘어나는 좀비(콜로니 단계)는
+ * STEP 8~9에서 이어서 구현한다. */
 export default function GameScreen({
   room,
   myUid,
@@ -15,6 +17,8 @@ export default function GameScreen({
   onEndTurn,
   onMove,
   onSearch,
+  onAttack,
+  onResolveBite,
 }: {
   room: RoomDoc
   myUid: string
@@ -23,6 +27,8 @@ export default function GameScreen({
   onEndTurn: () => void
   onMove: (survivorId: string, destination: LocationId) => void
   onSearch: (survivorId: string) => void
+  onAttack: (survivorId: string) => void
+  onResolveBite: (choice: 'die' | 'reroll') => void
 }) {
   const [selectedSurvivorId, setSelectedSurvivorId] = useState<string | null>(null)
 
@@ -38,6 +44,11 @@ export default function GameScreen({
 
   const selected = mySurvivors.find((s) => s.survivorId === selectedSurvivorId && s.alive) ?? null
   const deckLeft = selected ? (room.itemDecks?.[selected.locationId]?.length ?? 0) : 0
+  const zombiesHere = selected ? (room.zombies?.[selected.locationId] ?? 0) : 0
+
+  const pendingBite = room.pendingBite
+  const myBiteChoice = pendingBite?.targetOwnerUid === myUid
+  const biteTargetName = pendingBite ? (SURVIVOR_MAP[pendingBite.targetSurvivorId]?.name ?? '생존자') : ''
 
   return (
     <div className="game-screen">
@@ -57,11 +68,34 @@ export default function GameScreen({
         ))}
       </div>
 
-      <Board />
+      <Board zombies={room.zombies} />
+
+      {pendingBite && (
+        <div className="bite-panel">
+          {myBiteChoice ? (
+            <>
+              <span className="panel-label">🧟 물림 전염 — {biteTargetName}</span>
+              <p className="turn-hint">
+                같은 장소에서 물린 생존자가 나왔어요. {biteTargetName}에게 전염될 위기예요 — 어떻게 할까요?
+              </p>
+              <div className="action-buttons">
+                <button type="button" className="menu-btn danger" disabled={busy} onClick={() => onResolveBite('die')}>
+                  즉시 사망시키기
+                </button>
+                <button type="button" className="menu-btn" disabled={busy} onClick={() => onResolveBite('reroll')}>
+                  다시 굴리기 (도박)
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="turn-hint">🧟 {biteTargetName}의 주인이 물림 전염 판정을 하는 중이에요…</p>
+          )}
+        </div>
+      )}
 
       {mySurvivors.length > 0 && (
         <div className="my-survivors">
-          <span className="panel-label">내 생존자{myTurn && room.roundPhase === 'turns' ? ' (눌러서 이동·탐색)' : ''}</span>
+          <span className="panel-label">내 생존자{myTurn && room.roundPhase === 'turns' ? ' (눌러서 이동·탐색·공격)' : ''}</span>
           <div className="my-survivors-row">
             {mySurvivors.map((s, i) => (
               <SurvivorCard
@@ -70,7 +104,7 @@ export default function GameScreen({
                 location={LOCATION_MAP[s.locationId]}
                 selected={s.survivorId === selectedSurvivorId}
                 onClick={
-                  myTurn && room.roundPhase === 'turns' && s.alive
+                  myTurn && room.roundPhase === 'turns' && s.alive && !pendingBite
                     ? () => setSelectedSurvivorId((cur) => (cur === s.survivorId ? null : s.survivorId))
                     : undefined
                 }
@@ -106,7 +140,7 @@ export default function GameScreen({
         </div>
       )}
 
-      {room.roundPhase === 'turns' && myTurn && selected && (
+      {room.roundPhase === 'turns' && myTurn && !pendingBite && selected && (
         <div className="action-panel">
           <span className="panel-label">
             {LOCATION_MAP[selected.locationId].icon} {LOCATION_MAP[selected.locationId].name}에서
@@ -120,8 +154,13 @@ export default function GameScreen({
             >
               🔍 탐색 {selected.locationId !== 'colony' && `(카드 ${deckLeft}장 남음)`}
             </button>
-            <button type="button" className="menu-btn ghost" disabled title="좀비가 있어야 공격할 수 있어요. 다음 단계에서 좀비가 등장합니다.">
-              ⚔️ 공격 (다음 단계)
+            <button
+              type="button"
+              className="menu-btn danger"
+              disabled={busy || diceLeft === 0 || zombiesHere === 0}
+              onClick={() => onAttack(selected.survivorId)}
+            >
+              ⚔️ 공격 {zombiesHere > 0 ? `(좀비 ${zombiesHere}마리)` : '(좀비 없음)'}
             </button>
           </div>
           <span className="panel-label move-label">다른 장소로 이동</span>
@@ -146,9 +185,9 @@ export default function GameScreen({
           <p className="turn-status">
             {myTurn ? '🔎 당신의 차례입니다' : `${currentUid ? nameOf(currentUid) : '???'}의 차례를 기다리는 중…`}
           </p>
-          {myTurn && !selected && <p className="turn-hint">위에서 생존자를 먼저 선택하세요.</p>}
+          {myTurn && !selected && !pendingBite && <p className="turn-hint">위에서 생존자를 먼저 선택하세요.</p>}
           {errorMsg && <p className="menu-error">{errorMsg}</p>}
-          <button type="button" className="menu-btn primary" disabled={!myTurn || busy} onClick={onEndTurn}>
+          <button type="button" className="menu-btn primary" disabled={!myTurn || busy || Boolean(pendingBite)} onClick={onEndTurn}>
             턴 종료
           </button>
         </div>

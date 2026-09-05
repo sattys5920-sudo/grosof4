@@ -12,8 +12,14 @@ import {
   buildItemDeck,
   buildAllItemDecks,
   drawFromDeck,
+  applyExposureFace,
+  findBiteContagionTarget,
+  resolveExposure,
+  resolveBiteReroll,
+  applyBiteDeath,
+  WOUND_LIMIT,
 } from './logic'
-import { SURVIVORS } from './survivors'
+import { SURVIVORS, SURVIVOR_MAP } from './survivors'
 import { ITEM_TYPES, itemsForLocation } from './items'
 import type { PlayerSlot, SurvivorInstance } from './types'
 import { MAX_PLAYERS } from './types'
@@ -222,5 +228,157 @@ describe('drawFromDeck', () => {
 
   it('빈 더미면 drawn이 null이다', () => {
     expect(drawFromDeck([])).toEqual({ drawn: null, remaining: [] })
+  })
+})
+
+function mkFull(overrides: Partial<SurvivorInstance> & { survivorId: string; ownerUid: string }): SurvivorInstance {
+  return {
+    locationId: 'hospital',
+    wounds: 0,
+    frostbite: false,
+    alive: true,
+    isLeader: false,
+    ...overrides,
+  }
+}
+
+describe('applyExposureFace', () => {
+  it('빈 면은 아무것도 안 바꾼다', () => {
+    const survivors = [mkFull({ survivorId: 'a', ownerUid: 'p1' })]
+    expect(applyExposureFace(survivors, 'a', 'blank')).toEqual(survivors)
+  })
+
+  it('동상은 플래그만 켠다', () => {
+    const survivors = [mkFull({ survivorId: 'a', ownerUid: 'p1' })]
+    const next = applyExposureFace(survivors, 'a', 'frostbite')
+    expect(next[0].frostbite).toBe(true)
+    expect(next[0].alive).toBe(true)
+  })
+
+  it('상처가 한계 미만이면 살아있다', () => {
+    const survivors = [mkFull({ survivorId: 'a', ownerUid: 'p1', wounds: 0 })]
+    const next = applyExposureFace(survivors, 'a', 'wound')
+    expect(next[0].wounds).toBe(1)
+    expect(next[0].alive).toBe(true)
+  })
+
+  it('상처가 한계에 도달하면 죽는다', () => {
+    const survivors = [mkFull({ survivorId: 'a', ownerUid: 'p1', wounds: WOUND_LIMIT - 1 })]
+    const next = applyExposureFace(survivors, 'a', 'wound')
+    expect(next[0].alive).toBe(false)
+  })
+
+  it('물림은 즉시 죽는다', () => {
+    const survivors = [mkFull({ survivorId: 'a', ownerUid: 'p1' })]
+    const next = applyExposureFace(survivors, 'a', 'bite')
+    expect(next[0].alive).toBe(false)
+  })
+
+  it('리더가 죽으면 같은 주인의 다음 산 생존자가 리더가 된다', () => {
+    const survivors = [
+      mkFull({ survivorId: 'a', ownerUid: 'p1', isLeader: true, wounds: WOUND_LIMIT - 1 }),
+      mkFull({ survivorId: 'b', ownerUid: 'p1', isLeader: false }),
+    ]
+    const next = applyExposureFace(survivors, 'a', 'wound')
+    expect(next.find((s) => s.survivorId === 'b')?.isLeader).toBe(true)
+  })
+
+  it('리더가 아니면 죽어도 리더가 안 바뀐다', () => {
+    const survivors = [
+      mkFull({ survivorId: 'a', ownerUid: 'p1', isLeader: true }),
+      mkFull({ survivorId: 'b', ownerUid: 'p1', isLeader: false, wounds: WOUND_LIMIT - 1 }),
+    ]
+    const next = applyExposureFace(survivors, 'b', 'wound')
+    expect(next.find((s) => s.survivorId === 'a')?.isLeader).toBe(true)
+  })
+})
+
+// sv3(영향력 1)이 sv1(영향력 2)보다 낮다 — survivors.ts 참고.
+describe('findBiteContagionTarget', () => {
+  it('같은 장소의 산 생존자 중 영향력이 가장 낮은 사람을 찾는다', () => {
+    const survivors = [
+      mkFull({ survivorId: 'sv1', ownerUid: 'p1' }),
+      mkFull({ survivorId: 'sv3', ownerUid: 'p2' }),
+      mkFull({ survivorId: 'sv8', ownerUid: 'p3' }),
+    ]
+    const target = findBiteContagionTarget(survivors, 'hospital', 'sv12', SURVIVOR_MAP)
+    expect(target?.survivorId).toBe('sv3')
+  })
+
+  it('다른 장소에 있으면 후보에서 빠진다', () => {
+    const survivors = [mkFull({ survivorId: 'sv3', ownerUid: 'p1', locationId: 'library' })]
+    expect(findBiteContagionTarget(survivors, 'hospital', 'sv12', SURVIVOR_MAP)).toBeNull()
+  })
+
+  it('죽은 생존자는 후보에서 빠진다', () => {
+    const survivors = [mkFull({ survivorId: 'sv3', ownerUid: 'p1', alive: false })]
+    expect(findBiteContagionTarget(survivors, 'hospital', 'sv12', SURVIVOR_MAP)).toBeNull()
+  })
+})
+
+describe('resolveExposure', () => {
+  it('물림이면 죽고, 같은 장소에 다른 생존자가 있으면 전염 대상을 지목한다', () => {
+    const survivors = [
+      mkFull({ survivorId: 'sv1', ownerUid: 'p1' }),
+      mkFull({ survivorId: 'sv3', ownerUid: 'p2' }),
+    ]
+    const result = resolveExposure(survivors, 'sv1', SURVIVOR_MAP, () => 0.99) // 마지막 면 = bite
+    expect(result.face).toBe('bite')
+    expect(result.died).toBe(true)
+    expect(result.pendingBite).toEqual({ locationId: 'hospital', targetSurvivorId: 'sv3', targetOwnerUid: 'p2' })
+  })
+
+  it('같은 장소에 아무도 없으면 전염 대상이 없다', () => {
+    const survivors = [mkFull({ survivorId: 'sv1', ownerUid: 'p1' })]
+    const result = resolveExposure(survivors, 'sv1', SURVIVOR_MAP, () => 0.99)
+    expect(result.pendingBite).toBeNull()
+  })
+
+  it('빈 면이면 아무 일도 없다', () => {
+    const survivors = [mkFull({ survivorId: 'sv1', ownerUid: 'p1' })]
+    const result = resolveExposure(survivors, 'sv1', SURVIVOR_MAP, () => 0)
+    expect(result.face).toBe('blank')
+    expect(result.died).toBe(false)
+  })
+})
+
+describe('resolveBiteReroll', () => {
+  it('빈 면이면 살아남고 전염이 끝난다', () => {
+    const survivors = [mkFull({ survivorId: 'sv3', ownerUid: 'p1' })]
+    const result = resolveBiteReroll(survivors, 'sv3', SURVIVOR_MAP, () => 0)
+    expect(result.face).toBe('blank')
+    expect(result.died).toBe(false)
+    expect(result.survivors[0].alive).toBe(true)
+  })
+
+  it('빈 면이 아니면(상처여도) 전염 확정으로 죽는다', () => {
+    const survivors = [mkFull({ survivorId: 'sv3', ownerUid: 'p1', wounds: 0 })]
+    // 0.4 -> EXPOSURE_FACES[2] = 'wound'인데도 전염 규칙상 그냥 죽어야 한다
+    const result = resolveBiteReroll(survivors, 'sv3', SURVIVOR_MAP, () => 0.4)
+    expect(result.face).not.toBe('blank')
+    expect(result.died).toBe(true)
+    expect(result.survivors[0].alive).toBe(false)
+  })
+
+  it('죽으면 같은 장소의 다음 대상을 또 찾는다', () => {
+    const survivors = [
+      mkFull({ survivorId: 'sv3', ownerUid: 'p1' }),
+      mkFull({ survivorId: 'sv4', ownerUid: 'p2' }),
+    ]
+    const result = resolveBiteReroll(survivors, 'sv3', SURVIVOR_MAP, () => 0.99)
+    expect(result.pendingBite?.targetSurvivorId).toBe('sv4')
+  })
+})
+
+describe('applyBiteDeath', () => {
+  it('즉시 죽고, 다음 대상이 있으면 지목한다', () => {
+    const survivors = [
+      mkFull({ survivorId: 'sv3', ownerUid: 'p1' }),
+      mkFull({ survivorId: 'sv4', ownerUid: 'p2' }),
+    ]
+    const result = applyBiteDeath(survivors, 'sv3', SURVIVOR_MAP)
+    expect(result.died).toBe(true)
+    expect(result.survivors.find((s) => s.survivorId === 'sv3')?.alive).toBe(false)
+    expect(result.pendingBite?.targetSurvivorId).toBe('sv4')
   })
 })

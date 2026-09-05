@@ -3,7 +3,7 @@ import './App.css'
 import MainMenu from './screens/MainMenu'
 import Lobby from './screens/Lobby'
 import GameScreen from './screens/GameScreen'
-import { createRoom, joinRoom, watchRoom, toggleReady, startGame, endTurn, moveSurvivor, searchLocation } from './engine/room'
+import { createRoom, joinRoom, watchRoom, toggleReady, startGame, endTurn, moveSurvivor, searchLocation, attackZombie, resolveBiteChoice } from './engine/room'
 import { ensureSignedIn } from './firebase'
 import type { LocationId, RoomDoc } from './engine/types'
 import type { Unsubscribe } from 'firebase/firestore'
@@ -133,6 +133,32 @@ export default function App() {
     }
   }
 
+  async function handleAttack(survivorId: string) {
+    if (!room) return
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      await attackZombie(room.code, room, myUid, survivorId)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '공격하지 못했어요.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleResolveBite(choice: 'die' | 'reroll') {
+    if (!room) return
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      await resolveBiteChoice(room.code, room, myUid, choice)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '전염 판정을 처리하지 못했어요.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function handleLeave() {
     unsubRef.current?.()
     unsubRef.current = null
@@ -166,6 +192,8 @@ export default function App() {
           onEndTurn={handleEndTurn}
           onMove={handleMove}
           onSearch={handleSearch}
+          onAttack={handleAttack}
+          onResolveBite={handleResolveBite}
         />
       )}
     </div>

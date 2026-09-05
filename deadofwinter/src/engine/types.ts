@@ -48,6 +48,22 @@ export interface RoomDoc {
   // 가려야 할 요구사항이 없어서 굳이 보안 규칙을 얹지 않았다.
   itemDecks?: Partial<Record<LocationId, string[]>>
   itemsByPlayer?: Record<string, string[]>
+
+  // 장소별 좀비 수. STEP 7 범위: 매 라운드 콜로니 단계에서 자동으로
+  // 늘어나는 처리(섹션 11)는 콜로니 단계 자체를 만드는 STEP 8~9에서
+  // 한다 — 여기서는 게임 시작 시 6개 외부 장소에 1마리씩 깔아 둬서
+  // 공격·노출 판정을 바로 테스트할 수 있게 했다.
+  zombies?: Partial<Record<LocationId, number>>
+
+  // 물림 전염(섹션 9) 진행 중에는 다른 행동을 막고, 지목된 생존자의
+  // 주인이 선택해야 한다. null/미정의면 전염 판정이 없는 상태.
+  pendingBite?: PendingBite | null
+}
+
+export interface PendingBite {
+  locationId: LocationId
+  targetSurvivorId: SurvivorId
+  targetOwnerUid: string
 }
 
 export const MAX_PLAYERS = 4
@@ -90,6 +106,9 @@ export interface SurvivorInstance {
   alive: boolean
   isLeader: boolean
 }
+
+/** 노출 주사위 결과(섹션 8). */
+export type ExposureFace = 'blank' | 'wound' | 'frostbite' | 'bite'
 
 /** 콜로니를 뺀, 탐색 카드 더미가 있는 6개 장소. */
 export type SearchableLocationId = Exclude<LocationId, 'colony'>

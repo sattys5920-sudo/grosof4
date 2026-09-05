@@ -13,9 +13,14 @@ import {
   applySurvivorMove,
   buildAllItemDecks,
   drawFromDeck,
+  resolveExposure,
+  resolveBiteReroll,
+  applyBiteDeath,
+  type ExposureResolution,
 } from './logic'
 import { SURVIVORS, SURVIVOR_MAP } from './survivors'
 import { itemsForLocation, ITEM_TYPE_MAP } from './items'
+import type { ExposureFace } from './types'
 import { MAX_PLAYERS, type LocationId, type LogEntry, type RoomDoc, type SearchableLocationId } from './types'
 
 const SEARCHABLE_LOCATIONS: SearchableLocationId[] = ['police', 'grocery', 'school', 'gasStation', 'library', 'hospital']
@@ -108,6 +113,10 @@ export async function startGame(code: string, room: RoomDoc): Promise<void> {
   const survivors = dealSurvivors(room.players, SURVIVORS)
   const dice = rollAllPlayerDice(room.players, survivors)
   const itemDecks = buildAllItemDecks(SEARCHABLE_LOCATIONS, itemsForLocation)
+  // 매 라운드 콜로니 단계에서 자동으로 늘어나는 좀비(섹션 11)는 콜로니
+  // 단계 자체를 만드는 STEP 8~9에서 구현한다 — 여기서는 공격·노출을 바로
+  // 테스트할 수 있게 외부 장소마다 1마리씩만 깔아 둔다.
+  const zombies = Object.fromEntries(SEARCHABLE_LOCATIONS.map((loc) => [loc, 1]))
   await updateDoc(roomRef(code), {
     phase: 'playing',
     round: 1,
@@ -120,6 +129,8 @@ export async function startGame(code: string, room: RoomDoc): Promise<void> {
     diceUsed: initialDiceUsed(dice),
     itemDecks,
     itemsByPlayer: Object.fromEntries(room.players.map((p) => [p.uid, []])),
+    zombies,
+    pendingBite: null,
     log: [nowLog('생존자들이 콜로니에 모였습니다. 1라운드를 시작합니다.')],
   })
 }
@@ -129,8 +140,29 @@ function requireMyTurn(room: RoomDoc, uid: string): asserts room is RoomDoc & { 
   if (room.turnOrder[room.currentPlayerIndex] !== uid) throw new Error('지금은 당신의 턴이 아니에요.')
 }
 
-/** 생존자 한 명을 다른 장소로 옮긴다(섹션 6 이동). 주사위를 하나 쓴다 —
- * 노출 판정은 STEP 7(좀비·노출)에서 이어서 구현한다. */
+/** 물림 전염 판정이 남아있는 동안은 다른 모든 행동을 막는다 — 지목된
+ * 사람이 먼저 선택해야 한다(섹션 9). */
+function requireNoPendingBite(room: RoomDoc) {
+  if (room.pendingBite) throw new Error('물림 전염 판정을 먼저 처리해야 해요.')
+}
+
+const EXPOSURE_TEXT: Record<ExposureFace, string> = {
+  blank: '아무 일도 없었습니다.',
+  wound: '상처를 입었습니다.',
+  frostbite: '동상 기운이 돌기 시작했습니다.',
+  bite: '물렸습니다!',
+}
+
+/** 노출 판정 결과를 로그 줄로 바꾼다. 죽었으면 사망 줄도 덧붙인다. */
+function describeExposure(name: string, result: ExposureResolution): LogEntry[] {
+  const lines = [nowLog(`${name}: ${EXPOSURE_TEXT[result.face]}`)]
+  if (result.died) lines.push(nowLog(`${name}이(가) 죽었습니다.`))
+  return lines
+}
+
+/** 생존자 한 명을 다른 장소로 옮긴다(섹션 6 이동). 주사위를 하나 쓰고,
+ * 이동 직후 노출 판정을 굴린다(섹션 8). 물림이 다른 생존자에게 옮을 수
+ * 있으면(섹션 9) pendingBite를 세워서 그 사람의 선택을 기다린다. */
 export async function moveSurvivor(
   code: string,
   room: RoomDoc,
@@ -139,19 +171,22 @@ export async function moveSurvivor(
   destination: LocationId,
 ): Promise<void> {
   requireMyTurn(room, uid)
+  requireNoPendingBite(room)
   const diceUsed = room.diceUsed?.[uid]
   if (!diceUsed) throw new Error('주사위 정보를 찾을 수 없어요.')
   const consumed = consumeAnyDie(diceUsed)
   if (!consumed) throw new Error('남은 주사위가 없어요.')
 
-  const survivors = applySurvivorMove(room.survivors ?? [], survivorId, uid, destination)
+  const moved = applySurvivorMove(room.survivors ?? [], survivorId, uid, destination)
   const survivorName = SURVIVOR_MAP[survivorId]?.name ?? '생존자'
   const playerName = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
+  const exposure = resolveExposure(moved, survivorId, SURVIVOR_MAP)
 
   await updateDoc(roomRef(code), {
-    survivors,
+    survivors: exposure.survivors,
     [`diceUsed.${uid}`]: consumed.nextDiceUsed,
-    log: [...(room.log ?? []), nowLog(`${playerName}의 ${survivorName}이(가) 이동했습니다.`)],
+    pendingBite: exposure.pendingBite,
+    log: [...(room.log ?? []), nowLog(`${playerName}의 ${survivorName}이(가) 이동했습니다.`), ...describeExposure(survivorName, exposure)],
   })
 }
 
@@ -159,6 +194,7 @@ export async function moveSurvivor(
  * 카드가 남아있지 않아도 주사위는 소모된다. */
 export async function searchLocation(code: string, room: RoomDoc, uid: string, survivorId: string): Promise<void> {
   requireMyTurn(room, uid)
+  requireNoPendingBite(room)
   const survivor = room.survivors?.find((s) => s.survivorId === survivorId)
   if (!survivor) throw new Error('생존자를 찾을 수 없어요.')
   if (survivor.ownerUid !== uid) throw new Error('내 생존자가 아니에요.')
@@ -186,10 +222,65 @@ export async function searchLocation(code: string, room: RoomDoc, uid: string, s
   })
 }
 
+/** 지금 있는 장소의 좀비 한 마리를 공격해 없앤다(섹션 6 공격, 좀비 대상).
+ * 처치 성공 시에도 노출 판정을 굴린다(섹션 8). */
+export async function attackZombie(code: string, room: RoomDoc, uid: string, survivorId: string): Promise<void> {
+  requireMyTurn(room, uid)
+  requireNoPendingBite(room)
+  const survivor = room.survivors?.find((s) => s.survivorId === survivorId)
+  if (!survivor) throw new Error('생존자를 찾을 수 없어요.')
+  if (survivor.ownerUid !== uid) throw new Error('내 생존자가 아니에요.')
+  if (!survivor.alive) throw new Error('이미 죽은 생존자예요.')
+  const zombieCount = room.zombies?.[survivor.locationId] ?? 0
+  if (zombieCount <= 0) throw new Error('여기엔 공격할 좀비가 없어요.')
+
+  const diceUsed = room.diceUsed?.[uid]
+  if (!diceUsed) throw new Error('주사위 정보를 찾을 수 없어요.')
+  const consumed = consumeAnyDie(diceUsed)
+  if (!consumed) throw new Error('남은 주사위가 없어요.')
+
+  const survivorName = SURVIVOR_MAP[survivorId]?.name ?? '생존자'
+  const playerName = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
+  const exposure = resolveExposure(room.survivors ?? [], survivorId, SURVIVOR_MAP)
+
+  await updateDoc(roomRef(code), {
+    [`zombies.${survivor.locationId}`]: zombieCount - 1,
+    survivors: exposure.survivors,
+    [`diceUsed.${uid}`]: consumed.nextDiceUsed,
+    pendingBite: exposure.pendingBite,
+    log: [...(room.log ?? []), nowLog(`${playerName}의 ${survivorName}이(가) 좀비를 처치했습니다.`), ...describeExposure(survivorName, exposure)],
+  })
+}
+
+/** 물림 전염 대상으로 지목된 사람만 호출 가능(섹션 9). 즉시 사망시키거나
+ * 노출 주사위를 다시 굴려 도박한다 — 어느 쪽이든 죽으면 전염이 다음
+ * 사람으로 이어질 수 있다. */
+export async function resolveBiteChoice(code: string, room: RoomDoc, uid: string, choice: 'die' | 'reroll'): Promise<void> {
+  const pending = room.pendingBite
+  if (!pending) throw new Error('처리할 물림 전염 판정이 없어요.')
+  if (pending.targetOwnerUid !== uid) throw new Error('이 선택은 당신 몫이 아니에요.')
+
+  const targetName = SURVIVOR_MAP[pending.targetSurvivorId]?.name ?? '생존자'
+  const survivors = room.survivors ?? []
+  const result =
+    choice === 'die' ? applyBiteDeath(survivors, pending.targetSurvivorId, SURVIVOR_MAP) : resolveBiteReroll(survivors, pending.targetSurvivorId, SURVIVOR_MAP)
+
+  const log = result.died
+    ? [nowLog(`${targetName}이(가) 전염으로 죽었습니다.`)]
+    : [nowLog(`${targetName}은(는) 전염을 견뎌냈습니다.`)]
+
+  await updateDoc(roomRef(code), {
+    survivors: result.survivors,
+    pendingBite: result.pendingBite,
+    log: [...(room.log ?? []), ...log],
+  })
+}
+
 /** 지금 턴인 사람만 호출 가능. 순서상 마지막 사람이었다면 라운드 단계를
  * 'colony'로 넘긴다 — 실제 콜로니 단계 처리는 STEP 8~9에서 구현한다. */
 export async function endTurn(code: string, room: RoomDoc, uid: string): Promise<void> {
   requireMyTurn(room, uid)
+  requireNoPendingBite(room)
   const name = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
   const { nextPlayerIndex, roundOver } = advanceTurn(room.turnOrder, room.currentPlayerIndex)
   const log = [...(room.log ?? []), nowLog(`${name}의 턴이 끝났습니다.`)]
