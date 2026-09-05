@@ -1,6 +1,16 @@
 // Firestore/네트워크와 무관한 순수 로직. STEP이 늘어날 때마다 이 파일에
 // 셔플·판정 함수를 추가해서 vitest로 검증한다.
-import type { PlayerSlot } from './types'
+import type { PlayerSlot, Survivor, SurvivorInstance } from './types'
+
+/** 피셔-예이츠 셔플. rng를 주입할 수 있어 테스트에서 결정적으로 검증한다. */
+export function shuffle<T>(arr: T[], rng: () => number = Math.random): T[] {
+  const a = arr.slice()
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
 
 const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // 헷갈리는 0/O, 1/I 제외
 
@@ -38,4 +48,22 @@ export function advanceTurn(turnOrder: string[], currentPlayerIndex: number): Ad
  * 변경). */
 export function nextFirstPlayerIndex(turnOrder: string[], firstPlayerIndex: number): number {
   return (firstPlayerIndex + 1) % turnOrder.length
+}
+
+/** 각 플레이어에게 생존자 2명씩 배분한다(섹션 3). 풀에서 겹치지 않게
+ * 뽑고, 각자 처음 뽑힌 생존자가 리더가 된다. 전원 콜로니에서 시작한다.
+ * 풀이 필요한 수보다 적으면 던진다 — 배포 시 항상 넉넉한 풀을 준다. */
+export function dealSurvivors(players: PlayerSlot[], pool: Survivor[], rng: () => number = Math.random): SurvivorInstance[] {
+  const need = players.length * 2
+  if (pool.length < need) throw new Error(`생존자 풀이 부족합니다 (${pool.length}/${need})`)
+  const shuffled = shuffle(pool, rng)
+  const instances: SurvivorInstance[] = []
+  players.forEach((p, i) => {
+    const [first, second] = shuffled.slice(i * 2, i * 2 + 2)
+    instances.push(
+      { survivorId: first.id, ownerUid: p.uid, locationId: 'colony', wounds: 0, frostbite: false, alive: true, isLeader: true },
+      { survivorId: second.id, ownerUid: p.uid, locationId: 'colony', wounds: 0, frostbite: false, alive: true, isLeader: false },
+    )
+  })
+  return instances
 }

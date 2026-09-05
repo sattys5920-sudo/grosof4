@@ -34,6 +34,7 @@ export interface RoomDoc {
   currentPlayerIndex?: number // turnOrder 안에서 지금 턴인 플레이어 위치
   roundPhase?: RoundPhase
   log?: LogEntry[]
+  survivors?: SurvivorInstance[] // STEP 4에서 startGame이 2명씩 배분해 채운다.
 }
 
 export const MAX_PLAYERS = 4
@@ -48,4 +49,31 @@ export interface Location {
   name: string
   icon: string
   description: string
+}
+
+/** 생존자 원형(카드) 데이터 — 정적이라 SURVIVORS 풀에 미리 정의해 둔다.
+ * 실제 이동·전투·상처 등 상태는 SurvivorInstance가 따로 들고 있는다. */
+export type SurvivorId = string
+
+export interface Survivor {
+  id: SurvivorId
+  name: string
+  title: string
+  influence: number // 낮을수록 물림 전염 시 먼저 지목된다 (섹션 9)
+  attack: number
+  ability: string
+  icon: string
+}
+
+/** 실제 게임에 배분된 생존자 한 명의 상태. STEP 4 범위: 배분과 표시만 —
+ * wounds/frostbite/alive는 STEP 7(좀비·노출)에서, locationId 이동은
+ * STEP 6에서 값이 바뀌기 시작한다. */
+export interface SurvivorInstance {
+  survivorId: SurvivorId
+  ownerUid: string
+  locationId: LocationId
+  wounds: number
+  frostbite: boolean
+  alive: boolean
+  isLeader: boolean
 }

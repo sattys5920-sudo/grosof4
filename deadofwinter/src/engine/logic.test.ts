@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { generateRoomCode, allReady, advanceTurn, nextFirstPlayerIndex } from './logic'
+import { generateRoomCode, allReady, advanceTurn, nextFirstPlayerIndex, dealSurvivors } from './logic'
+import { SURVIVORS } from './survivors'
 import type { PlayerSlot } from './types'
 import { MAX_PLAYERS } from './types'
 
@@ -62,5 +63,44 @@ describe('nextFirstPlayerIndex', () => {
   it('한 칸씩 돌아간다', () => {
     expect(nextFirstPlayerIndex(order, 0)).toBe(1)
     expect(nextFirstPlayerIndex(order, 3)).toBe(0)
+  })
+})
+
+describe('dealSurvivors', () => {
+  const players = [mkPlayer('a', true), mkPlayer('b', true), mkPlayer('c', true), mkPlayer('d', true)]
+
+  it('4명에게 2명씩, 총 8명을 배분한다', () => {
+    const instances = dealSurvivors(players, SURVIVORS)
+    expect(instances).toHaveLength(8)
+    for (const p of players) {
+      expect(instances.filter((s) => s.ownerUid === p.uid)).toHaveLength(2)
+    }
+  })
+
+  it('같은 생존자가 두 번 배분되지 않는다', () => {
+    const instances = dealSurvivors(players, SURVIVORS)
+    const ids = instances.map((s) => s.survivorId)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('각 플레이어의 첫 번째 생존자만 리더다', () => {
+    const instances = dealSurvivors(players, SURVIVORS)
+    for (const p of players) {
+      const mine = instances.filter((s) => s.ownerUid === p.uid)
+      expect(mine.filter((s) => s.isLeader)).toHaveLength(1)
+    }
+  })
+
+  it('전원 콜로니에서 시작하고 살아있다', () => {
+    const instances = dealSurvivors(players, SURVIVORS)
+    for (const s of instances) {
+      expect(s.locationId).toBe('colony')
+      expect(s.alive).toBe(true)
+      expect(s.wounds).toBe(0)
+    }
+  })
+
+  it('풀이 부족하면 던진다', () => {
+    expect(() => dealSurvivors(players, SURVIVORS.slice(0, 4))).toThrow()
   })
 })

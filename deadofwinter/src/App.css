@@ -400,3 +400,74 @@
   color: var(--ink-dim);
   text-align: center;
 }
+
+/* ---------------------------------------------------------------- 생존자 카드 (STEP 4) */
+.panel-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.my-survivors-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+.survivor-card {
+  flex: 1 1 0;
+  min-width: 150px;
+  background: linear-gradient(160deg, var(--panel-raised), var(--panel));
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+.survivor-card.leader {
+  border-color: var(--frost);
+}
+.survivor-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.survivor-card-icon {
+  font-size: 22px;
+}
+.survivor-card-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+}
+.survivor-card-leader-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--frost-dim);
+  color: var(--frost-bright);
+}
+.survivor-card-title {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+.survivor-card-stats {
+  display: flex;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--frost-bright);
+  margin-bottom: 6px;
+}
+.survivor-card-ability {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-dim);
+  margin: 0;
+}

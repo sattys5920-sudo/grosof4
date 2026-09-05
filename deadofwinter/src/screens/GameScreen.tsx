@@ -1,9 +1,9 @@
 import type { RoomDoc } from '../engine/types'
 import Board from '../components/Board'
+import SurvivorCard from '../components/SurvivorCard'
 
-/** STEP 3 범위: 라운드/턴 진행 + 보드(장소 7곳 표시)까지. 생존자 배치는
- * STEP 4, 실제 행동(이동·공격·탐색)은 STEP 5~6에서 이 화면에 이어
- * 붙인다. */
+/** STEP 4 범위: 라운드/턴 진행 + 보드 + 내 생존자 카드까지. 이동·공격·
+ * 탐색 같은 실제 행동은 STEP 5~6에서 이 화면에 이어 붙인다. */
 export default function GameScreen({
   room,
   myUid,
@@ -21,6 +21,7 @@ export default function GameScreen({
   const currentUid = room.currentPlayerIndex !== undefined ? turnOrder[room.currentPlayerIndex] : undefined
   const myTurn = currentUid === myUid
   const nameOf = (uid: string) => room.players.find((p) => p.uid === uid)?.name ?? '???'
+  const mySurvivors = (room.survivors ?? []).filter((s) => s.ownerUid === myUid)
 
   return (
     <div className="game-screen">
@@ -41,6 +42,17 @@ export default function GameScreen({
       </div>
 
       <Board />
+
+      {mySurvivors.length > 0 && (
+        <div className="my-survivors">
+          <span className="panel-label">내 생존자</span>
+          <div className="my-survivors-row">
+            {mySurvivors.map((s, i) => (
+              <SurvivorCard key={`${s.survivorId}-${i}`} instance={s} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {room.roundPhase === 'turns' && (
         <div className="turn-panel">

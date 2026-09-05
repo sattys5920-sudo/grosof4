@@ -2,7 +2,8 @@
 // (장소, 생존자, 위기 등)는 각 STEP에서 이 문서에 이어 붙인다.
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore'
 import { db, ensureSignedIn, SignInFailedError } from '../firebase'
-import { generateRoomCode, allReady, advanceTurn } from './logic'
+import { generateRoomCode, allReady, advanceTurn, dealSurvivors } from './logic'
+import { SURVIVORS } from './survivors'
 import { MAX_PLAYERS, type LogEntry, type RoomDoc } from './types'
 
 const ROOMS = 'deadofwinterRooms'
@@ -90,6 +91,7 @@ function nowLog(text: string): LogEntry {
 export async function startGame(code: string, room: RoomDoc): Promise<void> {
   if (!allReady(room.players, MAX_PLAYERS)) throw new Error('4명 전원이 준비되어야 시작할 수 있어요.')
   const turnOrder = room.players.map((p) => p.uid)
+  const survivors = dealSurvivors(room.players, SURVIVORS)
   await updateDoc(roomRef(code), {
     phase: 'playing',
     round: 1,
@@ -97,6 +99,7 @@ export async function startGame(code: string, room: RoomDoc): Promise<void> {
     firstPlayerIndex: 0,
     currentPlayerIndex: 0,
     roundPhase: 'turns',
+    survivors,
     log: [nowLog('생존자들이 콜로니에 모였습니다. 1라운드를 시작합니다.')],
   })
 }
