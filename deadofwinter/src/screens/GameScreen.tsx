@@ -5,10 +5,20 @@ import SurvivorCard from '../components/SurvivorCard'
 import { LOCATIONS, LOCATION_MAP } from '../engine/locations'
 import { ITEM_TYPE_MAP } from '../engine/items'
 import { SURVIVOR_MAP } from '../engine/survivors'
+import { CRISIS_MAP } from '../engine/crises'
 
-/** STEP 8 범위: 라운드/턴 진행 + 보드 + 생존자·주사위 + 이동·탐색·공격 +
- * 노출/물림 전염 판정 + 콜로니 단계(식량·사기·좀비·라운드 넘김)까지.
- * 위기 해결은 STEP 9에서 콜로니 단계 흐름에 끼워 넣는다. */
+const CATEGORY_LABEL: Record<string, string> = {
+  weapon: '무기',
+  food: '식량',
+  medical: '의료품',
+  tool: '도구',
+  info: '정보',
+}
+
+/** STEP 9 범위: 라운드/턴 진행 + 보드 + 생존자·주사위 + 이동·탐색·공격 +
+ * 노출/물림 전염 판정 + 콜로니 단계(식량·사기·좀비·라운드 넘김) + 위기 카드
+ * 기여까지. 위기는 아이템 카테고리 매칭 성공/실패에 따른 사기 증감으로
+ * 단순화했다(카드별 고유 실패 효과는 미구현). */
 export default function GameScreen({
   room,
   myUid,
@@ -20,6 +30,7 @@ export default function GameScreen({
   onAttack,
   onResolveBite,
   onResolveColonyPhase,
+  onContribute,
 }: {
   room: RoomDoc
   myUid: string
@@ -31,6 +42,7 @@ export default function GameScreen({
   onAttack: (survivorId: string) => void
   onResolveBite: (choice: 'die' | 'reroll') => void
   onResolveColonyPhase: () => void
+  onContribute: (itemTypeId: string) => void
 }) {
   const [selectedSurvivorId, setSelectedSurvivorId] = useState<string | null>(null)
 
@@ -53,6 +65,11 @@ export default function GameScreen({
   const biteTargetName = pendingBite ? (SURVIVOR_MAP[pendingBite.targetSurvivorId]?.name ?? '생존자') : ''
   const isHost = room.hostUid === myUid
 
+  const currentCrisis = room.crisis ? CRISIS_MAP[room.crisis] : undefined
+  const totalContributions = Object.values(room.crisisContributions ?? {}).reduce((sum, list) => sum + list.length, 0)
+  const myContributions = room.crisisContributions?.[myUid]?.length ?? 0
+  const canContribute = room.roundPhase === 'turns'
+
   return (
     <div className="game-screen">
       <div className="game-hud">
@@ -72,6 +89,23 @@ export default function GameScreen({
           </div>
         ))}
       </div>
+
+      {currentCrisis && (
+        <div className="crisis-panel">
+          <span className="panel-label">위기 카드</span>
+          <div className="crisis-card">
+            <span className="crisis-icon">{currentCrisis.icon}</span>
+            <div className="crisis-body">
+              <p className="crisis-title">{currentCrisis.title}</p>
+              <p className="crisis-desc">{currentCrisis.description}</p>
+              <p className="crisis-req">
+                필요: {CATEGORY_LABEL[currentCrisis.requiredCategory]} 카테고리 아이템 · 콜로니 단계에서 판정 (내 기여{' '}
+                {myContributions}개 / 전체 {totalContributions}개)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Board zombies={room.zombies} />
 
@@ -139,6 +173,17 @@ export default function GameScreen({
             {myItems.map((itemId, i) => (
               <span key={`${itemId}-${i}`} className="item-chip" title={ITEM_TYPE_MAP[itemId]?.name}>
                 {ITEM_TYPE_MAP[itemId]?.icon} {ITEM_TYPE_MAP[itemId]?.name}
+                {currentCrisis && (
+                  <button
+                    type="button"
+                    className="item-contribute-btn"
+                    disabled={busy || !canContribute}
+                    title="위기에 기여하기"
+                    onClick={() => onContribute(itemId)}
+                  >
+                    위기에 기여
+                  </button>
+                )}
               </span>
             ))}
           </div>
@@ -202,8 +247,8 @@ export default function GameScreen({
         <div className="turn-panel">
           <p className="turn-status">🏕 전원의 턴이 끝났습니다.</p>
           <p className="turn-hint">
-            콜로니에 있는 생존자만큼 식량을 지불하고, 외부 장소에 좀비가 늘어난 뒤 다음 라운드가 시작됩니다. 위기 해결은
-            다음 단계에서 구현됩니다.
+            콜로니에 있는 생존자만큼 식량을 지불하고, 위기 카드를 판정하고, 외부 장소에 좀비가 늘어난 뒤 다음 라운드가
+            시작됩니다.
           </p>
           {errorMsg && <p className="menu-error">{errorMsg}</p>}
           {isHost ? (

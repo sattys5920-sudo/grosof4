@@ -1,6 +1,6 @@
 // Firestore/네트워크와 무관한 순수 로직. STEP이 늘어날 때마다 이 파일에
 // 셔플·판정 함수를 추가해서 vitest로 검증한다.
-import type { ExposureFace, ItemType, LocationId, PlayerSlot, SearchableLocationId, Survivor, SurvivorInstance } from './types'
+import type { Crisis, ExposureFace, ItemCategory, ItemType, LocationId, PlayerSlot, SearchableLocationId, Survivor, SurvivorInstance } from './types'
 
 /** 콜로니 자원 시작값. 원작은 인원수·시나리오마다 다르지만, 여기서는
  * 4인 고정에 맞춘 값 하나로 단순화했다. */
@@ -324,4 +324,34 @@ export function addRoundZombies(
   const next = { ...zombies }
   for (const loc of locations) next[loc] = (next[loc] ?? 0) + 1
   return next
+}
+
+/** 이번 라운드의 위기 카드를 뽑는다(섹션 1, 4 STEP1). */
+export function pickCrisis(crises: Crisis[], rng: () => number = Math.random): Crisis {
+  return crises[Math.floor(rng() * crises.length)]
+}
+
+export interface CrisisResolution {
+  success: boolean
+  score: number
+  threshold: number
+}
+
+/** 콜로니 단계 ③ 위기 해결(섹션 13). 이번 라운드에 기여된 아이템을 전부
+ * 모아 채점한다 — 위기가 요구하는 대분류면 +1, 아니면 -1. 점수가
+ * "콜로니에 남아있는(=살아있는 생존자가 있는) 플레이어 수" 이상이면
+ * 성공이다. */
+export function resolveCrisis(
+  contributedItemIds: string[],
+  requiredCategory: ItemCategory,
+  itemTypeMap: Record<string, ItemType>,
+  activePlayerCount: number,
+): CrisisResolution {
+  let score = 0
+  for (const itemId of contributedItemIds) {
+    const item = itemTypeMap[itemId]
+    if (!item) continue
+    score += item.category === requiredCategory ? 1 : -1
+  }
+  return { success: score >= activePlayerCount, score, threshold: activePlayerCount }
 }

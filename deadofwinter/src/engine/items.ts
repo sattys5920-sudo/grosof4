@@ -4,35 +4,35 @@
 import type { ItemType, SearchableLocationId } from './types'
 
 export const ITEM_TYPES: ItemType[] = [
-  { id: 'gasMask', name: '방독면', icon: '😷', locationId: 'police' },
-  { id: 'shotgun', name: '산탄총', icon: '💥', locationId: 'police' },
-  { id: 'vest', name: '방탄조끼', icon: '🦺', locationId: 'police' },
-  { id: 'radio', name: '무전기', icon: '📻', locationId: 'police' },
+  { id: 'gasMask', name: '방독면', icon: '😷', locationId: 'police', category: 'tool' },
+  { id: 'shotgun', name: '산탄총', icon: '💥', locationId: 'police', category: 'weapon' },
+  { id: 'vest', name: '방탄조끼', icon: '🦺', locationId: 'police', category: 'tool' },
+  { id: 'radio', name: '무전기', icon: '📻', locationId: 'police', category: 'info' },
 
-  { id: 'cannedFood', name: '통조림', icon: '🥫', locationId: 'grocery' },
-  { id: 'waterJug', name: '물통', icon: '🚰', locationId: 'grocery' },
-  { id: 'lighter', name: '라이터', icon: '🔥', locationId: 'grocery' },
-  { id: 'salt', name: '소금', icon: '🧂', locationId: 'grocery' },
+  { id: 'cannedFood', name: '통조림', icon: '🥫', locationId: 'grocery', category: 'food' },
+  { id: 'waterJug', name: '물통', icon: '🚰', locationId: 'grocery', category: 'food' },
+  { id: 'lighter', name: '라이터', icon: '🔥', locationId: 'grocery', category: 'tool' },
+  { id: 'salt', name: '소금', icon: '🧂', locationId: 'grocery', category: 'food' },
 
-  { id: 'bandage', name: '붕대', icon: '🩹', locationId: 'school' },
-  { id: 'flashlight', name: '손전등', icon: '🔦', locationId: 'school' },
-  { id: 'backpack', name: '배낭', icon: '🎒', locationId: 'school' },
-  { id: 'notebook', name: '공책', icon: '📓', locationId: 'school' },
+  { id: 'bandage', name: '붕대', icon: '🩹', locationId: 'school', category: 'medical' },
+  { id: 'flashlight', name: '손전등', icon: '🔦', locationId: 'school', category: 'tool' },
+  { id: 'backpack', name: '배낭', icon: '🎒', locationId: 'school', category: 'tool' },
+  { id: 'notebook', name: '공책', icon: '📓', locationId: 'school', category: 'info' },
 
-  { id: 'fuelCan', name: '연료통', icon: '⛽', locationId: 'gasStation' },
-  { id: 'toolkit', name: '정비 도구', icon: '🧰', locationId: 'gasStation' },
-  { id: 'map', name: '지도', icon: '🗺️', locationId: 'gasStation' },
-  { id: 'rope', name: '밧줄', icon: '🪢', locationId: 'gasStation' },
+  { id: 'fuelCan', name: '연료통', icon: '⛽', locationId: 'gasStation', category: 'tool' },
+  { id: 'toolkit', name: '정비 도구', icon: '🧰', locationId: 'gasStation', category: 'tool' },
+  { id: 'map', name: '지도', icon: '🗺️', locationId: 'gasStation', category: 'info' },
+  { id: 'rope', name: '밧줄', icon: '🪢', locationId: 'gasStation', category: 'tool' },
 
-  { id: 'atlas', name: '지도책', icon: '📖', locationId: 'library' },
-  { id: 'manual', name: '무전기 설명서', icon: '📔', locationId: 'library' },
-  { id: 'newspaper', name: '오래된 신문', icon: '📰', locationId: 'library' },
-  { id: 'compass', name: '나침반', icon: '🧭', locationId: 'library' },
+  { id: 'atlas', name: '지도책', icon: '📖', locationId: 'library', category: 'info' },
+  { id: 'manual', name: '무전기 설명서', icon: '📔', locationId: 'library', category: 'info' },
+  { id: 'newspaper', name: '오래된 신문', icon: '📰', locationId: 'library', category: 'info' },
+  { id: 'compass', name: '나침반', icon: '🧭', locationId: 'library', category: 'info' },
 
-  { id: 'painkiller', name: '진통제', icon: '💊', locationId: 'hospital' },
-  { id: 'antibiotics', name: '항생제', icon: '💉', locationId: 'hospital' },
-  { id: 'surgicalKit', name: '수술 도구', icon: '🩺', locationId: 'hospital' },
-  { id: 'medBandage', name: '의료용 붕대', icon: '🩹', locationId: 'hospital' },
+  { id: 'painkiller', name: '진통제', icon: '💊', locationId: 'hospital', category: 'medical' },
+  { id: 'antibiotics', name: '항생제', icon: '💉', locationId: 'hospital', category: 'medical' },
+  { id: 'surgicalKit', name: '수술 도구', icon: '🩺', locationId: 'hospital', category: 'medical' },
+  { id: 'medBandage', name: '의료용 붕대', icon: '🩹', locationId: 'hospital', category: 'medical' },
 ]
 
 export const ITEM_TYPE_MAP: Record<string, ItemType> = ITEM_TYPES.reduce(

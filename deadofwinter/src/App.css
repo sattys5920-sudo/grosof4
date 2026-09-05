@@ -536,12 +536,29 @@
   flex-wrap: wrap;
 }
 .item-chip {
-  padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px 5px 10px;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--panel);
   font-size: 11px;
   color: var(--ink-dim);
+}
+.item-contribute-btn {
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--frost-dim);
+  background: var(--panel-raised);
+  color: var(--frost-bright);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.item-contribute-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 /* ---------------------------------------------------------------- 행동 패널: 탐색/공격/이동 (STEP 6) */
@@ -625,4 +642,40 @@
 }
 .bite-panel .action-buttons {
   margin-bottom: 0;
+}
+
+/* ---------------------------------------------------------------- 위기 카드 (STEP 9) */
+.crisis-panel {
+  background: linear-gradient(160deg, var(--panel-raised), var(--panel));
+  border: 1px solid var(--frost-dim);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+.crisis-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 6px;
+}
+.crisis-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+.crisis-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.crisis-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--frost-bright);
+}
+.crisis-desc {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+.crisis-req {
+  font-size: 11px;
+  color: var(--ink-faint);
 }

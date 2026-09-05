@@ -64,6 +64,14 @@ export interface RoomDoc {
   // 자동으로 줄고 늘어나는 흐름 자체가 중요해서다.
   food?: number
   morale?: number
+
+  // 이번 라운드의 위기 카드(섹션 1, 4). 라운드가 새로 시작할 때 뽑는다.
+  crisis?: CrisisId
+  // uid → 이번 라운드에 기여한(아직 손을 떠났지만 결과는 공개 안 된)
+  // 아이템 종류 id 배열. 콜로니 단계에서 한꺼번에 공개해 채점한다 —
+  // 원작처럼 카드 자체를 뒤집어 숨기는 보안 구조는 아니고, 결과 화면에
+  // 공개 전까지 목록을 안 보여주는 정도로 단순화했다.
+  crisisContributions?: Record<string, string[]>
 }
 
 export interface PendingBite {
@@ -119,6 +127,10 @@ export type ExposureFace = 'blank' | 'wound' | 'frostbite' | 'bite'
 /** 콜로니를 뺀, 탐색 카드 더미가 있는 6개 장소. */
 export type SearchableLocationId = Exclude<LocationId, 'colony'>
 
+/** 아이템 대분류 — 위기(섹션 1, 9)가 어떤 종류를 요구하는지 판정하는 데
+ * 쓴다. */
+export type ItemCategory = 'weapon' | 'food' | 'medical' | 'tool' | 'info'
+
 /** 탐색으로 얻는 아이템 종류. STEP 6 범위: 데이터와 배분만 — 실제 효과
  * (치료, 위기 기여 등)는 그 시스템을 만드는 STEP에서 하나씩 연결한다. */
 export interface ItemType {
@@ -126,4 +138,18 @@ export interface ItemType {
   name: string
   icon: string
   locationId: SearchableLocationId
+  category: ItemCategory
+}
+
+export type CrisisId = string
+
+/** 위기 카드 원형(섹션 1). STEP 9 범위: 필요한 아이템 대분류를 기여해서
+ * 막는 기본 흐름만 — 위기별 고유 실패 효과(예: 좀비 추가, 아이템 파괴
+ * 등)는 데이터를 갖추지 않고 사기 증감으로 단순화했다. */
+export interface Crisis {
+  id: CrisisId
+  title: string
+  description: string
+  requiredCategory: ItemCategory
+  icon: string
 }

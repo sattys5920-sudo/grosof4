@@ -21,10 +21,13 @@ import {
   addRoundZombies,
   STARTING_FOOD,
   STARTING_MORALE,
+  pickCrisis,
+  resolveCrisis,
   type ExposureResolution,
 } from './logic'
 import { SURVIVORS, SURVIVOR_MAP } from './survivors'
 import { itemsForLocation, ITEM_TYPE_MAP } from './items'
+import { CRISES, CRISIS_MAP } from './crises'
 import type { ExposureFace } from './types'
 import { MAX_PLAYERS, type LocationId, type LogEntry, type RoomDoc, type SearchableLocationId } from './types'
 
@@ -137,6 +140,8 @@ export async function startGame(code: string, room: RoomDoc): Promise<void> {
     pendingBite: null,
     food: STARTING_FOOD,
     morale: STARTING_MORALE,
+    crisis: pickCrisis(CRISES).id,
+    crisisContributions: Object.fromEntries(room.players.map((p) => [p.uid, []])),
     log: [nowLog('생존자들이 콜로니에 모였습니다. 1라운드를 시작합니다.')],
   })
 }
@@ -228,6 +233,27 @@ export async function searchLocation(code: string, room: RoomDoc, uid: string, s
   })
 }
 
+/** 위기에 아이템 한 장을 기여한다(섹션 7 — 주사위가 필요 없는 행동).
+ * 라운드 아무 때나, 내 턴이 아니어도 낼 수 있다. 손을 떠난 아이템의
+ * 실제 결과(맞는 종류인지)는 콜로니 단계에서 한꺼번에 공개된다. */
+export async function contributeToCrisis(code: string, room: RoomDoc, uid: string, itemTypeId: string): Promise<void> {
+  if (room.roundPhase !== 'turns') throw new Error('지금은 위기에 기여할 수 없어요.')
+  const myItems = room.itemsByPlayer?.[uid] ?? []
+  const idx = myItems.indexOf(itemTypeId)
+  if (idx === -1) throw new Error('그 아이템을 갖고 있지 않아요.')
+
+  const nextItems = myItems.slice()
+  nextItems.splice(idx, 1)
+  const playerName = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
+  const contributions = [...(room.crisisContributions?.[uid] ?? []), itemTypeId]
+
+  await updateDoc(roomRef(code), {
+    [`itemsByPlayer.${uid}`]: nextItems,
+    [`crisisContributions.${uid}`]: contributions,
+    log: [...(room.log ?? []), nowLog(`${playerName}이(가) 위기에 아이템을 기여했습니다.`)],
+  })
+}
+
 /** 지금 있는 장소의 좀비 한 마리를 공격해 없앤다(섹션 6 공격, 좀비 대상).
  * 처치 성공 시에도 노출 판정을 굴린다(섹션 8). */
 export async function attackZombie(code: string, room: RoomDoc, uid: string, survivorId: string): Promise<void> {
@@ -305,10 +331,11 @@ export async function endTurn(code: string, room: RoomDoc, uid: string): Promise
 }
 
 /** 방장만 호출 가능. 콜로니 단계(섹션 13)를 한 번에 처리하고 다음
- * 라운드를 연다: ① 식량 지불(부족하면 사기 감소) → ④ 좀비 추가(단순화:
- * 외부 6곳에 1마리씩) → ⑥ 라운드 +1 → ⑦ 선 플레이어 한 칸 이동 → 새
- * 주사위 굴리기. 위기 해결(③)은 STEP 9, 메인 목표 확인(⑤)은 게임 종료를
- * 만드는 STEP 13에서 이 사이에 끼워 넣는다. */
+ * 라운드를 연다: ① 식량 지불(부족하면 사기 감소) → ③ 위기 해결(성공/실패
+ * 에 따라 사기 증감, 새 위기 카드 공개) → ④ 좀비 추가(단순화: 외부
+ * 6곳에 1마리씩) → ⑥ 라운드 +1 → ⑦ 선 플레이어 한 칸 이동 → 새 주사위
+ * 굴리기. 폐기물 확인(②)과 메인 목표 확인(⑤)은 각각 이 구현에 없는
+ * 폐기물 더미, 게임 종료를 만드는 STEP 13에서 다룬다. */
 export async function resolveColonyPhase(code: string, room: RoomDoc, uid: string): Promise<void> {
   if (room.hostUid !== uid) throw new Error('방장만 콜로니 단계를 진행할 수 있어요.')
   if (room.roundPhase !== 'colony') throw new Error('지금은 콜로니 단계가 아니에요.')
@@ -317,11 +344,19 @@ export async function resolveColonyPhase(code: string, room: RoomDoc, uid: strin
   const survivors = room.survivors ?? []
   const atColony = survivors.filter((s) => s.alive && s.locationId === 'colony').length
   const { nextFood, starvation } = resolveFoodPayment(room.food ?? STARTING_FOOD, atColony)
-  const nextMorale = (room.morale ?? STARTING_MORALE) - starvation
+
+  const activePlayerCount = room.players.filter((p) => survivors.some((s) => s.ownerUid === p.uid && s.alive)).length
+  const currentCrisis = room.crisis ? CRISIS_MAP[room.crisis] : undefined
+  const allContributions = Object.values(room.crisisContributions ?? {}).flat()
+  const crisisResult = currentCrisis ? resolveCrisis(allContributions, currentCrisis.requiredCategory, ITEM_TYPE_MAP, activePlayerCount) : null
+  const crisisMoraleDelta = crisisResult ? (crisisResult.success ? 1 : -1) : 0
+
+  const nextMorale = (room.morale ?? STARTING_MORALE) - starvation + crisisMoraleDelta
   const nextZombies = addRoundZombies(room.zombies ?? {}, SEARCHABLE_LOCATIONS)
   const nextFirstIndex = nextFirstPlayerIndex(room.turnOrder, room.firstPlayerIndex)
   const dice = rollAllPlayerDice(room.players, survivors)
   const round = room.round ?? 1
+  const nextCrisis = pickCrisis(CRISES)
 
   const log: LogEntry[] = [
     nowLog(
@@ -329,9 +364,19 @@ export async function resolveColonyPhase(code: string, room: RoomDoc, uid: strin
         ? `콜로니 단계: 생존자 ${atColony}명 부양에 식량이 ${starvation}개 부족해 사기가 ${starvation} 줄었습니다.`
         : `콜로니 단계: 생존자 ${atColony}명분 식량을 지불했습니다.`,
     ),
-    nowLog('외부 6개 장소에 좀비가 한 마리씩 늘어났습니다.'),
-    nowLog(`${round}라운드가 끝났습니다. ${round + 1}라운드를 시작합니다.`),
   ]
+  if (currentCrisis && crisisResult) {
+    log.push(
+      nowLog(
+        crisisResult.success
+          ? `위기 "${currentCrisis.title}" 해결! (점수 ${crisisResult.score}/${crisisResult.threshold}) 사기 +1`
+          : `위기 "${currentCrisis.title}" 실패... (점수 ${crisisResult.score}/${crisisResult.threshold}) 사기 -1`,
+      ),
+    )
+  }
+  log.push(nowLog(`새 위기 카드: "${nextCrisis.title}"`))
+  log.push(nowLog('외부 6개 장소에 좀비가 한 마리씩 늘어났습니다.'))
+  log.push(nowLog(`${round}라운드가 끝났습니다. ${round + 1}라운드를 시작합니다.`))
 
   await updateDoc(roomRef(code), {
     food: nextFood,
@@ -343,6 +388,8 @@ export async function resolveColonyPhase(code: string, room: RoomDoc, uid: strin
     roundPhase: 'turns',
     dice,
     diceUsed: initialDiceUsed(dice),
+    crisis: nextCrisis.id,
+    crisisContributions: Object.fromEntries(room.players.map((p) => [p.uid, []])),
     log: [...(room.log ?? []), ...log],
   })
 }

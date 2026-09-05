@@ -15,6 +15,7 @@ import {
   attackZombie,
   resolveBiteChoice,
   resolveColonyPhase,
+  contributeToCrisis,
 } from './engine/room'
 import { ensureSignedIn } from './firebase'
 import type { LocationId, RoomDoc } from './engine/types'
@@ -171,6 +172,19 @@ export default function App() {
     }
   }
 
+  async function handleContribute(itemTypeId: string) {
+    if (!room) return
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      await contributeToCrisis(room.code, room, myUid, itemTypeId)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '위기에 기여하지 못했어요.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function handleResolveColonyPhase() {
     if (!room) return
     setBusy(true)
@@ -220,6 +234,7 @@ export default function App() {
           onAttack={handleAttack}
           onResolveBite={handleResolveBite}
           onResolveColonyPhase={handleResolveColonyPhase}
+          onContribute={handleContribute}
         />
       )}
     </div>

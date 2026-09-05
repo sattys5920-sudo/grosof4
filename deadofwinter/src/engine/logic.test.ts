@@ -20,9 +20,12 @@ import {
   WOUND_LIMIT,
   resolveFoodPayment,
   addRoundZombies,
+  pickCrisis,
+  resolveCrisis,
 } from './logic'
 import { SURVIVORS, SURVIVOR_MAP } from './survivors'
-import { ITEM_TYPES, itemsForLocation } from './items'
+import { ITEM_TYPES, ITEM_TYPE_MAP, itemsForLocation } from './items'
+import { CRISES } from './crises'
 import type { PlayerSlot, SurvivorInstance } from './types'
 import { MAX_PLAYERS } from './types'
 
@@ -422,5 +425,36 @@ describe('addRoundZombies', () => {
     const next = addRoundZombies({ police: 2 }, locations)
     expect(next.police).toBe(3)
     expect(next.grocery).toBe(1)
+  })
+})
+
+describe('pickCrisis', () => {
+  it('풀에서 위기 카드 하나를 뽑는다', () => {
+    const c = pickCrisis(CRISES, () => 0)
+    expect(CRISES).toContainEqual(c)
+  })
+})
+
+describe('resolveCrisis', () => {
+  // shotgun=weapon, cannedFood=food, bandage=medical, gasMask=tool, radio=info
+  it('요구 종류만 기여하면 성공(점수 >= 활동 플레이어 수)', () => {
+    const result = resolveCrisis(['shotgun', 'shotgun'], 'weapon', ITEM_TYPE_MAP, 2)
+    expect(result).toEqual({ success: true, score: 2, threshold: 2 })
+  })
+
+  it('엉뚱한 종류를 섞으면 점수가 깎인다', () => {
+    const result = resolveCrisis(['shotgun', 'shotgun', 'cannedFood'], 'weapon', ITEM_TYPE_MAP, 2)
+    expect(result).toEqual({ success: false, score: 1, threshold: 2 })
+  })
+
+  it('점수가 기준 미달이면 실패', () => {
+    const result = resolveCrisis(['shotgun'], 'weapon', ITEM_TYPE_MAP, 3)
+    expect(result.success).toBe(false)
+    expect(result.score).toBe(1)
+  })
+
+  it('기여가 하나도 없으면 점수 0으로 실패(활동 인원 1명 이상일 때)', () => {
+    const result = resolveCrisis([], 'weapon', ITEM_TYPE_MAP, 1)
+    expect(result).toEqual({ success: false, score: 0, threshold: 1 })
   })
 })
