@@ -72,6 +72,16 @@ service cloud.firestore {
       }
     }
 
+    // 데드 오브 윈터(deadofwinter/) 4인 협동 게임. STEP 1(방 생성/입장/준비)
+    // 범위: 아직 비공개 정보(손패, 비밀 목표 등)가 생기지 않아서 공개
+    // 문서만 있다 — 허위 방 조작을 막게 로그인만 요구한다. 이후 STEP에서
+    // 비공개 정보가 생기면 셜록 13처럼 private/* 서브컬렉션과 세부 규칙을
+    // 추가한다.
+    match /deadofwinterRooms/{roomId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
