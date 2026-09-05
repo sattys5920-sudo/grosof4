@@ -27,6 +27,9 @@ import {
   checkCrossroadTrigger,
   applyCrossroadEffect,
   dealSecretObjectives,
+  allVoted,
+  tallyBanishmentVote,
+  applyBanishment,
   type ExposureResolution,
 } from './logic'
 import { SURVIVORS, SURVIVOR_MAP } from './survivors'
@@ -168,6 +171,7 @@ export async function startGame(code: string, room: RoomDoc): Promise<void> {
     crossroad: pickCrossroad(CROSSROADS).id,
     crossroadTriggered: false,
     crossroadPending: null,
+    banishmentVote: null,
     log: [nowLog('생존자들이 콜로니에 모였습니다. 1라운드를 시작합니다.')],
   })
 }
@@ -187,6 +191,12 @@ function requireNoPendingBite(room: RoomDoc) {
  * 행동을 막는다(섹션 15) — 지목된 생존자의 주인이 먼저 골라야 한다. */
 function requireNoPendingCrossroad(room: RoomDoc) {
   if (room.crossroadPending) throw new Error('크로스로드 카드를 먼저 처리해야 해요.')
+}
+
+/** 추방 투표가 진행 중인 동안은 다른 행동을 막는다(섹션 14) — 전원이
+ * 표를 던져 결론이 나야 다시 움직일 수 있다. */
+function requireNoPendingVote(room: RoomDoc) {
+  if (room.banishmentVote) throw new Error('추방 투표가 끝날 때까지 기다려야 해요.')
 }
 
 /** 이동/탐색으로 도착·체류한 장소가 이번 라운드 크로스로드 카드의 발동
@@ -228,6 +238,7 @@ export async function moveSurvivor(
   requireMyTurn(room, uid)
   requireNoPendingBite(room)
   requireNoPendingCrossroad(room)
+  requireNoPendingVote(room)
   const diceUsed = room.diceUsed?.[uid]
   if (!diceUsed) throw new Error('주사위 정보를 찾을 수 없어요.')
   const consumed = consumeAnyDie(diceUsed)
@@ -260,6 +271,7 @@ export async function searchLocation(code: string, room: RoomDoc, uid: string, s
   requireMyTurn(room, uid)
   requireNoPendingBite(room)
   requireNoPendingCrossroad(room)
+  requireNoPendingVote(room)
   const survivor = room.survivors?.find((s) => s.survivorId === survivorId)
   if (!survivor) throw new Error('생존자를 찾을 수 없어요.')
   if (survivor.ownerUid !== uid) throw new Error('내 생존자가 아니에요.')
@@ -318,6 +330,7 @@ export async function attackZombie(code: string, room: RoomDoc, uid: string, sur
   requireMyTurn(room, uid)
   requireNoPendingBite(room)
   requireNoPendingCrossroad(room)
+  requireNoPendingVote(room)
   const survivor = room.survivors?.find((s) => s.survivorId === survivorId)
   if (!survivor) throw new Error('생존자를 찾을 수 없어요.')
   if (survivor.ownerUid !== uid) throw new Error('내 생존자가 아니에요.')
@@ -390,6 +403,69 @@ export async function resolveCrossroadChoice(code: string, room: RoomDoc, uid: s
   })
 }
 
+/** 콜로니에 있는 생존자(내 것이든 남의 것이든) 아무나를 추방하자고
+ * 제안한다(섹션 14). 내 턴이 아니어도, 라운드 단계와 상관없이 할 수
+ * 있다 — 다른 판정이 이미 진행 중이면 먼저 처리해야 한다. */
+export async function proposeBanishment(code: string, room: RoomDoc, uid: string, survivorId: string): Promise<void> {
+  requireNoPendingBite(room)
+  requireNoPendingCrossroad(room)
+  requireNoPendingVote(room)
+  const survivor = room.survivors?.find((s) => s.survivorId === survivorId)
+  if (!survivor) throw new Error('생존자를 찾을 수 없어요.')
+  if (!survivor.alive) throw new Error('이미 죽거나 추방된 생존자예요.')
+  if (survivor.locationId !== 'colony') throw new Error('콜로니에 있는 생존자만 추방을 제안할 수 있어요.')
+
+  const survivorName = SURVIVOR_MAP[survivorId]?.name ?? '생존자'
+  const playerName = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
+
+  await updateDoc(roomRef(code), {
+    banishmentVote: { targetSurvivorId: survivorId, proposedByUid: uid, votes: {} },
+    log: [...(room.log ?? []), nowLog(`${playerName}이(가) ${survivorName}의 추방 투표를 제안했습니다.`)],
+  })
+}
+
+/** 진행 중인 추방 투표에 예/아니오를 던진다. 전원이 던지면 그 자리에서
+ * 자동으로 개표한다. 원작은 동시에 뒤집는 비밀 투표지만, 여기서는 던질
+ * 때마다 누가 어떻게 던졌는지 로그에 바로 남는 공개 투표로 단순화했다
+ * (STEP 12 범위 — 비밀 목표처럼 반드시 가려야 하는 정보는 아니라서 보안
+ * 규칙까지는 두지 않았다). */
+export async function castBanishmentVote(code: string, room: RoomDoc, uid: string, vote: boolean): Promise<void> {
+  const pending = room.banishmentVote
+  if (!pending) throw new Error('진행 중인 추방 투표가 없어요.')
+  if (uid in pending.votes) throw new Error('이미 투표했어요.')
+
+  const votes = { ...pending.votes, [uid]: vote }
+  const playerUids = room.players.map((p) => p.uid)
+  const playerName = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
+  const voteLabel = vote ? '찬성' : '반대'
+
+  if (!allVoted({ ...pending, votes }, playerUids)) {
+    await updateDoc(roomRef(code), {
+      banishmentVote: { ...pending, votes },
+      log: [...(room.log ?? []), nowLog(`${playerName}이(가) 추방 투표에 ${voteLabel}했습니다.`)],
+    })
+    return
+  }
+
+  const survivorName = SURVIVOR_MAP[pending.targetSurvivorId]?.name ?? '생존자'
+  const result = tallyBanishmentVote({ ...pending, votes }, playerUids)
+  const survivors = result.banished ? applyBanishment(room.survivors ?? [], pending.targetSurvivorId) : (room.survivors ?? [])
+
+  await updateDoc(roomRef(code), {
+    survivors,
+    banishmentVote: null,
+    log: [
+      ...(room.log ?? []),
+      nowLog(`${playerName}이(가) 추방 투표에 ${voteLabel}했습니다.`),
+      nowLog(
+        result.banished
+          ? `추방 투표 가결(찬성 ${result.yesCount} / 반대 ${result.noCount}) — ${survivorName}이(가) 콜로니에서 추방됐습니다.`
+          : `추방 투표 부결(찬성 ${result.yesCount} / 반대 ${result.noCount}) — ${survivorName}은(는) 콜로니에 남습니다.`,
+      ),
+    ],
+  })
+}
+
 /** 지금 턴인 사람만 호출 가능. 순서상 마지막 사람이었다면 라운드 단계를
  * 'colony'로 넘긴다 — 방장이 resolveColonyPhase를 눌러야 다음 라운드로
  * 넘어간다. */
@@ -397,6 +473,7 @@ export async function endTurn(code: string, room: RoomDoc, uid: string): Promise
   requireMyTurn(room, uid)
   requireNoPendingBite(room)
   requireNoPendingCrossroad(room)
+  requireNoPendingVote(room)
   const name = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
   const { nextPlayerIndex, roundOver } = advanceTurn(room.turnOrder, room.currentPlayerIndex)
   const log = [...(room.log ?? []), nowLog(`${name}의 턴이 끝났습니다.`)]

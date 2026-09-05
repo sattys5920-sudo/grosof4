@@ -36,6 +36,8 @@ export default function GameScreen({
   onResolveColonyPhase,
   onContribute,
   onResolveCrossroad,
+  onProposeBanishment,
+  onCastBanishmentVote,
 }: {
   room: RoomDoc
   myUid: string
@@ -50,6 +52,8 @@ export default function GameScreen({
   onResolveColonyPhase: () => void
   onContribute: (itemTypeId: string) => void
   onResolveCrossroad: (choice: 'yes' | 'no') => void
+  onProposeBanishment: (survivorId: string) => void
+  onCastBanishmentVote: (vote: boolean) => void
 }) {
   const [selectedSurvivorId, setSelectedSurvivorId] = useState<string | null>(null)
   const [showSecret, setShowSecret] = useState(false)
@@ -83,6 +87,15 @@ export default function GameScreen({
   const crossroadCard = crossroadPending ? CROSSROAD_MAP[crossroadPending.cardId] : undefined
 
   const mySecretObjective = mySecret ? SECRET_OBJECTIVE_MAP[mySecret.objectiveId] : undefined
+
+  const colonySurvivors = (room.survivors ?? []).filter((s) => s.alive && s.locationId === 'colony')
+  const banishmentVote = room.banishmentVote
+  const iHaveVoted = banishmentVote ? myUid in banishmentVote.votes : false
+  const votedCount = banishmentVote ? Object.keys(banishmentVote.votes).length : 0
+  // 물림 전염/크로스로드/추방 투표 중 하나라도 진행 중이면 다른 모든
+  // 행동(이동·탐색·공격·턴 종료·새 추방 제안)이 막힌다.
+  const noBlockingState = !pendingBite && !crossroadPending && !banishmentVote
+  const canProposeBanishment = noBlockingState
 
   return (
     <div className="game-screen">
@@ -189,6 +202,56 @@ export default function GameScreen({
         </div>
       )}
 
+      {banishmentVote && (
+        <div className="vote-panel">
+          <span className="panel-label">
+            🗳 추방 투표 — {SURVIVOR_MAP[banishmentVote.targetSurvivorId]?.name ?? '생존자'}
+          </span>
+          <p className="turn-hint">
+            {nameOf(banishmentVote.proposedByUid)}이(가) 이 생존자의 추방을 제안했어요. ({votedCount}/{room.players.length}명
+            투표함)
+          </p>
+          {iHaveVoted ? (
+            <p className="turn-hint">투표했어요. 다른 사람들을 기다리는 중…</p>
+          ) : (
+            <div className="action-buttons">
+              <button type="button" className="menu-btn danger" disabled={busy} onClick={() => onCastBanishmentVote(true)}>
+                추방 찬성
+              </button>
+              <button type="button" className="menu-btn" disabled={busy} onClick={() => onCastBanishmentVote(false)}>
+                추방 반대
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {colonySurvivors.length > 0 && (
+        <div className="colony-survivors">
+          <span className="panel-label">콜로니에 있는 생존자</span>
+          <div className="colony-survivors-row">
+            {colonySurvivors.map((s, i) => {
+              const base = SURVIVOR_MAP[s.survivorId]
+              return (
+                <div key={`${s.survivorId}-${i}`} className="colony-survivor-chip">
+                  <span>
+                    {base?.icon} {base?.name} ({nameOf(s.ownerUid)})
+                  </span>
+                  <button
+                    type="button"
+                    className="colony-survivor-banish-btn"
+                    disabled={busy || !canProposeBanishment}
+                    onClick={() => onProposeBanishment(s.survivorId)}
+                  >
+                    추방 제안
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {mySurvivors.length > 0 && (
         <div className="my-survivors">
           <span className="panel-label">내 생존자{myTurn && room.roundPhase === 'turns' ? ' (눌러서 이동·탐색·공격)' : ''}</span>
@@ -200,7 +263,7 @@ export default function GameScreen({
                 location={LOCATION_MAP[s.locationId]}
                 selected={s.survivorId === selectedSurvivorId}
                 onClick={
-                  myTurn && room.roundPhase === 'turns' && s.alive && !pendingBite
+                  myTurn && room.roundPhase === 'turns' && s.alive && noBlockingState
                     ? () => setSelectedSurvivorId((cur) => (cur === s.survivorId ? null : s.survivorId))
                     : undefined
                 }
@@ -247,7 +310,7 @@ export default function GameScreen({
         </div>
       )}
 
-      {room.roundPhase === 'turns' && myTurn && !pendingBite && selected && (
+      {room.roundPhase === 'turns' && myTurn && noBlockingState && selected && (
         <div className="action-panel">
           <span className="panel-label">
             {LOCATION_MAP[selected.locationId].icon} {LOCATION_MAP[selected.locationId].name}에서
@@ -292,9 +355,9 @@ export default function GameScreen({
           <p className="turn-status">
             {myTurn ? '🔎 당신의 차례입니다' : `${currentUid ? nameOf(currentUid) : '???'}의 차례를 기다리는 중…`}
           </p>
-          {myTurn && !selected && !pendingBite && <p className="turn-hint">위에서 생존자를 먼저 선택하세요.</p>}
+          {myTurn && !selected && noBlockingState && <p className="turn-hint">위에서 생존자를 먼저 선택하세요.</p>}
           {errorMsg && <p className="menu-error">{errorMsg}</p>}
-          <button type="button" className="menu-btn primary" disabled={!myTurn || busy || Boolean(pendingBite)} onClick={onEndTurn}>
+          <button type="button" className="menu-btn primary" disabled={!myTurn || busy || !noBlockingState} onClick={onEndTurn}>
             턴 종료
           </button>
         </div>

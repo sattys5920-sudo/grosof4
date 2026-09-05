@@ -38,7 +38,7 @@ export default function SurvivorCard({
         <span>공격 {base.attack}</span>
       </div>
       {!instance.alive ? (
-        <div className="survivor-card-dead-badge">💀 사망</div>
+        <div className="survivor-card-dead-badge">{instance.banished ? '🚪 추방됨' : '💀 사망'}</div>
       ) : (
         <div className="survivor-card-condition">
           {instance.wounds > 0 && (

@@ -1,6 +1,7 @@
 // Firestore/네트워크와 무관한 순수 로직. STEP이 늘어날 때마다 이 파일에
 // 셔플·판정 함수를 추가해서 vitest로 검증한다.
 import type {
+  BanishmentVote,
   Crisis,
   CrossroadCard,
   CrossroadEffect,
@@ -420,4 +421,28 @@ export function dealSecretObjectives(
     result[p.uid] = shuffled[i].id
   })
   return result
+}
+
+/** 아직 투표하지 않은 사람이 있으면 false(섹션 14). */
+export function allVoted(vote: BanishmentVote, playerUids: string[]): boolean {
+  return playerUids.every((uid) => uid in vote.votes)
+}
+
+export interface BanishmentResolution {
+  banished: boolean
+  yesCount: number
+  noCount: number
+}
+
+/** 개표한다. 찬성이 반대보다 많아야 추방되고, 동률이면 부결이다. */
+export function tallyBanishmentVote(vote: BanishmentVote, playerUids: string[]): BanishmentResolution {
+  const yesCount = playerUids.filter((uid) => vote.votes[uid] === true).length
+  const noCount = playerUids.filter((uid) => vote.votes[uid] === false).length
+  return { banished: yesCount > noCount, yesCount, noCount }
+}
+
+/** 추방이 확정된 생존자를 죽은 것으로 표시하되, 좀비에게 죽은 것과
+ * 구분할 수 있게 banished 플래그를 남긴다. */
+export function applyBanishment(survivors: SurvivorInstance[], survivorId: string): SurvivorInstance[] {
+  return survivors.map((s) => (s.survivorId === survivorId ? { ...s, alive: false, banished: true } : s))
 }

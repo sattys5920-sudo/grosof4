@@ -26,6 +26,9 @@ import {
   checkCrossroadTrigger,
   applyCrossroadEffect,
   dealSecretObjectives,
+  allVoted,
+  tallyBanishmentVote,
+  applyBanishment,
 } from './logic'
 import { SURVIVORS, SURVIVOR_MAP } from './survivors'
 import { ITEM_TYPES, ITEM_TYPE_MAP, itemsForLocation } from './items'
@@ -538,5 +541,46 @@ describe('dealSecretObjectives', () => {
 
   it('카드 풀이 인원수보다 적으면 던진다', () => {
     expect(() => dealSecretObjectives(players, SECRET_OBJECTIVES.slice(0, 2))).toThrow()
+  })
+})
+
+describe('allVoted / tallyBanishmentVote', () => {
+  const uids = ['u1', 'u2', 'u3', 'u4']
+
+  it('전원이 던지기 전엔 allVoted가 false다', () => {
+    const vote = { targetSurvivorId: 'sv1', proposedByUid: 'u1', votes: { u1: true, u2: false } }
+    expect(allVoted(vote, uids)).toBe(false)
+  })
+
+  it('전원이 던지면 allVoted가 true다', () => {
+    const vote = { targetSurvivorId: 'sv1', proposedByUid: 'u1', votes: { u1: true, u2: false, u3: true, u4: true } }
+    expect(allVoted(vote, uids)).toBe(true)
+  })
+
+  it('찬성이 더 많으면 추방된다', () => {
+    const vote = { targetSurvivorId: 'sv1', proposedByUid: 'u1', votes: { u1: true, u2: true, u3: true, u4: false } }
+    expect(tallyBanishmentVote(vote, uids)).toEqual({ banished: true, yesCount: 3, noCount: 1 })
+  })
+
+  it('동률이면 부결된다', () => {
+    const vote = { targetSurvivorId: 'sv1', proposedByUid: 'u1', votes: { u1: true, u2: true, u3: false, u4: false } }
+    expect(tallyBanishmentVote(vote, uids)).toEqual({ banished: false, yesCount: 2, noCount: 2 })
+  })
+
+  it('반대가 더 많으면 부결된다', () => {
+    const vote = { targetSurvivorId: 'sv1', proposedByUid: 'u1', votes: { u1: false, u2: false, u3: true, u4: false } }
+    expect(tallyBanishmentVote(vote, uids)).toEqual({ banished: false, yesCount: 1, noCount: 3 })
+  })
+})
+
+describe('applyBanishment', () => {
+  it('대상 생존자를 죽은 것으로 표시하고 banished 플래그를 남긴다', () => {
+    const survivors: SurvivorInstance[] = [
+      { survivorId: 'sv1', ownerUid: 'u1', locationId: 'colony', wounds: 0, frostbite: false, alive: true, isLeader: true },
+      { survivorId: 'sv2', ownerUid: 'u2', locationId: 'colony', wounds: 0, frostbite: false, alive: true, isLeader: true },
+    ]
+    const result = applyBanishment(survivors, 'sv1')
+    expect(result[0]).toEqual({ ...survivors[0], alive: false, banished: true })
+    expect(result[1]).toEqual(survivors[1])
   })
 })

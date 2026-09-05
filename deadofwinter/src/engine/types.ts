@@ -84,6 +84,9 @@ export interface RoomDoc {
   // 카드가 발동해서 해당 생존자의 주인이 예/아니오를 골라야 하는 상태.
   // null/미정의면 대기 중인 크로스로드가 없다.
   crossroadPending?: CrossroadPending | null
+
+  // 추방 투표(섹션 14) 진행 중인 안건. null/미정의면 없음.
+  banishmentVote?: BanishmentVote | null
 }
 
 export interface CrossroadPending {
@@ -137,6 +140,9 @@ export interface SurvivorInstance {
   frostbite: boolean
   alive: boolean
   isLeader: boolean
+  // 좀비에게 죽은 게 아니라 추방 투표(섹션 14)로 콜로니에서 쫓겨났으면
+  // true. alive는 똑같이 false가 되지만 표시 문구를 구분하는 데 쓴다.
+  banished?: boolean
 }
 
 /** 노출 주사위 결과(섹션 8). */
@@ -217,4 +223,14 @@ export interface SecretObjective {
 /** secrets/{uid} 서브컬렉션 문서 하나의 모양. */
 export interface PlayerSecret {
   objectiveId: SecretObjectiveId
+}
+
+/** 추방 투표(섹션 14). 콜로니에 있는 생존자 아무나(내 것이든 남의
+ * 것이든) 대상으로 누구나 제안할 수 있고, 전원이 예/아니오를 던지면
+ * 자동으로 개표된다 — 기권/누가 아직 안 던졌는지는 votes에 없는 uid로
+ * 판단한다. 찬성이 반대보다 많아야(동률이면 부결) 추방된다. */
+export interface BanishmentVote {
+  targetSurvivorId: SurvivorId
+  proposedByUid: string
+  votes: Record<string, boolean>
 }

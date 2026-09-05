@@ -18,6 +18,8 @@ import {
   contributeToCrisis,
   resolveCrossroadChoice,
   watchMySecret,
+  proposeBanishment,
+  castBanishmentVote,
 } from './engine/room'
 import { ensureSignedIn } from './firebase'
 import type { LocationId, PlayerSecret, RoomDoc } from './engine/types'
@@ -207,6 +209,32 @@ export default function App() {
     }
   }
 
+  async function handleProposeBanishment(survivorId: string) {
+    if (!room) return
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      await proposeBanishment(room.code, room, myUid, survivorId)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '추방을 제안하지 못했어요.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleCastBanishmentVote(vote: boolean) {
+    if (!room) return
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      await castBanishmentVote(room.code, room, myUid, vote)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '투표하지 못했어요.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function handleResolveColonyPhase() {
     if (!room) return
     setBusy(true)
@@ -262,6 +290,8 @@ export default function App() {
           onResolveColonyPhase={handleResolveColonyPhase}
           onContribute={handleContribute}
           onResolveCrossroad={handleResolveCrossroad}
+          onProposeBanishment={handleProposeBanishment}
+          onCastBanishmentVote={handleCastBanishmentVote}
         />
       )}
     </div>
