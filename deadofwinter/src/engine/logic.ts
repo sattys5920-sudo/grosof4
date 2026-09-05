@@ -1,6 +1,6 @@
 // Firestore/네트워크와 무관한 순수 로직. STEP이 늘어날 때마다 이 파일에
 // 셔플·판정 함수를 추가해서 vitest로 검증한다.
-import type { PlayerSlot, Survivor, SurvivorInstance } from './types'
+import type { ItemType, LocationId, PlayerSlot, SearchableLocationId, Survivor, SurvivorInstance } from './types'
 
 /** 주사위 하나를 굴린다(1~6). */
 function rollDie(rng: () => number): number {
@@ -96,4 +96,65 @@ export function initialDiceUsed(dice: Record<string, number[]>): Record<string, 
     used[uid] = dice[uid].map(() => false)
   }
   return used
+}
+
+/** 아직 안 쓴 주사위 하나를 찾아 쓴 것으로 표시한다. 이동·탐색은 눈
+ * 상관없이 아무 주사위나 하나 쓰면 된다(공격만 요구값이 있다 — 섹션 23,
+ * STEP 6에서는 공격 자체를 아직 안 만든다). 남은 주사위가 없으면 null. */
+export function consumeAnyDie(diceUsed: boolean[]): { usedIndex: number; nextDiceUsed: boolean[] } | null {
+  const idx = diceUsed.findIndex((u) => !u)
+  if (idx === -1) return null
+  const next = [...diceUsed]
+  next[idx] = true
+  return { usedIndex: idx, nextDiceUsed: next }
+}
+
+/** 생존자 한 명을 다른 장소로 옮긴 새 배열을 돌려준다(섹션 6 이동).
+ * 대상 생존자가 없거나·다른 사람 소유거나·죽었으면 던진다. */
+export function applySurvivorMove(
+  survivors: SurvivorInstance[],
+  survivorId: string,
+  ownerUid: string,
+  destination: LocationId,
+): SurvivorInstance[] {
+  const idx = survivors.findIndex((s) => s.survivorId === survivorId)
+  if (idx === -1) throw new Error('생존자를 찾을 수 없어요.')
+  const s = survivors[idx]
+  if (s.ownerUid !== ownerUid) throw new Error('내 생존자가 아니에요.')
+  if (!s.alive) throw new Error('이미 죽은 생존자예요.')
+  if (s.locationId === destination) throw new Error('이미 그 장소에 있어요.')
+  const next = survivors.slice()
+  next[idx] = { ...s, locationId: destination }
+  return next
+}
+
+/** 이 장소의 탐색 카드 더미를 섞어서 아이템 종류 id 배열로 만든다. */
+export function buildItemDeck(items: ItemType[], rng: () => number = Math.random): string[] {
+  return shuffle(items, rng).map((t) => t.id)
+}
+
+/** 6개 탐색 장소 전부의 카드 더미를 만든다. */
+export function buildAllItemDecks(
+  locations: SearchableLocationId[],
+  itemsForLocation: (loc: SearchableLocationId) => ItemType[],
+  rng: () => number = Math.random,
+): Partial<Record<LocationId, string[]>> {
+  const decks: Partial<Record<LocationId, string[]>> = {}
+  for (const loc of locations) {
+    decks[loc] = buildItemDeck(itemsForLocation(loc), rng)
+  }
+  return decks
+}
+
+export interface DrawResult {
+  drawn: string | null
+  remaining: string[]
+}
+
+/** 더미 맨 앞 카드를 뽑는다. 더미가 비어 있으면 drawn이 null이다(그래도
+ * 탐색 자체는 시도한 거라 주사위는 소모된다). */
+export function drawFromDeck(deck: string[]): DrawResult {
+  if (deck.length === 0) return { drawn: null, remaining: [] }
+  const [drawn, ...remaining] = deck
+  return { drawn, remaining }
 }

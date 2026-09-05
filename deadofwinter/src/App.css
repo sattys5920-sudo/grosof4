@@ -497,3 +497,69 @@
   color: var(--ink-faint);
   text-decoration: line-through;
 }
+
+/* ---------------------------------------------------------------- 생존자 카드 선택/위치 (STEP 6) */
+.survivor-card.clickable {
+  text-align: left;
+  cursor: pointer;
+}
+.survivor-card.selected {
+  border-color: var(--frost-bright);
+  box-shadow: 0 0 0 1px var(--frost-bright);
+}
+.survivor-card-location {
+  font-size: 10.5px;
+  color: var(--frost-bright);
+  margin-bottom: 4px;
+}
+
+/* ---------------------------------------------------------------- 아이템 (STEP 6) */
+.my-items-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.item-chip {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+
+/* ---------------------------------------------------------------- 행동 패널: 탐색/공격/이동 (STEP 6) */
+.action-panel {
+  background: linear-gradient(160deg, var(--panel-raised), var(--panel));
+  border: 1px solid var(--frost-dim);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0 12px;
+}
+.action-buttons .menu-btn {
+  padding: 10px;
+  font-size: 12.5px;
+}
+.move-label {
+  margin-top: 4px;
+}
+.move-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+.move-btn {
+  padding: 9px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink-dim);
+  font-size: 12px;
+}
+.move-btn:disabled {
+  opacity: 0.4;
+}

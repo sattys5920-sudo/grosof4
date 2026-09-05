@@ -41,6 +41,13 @@ export interface RoomDoc {
   // 처리(diceUsed를 true로 바꾸는 것)는 STEP 6(이동·공격·탐색)에서 한다.
   dice?: Record<string, number[]>
   diceUsed?: Record<string, boolean[]>
+
+  // 장소별 남은 탐색 카드 더미(장소 id → 아이템 종류 id 배열, 맨 앞이
+  // 다음에 뽑힐 카드). 콜로니는 탐색 대상이 아니라 키가 없다. 아이템은
+  // 원작과 달리 손패로 숨기지 않고 공개 정보로 단순화했다 — 비밀로
+  // 가려야 할 요구사항이 없어서 굳이 보안 규칙을 얹지 않았다.
+  itemDecks?: Partial<Record<LocationId, string[]>>
+  itemsByPlayer?: Record<string, string[]>
 }
 
 export const MAX_PLAYERS = 4
@@ -82,4 +89,16 @@ export interface SurvivorInstance {
   frostbite: boolean
   alive: boolean
   isLeader: boolean
+}
+
+/** 콜로니를 뺀, 탐색 카드 더미가 있는 6개 장소. */
+export type SearchableLocationId = Exclude<LocationId, 'colony'>
+
+/** 탐색으로 얻는 아이템 종류. STEP 6 범위: 데이터와 배분만 — 실제 효과
+ * (치료, 위기 기여 등)는 그 시스템을 만드는 STEP에서 하나씩 연결한다. */
+export interface ItemType {
+  id: string
+  name: string
+  icon: string
+  locationId: SearchableLocationId
 }

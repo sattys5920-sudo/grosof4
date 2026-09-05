@@ -1,6 +1,20 @@
 import { describe, it, expect } from 'vitest'
-import { generateRoomCode, allReady, advanceTurn, nextFirstPlayerIndex, dealSurvivors, rollAllPlayerDice, initialDiceUsed } from './logic'
+import {
+  generateRoomCode,
+  allReady,
+  advanceTurn,
+  nextFirstPlayerIndex,
+  dealSurvivors,
+  rollAllPlayerDice,
+  initialDiceUsed,
+  consumeAnyDie,
+  applySurvivorMove,
+  buildItemDeck,
+  buildAllItemDecks,
+  drawFromDeck,
+} from './logic'
 import { SURVIVORS } from './survivors'
+import { ITEM_TYPES, itemsForLocation } from './items'
 import type { PlayerSlot, SurvivorInstance } from './types'
 import { MAX_PLAYERS } from './types'
 
@@ -141,5 +155,72 @@ describe('initialDiceUsed', () => {
   it('주사위 개수와 같은 길이의 false 배열을 만든다', () => {
     const dice = { a: [1, 2, 3], b: [4, 5] }
     expect(initialDiceUsed(dice)).toEqual({ a: [false, false, false], b: [false, false] })
+  })
+})
+
+describe('consumeAnyDie', () => {
+  it('첫 번째 안 쓴 주사위를 쓴 것으로 표시한다', () => {
+    const result = consumeAnyDie([false, false, true])
+    expect(result).toEqual({ usedIndex: 0, nextDiceUsed: [true, false, true] })
+  })
+
+  it('전부 다 썼으면 null이다', () => {
+    expect(consumeAnyDie([true, true])).toBeNull()
+  })
+})
+
+describe('applySurvivorMove', () => {
+  const survivors: SurvivorInstance[] = [
+    { survivorId: 'sv1', ownerUid: 'a', locationId: 'colony', wounds: 0, frostbite: false, alive: true, isLeader: true },
+    { survivorId: 'sv2', ownerUid: 'a', locationId: 'colony', wounds: 0, frostbite: false, alive: false, isLeader: false },
+    { survivorId: 'sv3', ownerUid: 'b', locationId: 'colony', wounds: 0, frostbite: false, alive: true, isLeader: true },
+  ]
+
+  it('내 생존자를 다른 장소로 옮긴다', () => {
+    const next = applySurvivorMove(survivors, 'sv1', 'a', 'hospital')
+    expect(next.find((s) => s.survivorId === 'sv1')?.locationId).toBe('hospital')
+    // 원본은 안 건드린다
+    expect(survivors.find((s) => s.survivorId === 'sv1')?.locationId).toBe('colony')
+  })
+
+  it('없는 생존자면 던진다', () => {
+    expect(() => applySurvivorMove(survivors, 'nope', 'a', 'hospital')).toThrow()
+  })
+
+  it('남의 생존자면 던진다', () => {
+    expect(() => applySurvivorMove(survivors, 'sv3', 'a', 'hospital')).toThrow()
+  })
+
+  it('죽은 생존자면 던진다', () => {
+    expect(() => applySurvivorMove(survivors, 'sv2', 'a', 'hospital')).toThrow()
+  })
+
+  it('이미 그 장소면 던진다', () => {
+    expect(() => applySurvivorMove(survivors, 'sv1', 'a', 'colony')).toThrow()
+  })
+})
+
+describe('buildItemDeck / buildAllItemDecks', () => {
+  it('한 장소의 카드 수와 더미 길이가 같다', () => {
+    const items = itemsForLocation('police')
+    const deck = buildItemDeck(items)
+    expect(deck).toHaveLength(items.length)
+    expect(new Set(deck).size).toBe(items.length)
+  })
+
+  it('6개 탐색 장소 전부 더미를 만든다', () => {
+    const locations = Array.from(new Set(ITEM_TYPES.map((t) => t.locationId)))
+    const decks = buildAllItemDecks(locations, itemsForLocation)
+    expect(Object.keys(decks)).toHaveLength(6)
+  })
+})
+
+describe('drawFromDeck', () => {
+  it('맨 앞 카드를 뽑고 나머지를 돌려준다', () => {
+    expect(drawFromDeck(['a', 'b', 'c'])).toEqual({ drawn: 'a', remaining: ['b', 'c'] })
+  })
+
+  it('빈 더미면 drawn이 null이다', () => {
+    expect(drawFromDeck([])).toEqual({ drawn: null, remaining: [] })
   })
 })

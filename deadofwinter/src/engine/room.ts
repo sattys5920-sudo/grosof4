@@ -2,9 +2,23 @@
 // (장소, 생존자, 위기 등)는 각 STEP에서 이 문서에 이어 붙인다.
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, type Unsubscribe } from 'firebase/firestore'
 import { db, ensureSignedIn, SignInFailedError } from '../firebase'
-import { generateRoomCode, allReady, advanceTurn, dealSurvivors, rollAllPlayerDice, initialDiceUsed } from './logic'
-import { SURVIVORS } from './survivors'
-import { MAX_PLAYERS, type LogEntry, type RoomDoc } from './types'
+import {
+  generateRoomCode,
+  allReady,
+  advanceTurn,
+  dealSurvivors,
+  rollAllPlayerDice,
+  initialDiceUsed,
+  consumeAnyDie,
+  applySurvivorMove,
+  buildAllItemDecks,
+  drawFromDeck,
+} from './logic'
+import { SURVIVORS, SURVIVOR_MAP } from './survivors'
+import { itemsForLocation, ITEM_TYPE_MAP } from './items'
+import { MAX_PLAYERS, type LocationId, type LogEntry, type RoomDoc, type SearchableLocationId } from './types'
+
+const SEARCHABLE_LOCATIONS: SearchableLocationId[] = ['police', 'grocery', 'school', 'gasStation', 'library', 'hospital']
 
 const ROOMS = 'deadofwinterRooms'
 
@@ -93,6 +107,7 @@ export async function startGame(code: string, room: RoomDoc): Promise<void> {
   const turnOrder = room.players.map((p) => p.uid)
   const survivors = dealSurvivors(room.players, SURVIVORS)
   const dice = rollAllPlayerDice(room.players, survivors)
+  const itemDecks = buildAllItemDecks(SEARCHABLE_LOCATIONS, itemsForLocation)
   await updateDoc(roomRef(code), {
     phase: 'playing',
     round: 1,
@@ -103,16 +118,78 @@ export async function startGame(code: string, room: RoomDoc): Promise<void> {
     survivors,
     dice,
     diceUsed: initialDiceUsed(dice),
+    itemDecks,
+    itemsByPlayer: Object.fromEntries(room.players.map((p) => [p.uid, []])),
     log: [nowLog('생존자들이 콜로니에 모였습니다. 1라운드를 시작합니다.')],
+  })
+}
+
+function requireMyTurn(room: RoomDoc, uid: string): asserts room is RoomDoc & { turnOrder: string[]; currentPlayerIndex: number } {
+  if (!room.turnOrder || room.currentPlayerIndex === undefined) throw new Error('아직 게임이 시작되지 않았어요.')
+  if (room.turnOrder[room.currentPlayerIndex] !== uid) throw new Error('지금은 당신의 턴이 아니에요.')
+}
+
+/** 생존자 한 명을 다른 장소로 옮긴다(섹션 6 이동). 주사위를 하나 쓴다 —
+ * 노출 판정은 STEP 7(좀비·노출)에서 이어서 구현한다. */
+export async function moveSurvivor(
+  code: string,
+  room: RoomDoc,
+  uid: string,
+  survivorId: string,
+  destination: LocationId,
+): Promise<void> {
+  requireMyTurn(room, uid)
+  const diceUsed = room.diceUsed?.[uid]
+  if (!diceUsed) throw new Error('주사위 정보를 찾을 수 없어요.')
+  const consumed = consumeAnyDie(diceUsed)
+  if (!consumed) throw new Error('남은 주사위가 없어요.')
+
+  const survivors = applySurvivorMove(room.survivors ?? [], survivorId, uid, destination)
+  const survivorName = SURVIVOR_MAP[survivorId]?.name ?? '생존자'
+  const playerName = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
+
+  await updateDoc(roomRef(code), {
+    survivors,
+    [`diceUsed.${uid}`]: consumed.nextDiceUsed,
+    log: [...(room.log ?? []), nowLog(`${playerName}의 ${survivorName}이(가) 이동했습니다.`)],
+  })
+}
+
+/** 지금 있는 장소를 탐색한다(섹션 6 탐색). 콜로니는 탐색 대상이 아니다.
+ * 카드가 남아있지 않아도 주사위는 소모된다. */
+export async function searchLocation(code: string, room: RoomDoc, uid: string, survivorId: string): Promise<void> {
+  requireMyTurn(room, uid)
+  const survivor = room.survivors?.find((s) => s.survivorId === survivorId)
+  if (!survivor) throw new Error('생존자를 찾을 수 없어요.')
+  if (survivor.ownerUid !== uid) throw new Error('내 생존자가 아니에요.')
+  if (!survivor.alive) throw new Error('이미 죽은 생존자예요.')
+  if (survivor.locationId === 'colony') throw new Error('콜로니에서는 탐색할 수 없어요.')
+
+  const diceUsed = room.diceUsed?.[uid]
+  if (!diceUsed) throw new Error('주사위 정보를 찾을 수 없어요.')
+  const consumed = consumeAnyDie(diceUsed)
+  if (!consumed) throw new Error('남은 주사위가 없어요.')
+
+  const deck = room.itemDecks?.[survivor.locationId] ?? []
+  const { drawn, remaining } = drawFromDeck(deck)
+  const playerName = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
+  const itemName = drawn ? (ITEM_TYPE_MAP[drawn]?.name ?? drawn) : null
+
+  await updateDoc(roomRef(code), {
+    [`itemDecks.${survivor.locationId}`]: remaining,
+    ...(drawn ? { [`itemsByPlayer.${uid}`]: [...(room.itemsByPlayer?.[uid] ?? []), drawn] } : {}),
+    [`diceUsed.${uid}`]: consumed.nextDiceUsed,
+    log: [
+      ...(room.log ?? []),
+      nowLog(drawn ? `${playerName}이(가) 탐색해서 ${itemName}을(를) 찾았습니다.` : `${playerName}이(가) 탐색했지만 아무것도 찾지 못했습니다.`),
+    ],
   })
 }
 
 /** 지금 턴인 사람만 호출 가능. 순서상 마지막 사람이었다면 라운드 단계를
  * 'colony'로 넘긴다 — 실제 콜로니 단계 처리는 STEP 8~9에서 구현한다. */
 export async function endTurn(code: string, room: RoomDoc, uid: string): Promise<void> {
-  if (!room.turnOrder || room.currentPlayerIndex === undefined) throw new Error('아직 게임이 시작되지 않았어요.')
-  if (room.turnOrder[room.currentPlayerIndex] !== uid) throw new Error('지금은 당신의 턴이 아니에요.')
-
+  requireMyTurn(room, uid)
   const name = room.players.find((p) => p.uid === uid)?.name ?? '생존자'
   const { nextPlayerIndex, roundOver } = advanceTurn(room.turnOrder, room.currentPlayerIndex)
   const log = [...(room.log ?? []), nowLog(`${name}의 턴이 끝났습니다.`)]

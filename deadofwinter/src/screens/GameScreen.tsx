@@ -1,23 +1,31 @@
-import type { RoomDoc } from '../engine/types'
+import { useState } from 'react'
+import type { LocationId, RoomDoc } from '../engine/types'
 import Board from '../components/Board'
 import SurvivorCard from '../components/SurvivorCard'
+import { LOCATIONS, LOCATION_MAP } from '../engine/locations'
+import { ITEM_TYPE_MAP } from '../engine/items'
 
-/** STEP 5 범위: 라운드/턴 진행 + 보드 + 내 생존자 카드 + 이번 라운드에
- * 받은 행동 주사위 표시까지. 주사위를 실제 행동(이동·공격·탐색)에
- * 소모하는 처리는 STEP 6에서 이 화면에 이어 붙인다. */
+/** STEP 6 범위: 라운드/턴 진행 + 보드 + 생존자·주사위 + 이동·탐색까지.
+ * 공격은 좀비가 아직 없어서(STEP 7에서 추가) 자리만 만들어 둔다. */
 export default function GameScreen({
   room,
   myUid,
   busy,
   errorMsg,
   onEndTurn,
+  onMove,
+  onSearch,
 }: {
   room: RoomDoc
   myUid: string
   busy: boolean
   errorMsg: string
   onEndTurn: () => void
+  onMove: (survivorId: string, destination: LocationId) => void
+  onSearch: (survivorId: string) => void
 }) {
+  const [selectedSurvivorId, setSelectedSurvivorId] = useState<string | null>(null)
+
   const turnOrder = room.turnOrder ?? []
   const currentUid = room.currentPlayerIndex !== undefined ? turnOrder[room.currentPlayerIndex] : undefined
   const myTurn = currentUid === myUid
@@ -25,6 +33,11 @@ export default function GameScreen({
   const mySurvivors = (room.survivors ?? []).filter((s) => s.ownerUid === myUid)
   const myDice = room.dice?.[myUid] ?? []
   const myDiceUsed = room.diceUsed?.[myUid] ?? []
+  const diceLeft = myDiceUsed.filter((u) => !u).length
+  const myItems = room.itemsByPlayer?.[myUid] ?? []
+
+  const selected = mySurvivors.find((s) => s.survivorId === selectedSurvivorId && s.alive) ?? null
+  const deckLeft = selected ? (room.itemDecks?.[selected.locationId]?.length ?? 0) : 0
 
   return (
     <div className="game-screen">
@@ -48,10 +61,20 @@ export default function GameScreen({
 
       {mySurvivors.length > 0 && (
         <div className="my-survivors">
-          <span className="panel-label">내 생존자</span>
+          <span className="panel-label">내 생존자{myTurn && room.roundPhase === 'turns' ? ' (눌러서 이동·탐색)' : ''}</span>
           <div className="my-survivors-row">
             {mySurvivors.map((s, i) => (
-              <SurvivorCard key={`${s.survivorId}-${i}`} instance={s} />
+              <SurvivorCard
+                key={`${s.survivorId}-${i}`}
+                instance={s}
+                location={LOCATION_MAP[s.locationId]}
+                selected={s.survivorId === selectedSurvivorId}
+                onClick={
+                  myTurn && room.roundPhase === 'turns' && s.alive
+                    ? () => setSelectedSurvivorId((cur) => (cur === s.survivorId ? null : s.survivorId))
+                    : undefined
+                }
+              />
             ))}
           </div>
         </div>
@@ -59,9 +82,7 @@ export default function GameScreen({
 
       {myDice.length > 0 && (
         <div className="my-dice">
-          <span className="panel-label">
-            내 행동 주사위 ({myDiceUsed.filter((u) => !u).length}/{myDice.length} 남음)
-          </span>
+          <span className="panel-label">내 행동 주사위 ({diceLeft}/{myDice.length} 남음)</span>
           <div className="my-dice-row">
             {myDice.map((value, i) => (
               <span key={i} className={`dice-face${myDiceUsed[i] ? ' used' : ''}`}>
@@ -72,12 +93,60 @@ export default function GameScreen({
         </div>
       )}
 
+      {myItems.length > 0 && (
+        <div className="my-items">
+          <span className="panel-label">내 아이템</span>
+          <div className="my-items-row">
+            {myItems.map((itemId, i) => (
+              <span key={`${itemId}-${i}`} className="item-chip" title={ITEM_TYPE_MAP[itemId]?.name}>
+                {ITEM_TYPE_MAP[itemId]?.icon} {ITEM_TYPE_MAP[itemId]?.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {room.roundPhase === 'turns' && myTurn && selected && (
+        <div className="action-panel">
+          <span className="panel-label">
+            {LOCATION_MAP[selected.locationId].icon} {LOCATION_MAP[selected.locationId].name}에서
+          </span>
+          <div className="action-buttons">
+            <button
+              type="button"
+              className="menu-btn"
+              disabled={busy || diceLeft === 0 || selected.locationId === 'colony'}
+              onClick={() => onSearch(selected.survivorId)}
+            >
+              🔍 탐색 {selected.locationId !== 'colony' && `(카드 ${deckLeft}장 남음)`}
+            </button>
+            <button type="button" className="menu-btn ghost" disabled title="좀비가 있어야 공격할 수 있어요. 다음 단계에서 좀비가 등장합니다.">
+              ⚔️ 공격 (다음 단계)
+            </button>
+          </div>
+          <span className="panel-label move-label">다른 장소로 이동</span>
+          <div className="move-grid">
+            {LOCATIONS.filter((loc) => loc.id !== selected.locationId).map((loc) => (
+              <button
+                type="button"
+                key={loc.id}
+                className="move-btn"
+                disabled={busy || diceLeft === 0}
+                onClick={() => onMove(selected.survivorId, loc.id)}
+              >
+                {loc.icon} {loc.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {room.roundPhase === 'turns' && (
         <div className="turn-panel">
           <p className="turn-status">
             {myTurn ? '🔎 당신의 차례입니다' : `${currentUid ? nameOf(currentUid) : '???'}의 차례를 기다리는 중…`}
           </p>
-          <p className="turn-hint">이동·공격·탐색 같은 실제 행동은 다음 단계에서 이어서 구현됩니다.</p>
+          {myTurn && !selected && <p className="turn-hint">위에서 생존자를 먼저 선택하세요.</p>}
           {errorMsg && <p className="menu-error">{errorMsg}</p>}
           <button type="button" className="menu-btn primary" disabled={!myTurn || busy} onClick={onEndTurn}>
             턴 종료

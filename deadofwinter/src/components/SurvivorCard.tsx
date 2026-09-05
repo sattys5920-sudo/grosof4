@@ -1,14 +1,26 @@
-import type { SurvivorInstance } from '../engine/types'
+import type { Location, SurvivorInstance } from '../engine/types'
 import { SURVIVOR_MAP } from '../engine/survivors'
 
-/** STEP 4 범위: 생존자 카드를 보여주기만 한다. 상처·동상 게이지, 장착
- * 아이템은 STEP 6~7에서 이 카드에 이어 붙인다. */
-export default function SurvivorCard({ instance }: { instance: SurvivorInstance }) {
+/** STEP 6 범위: 상태 표시 + 내 턴에는 클릭해서 이동·탐색 대상으로 고를 수
+ * 있다. 상처·동상 게이지는 STEP 7에서 이 카드에 이어 붙인다. */
+export default function SurvivorCard({
+  instance,
+  location,
+  selected,
+  onClick,
+}: {
+  instance: SurvivorInstance
+  location?: Location
+  selected?: boolean
+  onClick?: () => void
+}) {
   const base = SURVIVOR_MAP[instance.survivorId]
   if (!base) return null
 
-  return (
-    <div className={`survivor-card${instance.isLeader ? ' leader' : ''}`}>
+  const classes = `survivor-card${instance.isLeader ? ' leader' : ''}${selected ? ' selected' : ''}${onClick ? ' clickable' : ''}`
+
+  const content = (
+    <>
       <div className="survivor-card-head">
         <span className="survivor-card-icon">{base.icon}</span>
         <div>
@@ -23,7 +35,21 @@ export default function SurvivorCard({ instance }: { instance: SurvivorInstance 
         <span>영향력 {base.influence}</span>
         <span>공격 {base.attack}</span>
       </div>
+      {location && (
+        <div className="survivor-card-location">
+          {location.icon} {location.name}
+        </div>
+      )}
       <p className="survivor-card-ability">{base.ability}</p>
-    </div>
+    </>
   )
+
+  if (onClick) {
+    return (
+      <button type="button" className={classes} onClick={onClick}>
+        {content}
+      </button>
+    )
+  }
+  return <div className={classes}>{content}</div>
 }

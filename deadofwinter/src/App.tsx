@@ -3,9 +3,9 @@ import './App.css'
 import MainMenu from './screens/MainMenu'
 import Lobby from './screens/Lobby'
 import GameScreen from './screens/GameScreen'
-import { createRoom, joinRoom, watchRoom, toggleReady, startGame, endTurn } from './engine/room'
+import { createRoom, joinRoom, watchRoom, toggleReady, startGame, endTurn, moveSurvivor, searchLocation } from './engine/room'
 import { ensureSignedIn } from './firebase'
-import type { RoomDoc } from './engine/types'
+import type { LocationId, RoomDoc } from './engine/types'
 import type { Unsubscribe } from 'firebase/firestore'
 
 type Screen = 'menu' | 'lobby' | 'playing'
@@ -107,6 +107,32 @@ export default function App() {
     }
   }
 
+  async function handleMove(survivorId: string, destination: LocationId) {
+    if (!room) return
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      await moveSurvivor(room.code, room, myUid, survivorId, destination)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '이동하지 못했어요.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleSearch(survivorId: string) {
+    if (!room) return
+    setBusy(true)
+    setErrorMsg('')
+    try {
+      await searchLocation(room.code, room, myUid, survivorId)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '탐색하지 못했어요.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function handleLeave() {
     unsubRef.current?.()
     unsubRef.current = null
@@ -132,7 +158,15 @@ export default function App() {
         />
       )}
       {screen === 'playing' && room && (
-        <GameScreen room={room} myUid={myUid} busy={busy} errorMsg={errorMsg} onEndTurn={handleEndTurn} />
+        <GameScreen
+          room={room}
+          myUid={myUid}
+          busy={busy}
+          errorMsg={errorMsg}
+          onEndTurn={handleEndTurn}
+          onMove={handleMove}
+          onSearch={handleSearch}
+        />
       )}
     </div>
   )
