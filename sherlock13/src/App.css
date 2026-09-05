@@ -642,22 +642,59 @@ button.suspect-card:hover {
   gap: 6px;
 }
 .suspect-status-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
   background: var(--void);
   border: 1px solid var(--line-soft);
   border-radius: 10px;
   padding: 9px 12px;
   color: var(--ink);
   font-size: 12.5px;
+  text-align: left;
 }
 .suspect-status-row.locked {
-  opacity: 0.5;
+  opacity: 0.6;
+}
+.suspect-status-box {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 13px;
+  color: var(--ink-dim);
+  flex-shrink: 0;
+}
+.suspect-status-box.auto {
+  border-color: var(--ok);
+  color: var(--ok-bright);
+}
+.suspect-status-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.suspect-status-name {
+  white-space: nowrap;
+}
+.suspect-status-traits {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.suspect-status-trait {
+  font-size: 11px;
+  opacity: 0.85;
 }
 .suspect-status-badge {
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--ink-dim);
+  white-space: nowrap;
 }
 .status-suspect .suspect-status-badge {
   color: var(--danger-bright);

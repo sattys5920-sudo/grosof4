@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { LastAnswer, Role, SuspectId } from '../engine/types'
-import { SUSPECTS, SUSPECT_MAP, TRAITS } from '../engine/suspects'
+import { SUSPECTS, SUSPECT_MAP, TRAITS, TRAIT_MAP } from '../engine/suspects'
 import { countTrait, possibleCriminals } from '../engine/logic'
 
 type NoteStatus = 'unknown' | 'cleared' | 'me' | 'opponent' | 'suspect'
 const CYCLE: NoteStatus[] = ['unknown', 'cleared', 'me', 'opponent', 'suspect']
-const NOTE_ICON: Record<NoteStatus, string> = { unknown: '❓', cleared: '✓', me: '👤', opponent: '👤', suspect: '☠' }
+const NOTE_ICON: Record<NoteStatus, string> = { unknown: '', cleared: '✕', me: '✕', opponent: '✕', suspect: '☠' }
 const NOTE_LABEL: Record<NoteStatus, string> = { unknown: '미확인', cleared: '무죄', me: '내 카드', opponent: '상대 카드', suspect: '범인 후보' }
 
 function notesStorageKey(code: string, role: Role) {
@@ -87,7 +87,9 @@ export default function ClueSheet({
 
         <section className="clue-section">
           <h3>용의자 상태</h3>
-          <p className="clue-note-hint">칸을 눌러 직접 표시를 바꿀 수 있어요 (미확인 → 무죄 → 내 카드 → 상대 카드 → 범인 후보)</p>
+          <p className="clue-note-hint">
+            내 손패·공개된 중앙 카드는 무죄로 자동 체크(✕)돼요. 나머지는 칸을 눌러 직접 표시를 바꿀 수 있어요 (미확인 → 무죄 → 내 카드 → 상대 카드 → 범인 후보)
+          </p>
           <div className="suspect-status-list">
             {SUSPECTS.map((s) => {
               const locked = autoSafe.has(s.id)
@@ -100,10 +102,18 @@ export default function ClueSheet({
                   onClick={() => !locked && cycle(s.id)}
                   disabled={locked}
                 >
-                  <span className="suspect-status-name">{s.name}</span>
-                  <span className="suspect-status-badge">
-                    {NOTE_ICON[status]} {NOTE_LABEL[status]}
+                  <span className={`suspect-status-box${locked ? ' auto' : ''}`}>{NOTE_ICON[status]}</span>
+                  <span className="suspect-status-info">
+                    <span className="suspect-status-name">{s.name}</span>
+                    <span className="suspect-status-traits">
+                      {s.traits.map((t) => (
+                        <span key={t} className="suspect-status-trait" title={TRAIT_MAP[t].label}>
+                          {TRAIT_MAP[t].icon}
+                        </span>
+                      ))}
+                    </span>
                   </span>
+                  <span className="suspect-status-badge">{NOTE_LABEL[status]}</span>
                 </button>
               )
             })}
