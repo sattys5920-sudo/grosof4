@@ -23,7 +23,7 @@ export default function MainMenu({
         13
       </h1>
       <p className="menu-sub">THE HIDDEN THIEF</p>
-      <p className="menu-desc">13명의 용의자 중 범인은 단 한 명. 친구와 1:1로 질문과 카드 교환을 주고받으며 진범을 추리하세요.</p>
+      <p className="menu-desc">민지♡해린</p>
 
       {errorMsg && <p className="menu-error">{errorMsg}</p>}
 
