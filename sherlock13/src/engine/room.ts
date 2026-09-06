@@ -4,9 +4,22 @@
 // 지은 뒤에만 읽는다" 같은 약속을 여기서 지킨다.
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, type Unsubscribe } from 'firebase/firestore'
 import { db, ensureSignedIn, SignInFailedError } from '../firebase'
-import { dealGame, generateRoomCode } from './logic'
-import { SUSPECTS } from './suspects'
-import type { Accusation, CentralSecretDoc, GameResult, HandDoc, LastAnswer, LogEntry, Role, RoomDoc, SecretDoc, SuspectId, TraitId } from './types'
+import { countTrait, dealGame, generateRoomCode } from './logic'
+import { SUSPECTS, SUSPECT_MAP } from './suspects'
+import type {
+  Accusation,
+  CentralSecretDoc,
+  GameResult,
+  HandDoc,
+  LastAnswer,
+  LogEntry,
+  PendingQuestion,
+  Role,
+  RoomDoc,
+  SecretDoc,
+  SuspectId,
+  TraitId,
+} from './types'
 
 const ROOMS = 'sherlock13Rooms'
 
@@ -71,6 +84,7 @@ export async function createRoom(): Promise<string> {
     result: null,
     answers: [],
     log: [nowLog('방이 만들어졌습니다. 친구에게 초대 코드를 알려주세요.')],
+    pendingQuestion: null,
   }
 
   await setDoc(roomRef(code), room)
@@ -117,16 +131,41 @@ function otherRole(role: Role): Role {
   return role === 'host' ? 'guest' : 'host'
 }
 
-/** 질문하기: 내 손패에서 특정 특징의 개수를 세서(호출부가 계산해 넘김)
- * 공개 로그에 남긴다 — 답은 원래 공개 정보라 별도 보안 규칙이 필요
- * 없다. */
-export async function askQuestion(code: string, room: RoomDoc, asker: Role, trait: TraitId, traitLabel: string, answerCount: number): Promise<void> {
+/** 질문하기: 상대에게 특정 특징을 묻는다. 답은 반드시 질문받은 사람
+ * 본인의 손패에서 세어야 하므로(상대 손패는 보안 규칙상 내가 읽을 수
+ * 없다), 여기서는 질문 내용만 공개 문서에 남기고 턴을 상대에게 넘긴다
+ * — 실제 개수는 상대가 answerQuestion을 호출해야 채워진다. */
+export async function askQuestion(code: string, room: RoomDoc, asker: Role, trait: TraitId, traitLabel: string): Promise<void> {
+  if (room.currentPlayer !== asker) throw new Error('지금은 당신의 차례가 아니에요.')
+  if (room.pendingQuestion) throw new Error('질문에 먼저 답해야 해요.')
   const askerName = asker === 'host' ? '호스트' : '게스트'
-  const answer: LastAnswer = { askedBy: asker, trait, count: answerCount, at: Date.now() }
+  const pendingQuestion: PendingQuestion = { askedBy: asker, trait, traitLabel }
   await updateDoc(roomRef(code), {
     currentPlayer: otherRole(asker),
+    pendingQuestion,
+    log: [...room.log, nowLog(`${askerName}이(가) "${traitLabel}"을(를) 질문했습니다. 답변을 기다리는 중…`)],
+  })
+}
+
+/** 질문에 답하기: 질문받은 사람만 호출할 수 있다. 내 손패(보안 규칙상
+ * 나만 읽을 수 있음)를 직접 읽어서 실제 개수를 세고, 그 결과를 공개
+ * 로그·답변 기록에 남긴다. */
+export async function answerQuestion(code: string, room: RoomDoc, role: Role): Promise<void> {
+  const pending = room.pendingQuestion
+  if (!pending) throw new Error('답할 질문이 없어요.')
+  if (pending.askedBy === role) throw new Error('스스로에게 답할 수 없어요.')
+
+  const handSnap = await getDoc(privateRef(code, role))
+  if (!handSnap.exists()) throw new Error('내 손패를 확인할 수 없어요.')
+  const hand = (handSnap.data() as HandDoc).hand
+  const count = countTrait(hand, SUSPECT_MAP, pending.trait)
+
+  const roleName = role === 'host' ? '호스트' : '게스트'
+  const answer: LastAnswer = { askedBy: pending.askedBy, trait: pending.trait, count, at: Date.now() }
+  await updateDoc(roomRef(code), {
+    pendingQuestion: null,
     answers: [...room.answers, answer].slice(-40),
-    log: [...room.log, nowLog(`${askerName}이(가) "${traitLabel}"을(를) 질문했습니다 → ${answerCount}명`)],
+    log: [...room.log, nowLog(`${roleName}의 답변: "${pending.traitLabel}" → ${count}명`)],
   })
 }
 
@@ -141,6 +180,7 @@ export async function exchangeCentral(
   giveSuspectId: SuspectId,
 ): Promise<void> {
   if (!db) throw new Error('오프라인 상태예요.')
+  if (room.pendingQuestion) throw new Error('질문에 먼저 답해야 해요.')
   const centralSnap = await getDoc(privateRef(code, 'central'))
   if (!centralSnap.exists()) throw new Error('중앙 카드를 확인할 수 없어요.')
   const centralSecret = centralSnap.data() as CentralSecretDoc
@@ -169,6 +209,7 @@ export async function exchangeCentral(
  * 열리게 하고, 곧바로 읽어서 결과를 계산해 다시 공개 문서에 적는다. */
 export async function accuse(code: string, room: RoomDoc, role: Role, suspectId: SuspectId): Promise<void> {
   if (!db) throw new Error('오프라인 상태예요.')
+  if (room.pendingQuestion) throw new Error('질문에 먼저 답해야 해요.')
   const accusation: Accusation = { by: role, suspectId, at: Date.now() }
   const roleName = role === 'host' ? '호스트' : '게스트'
   await updateDoc(roomRef(code), {

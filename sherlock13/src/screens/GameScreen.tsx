@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react'
 import type { Role, RoomDoc, SuspectId, TraitId } from '../engine/types'
 import { SUSPECTS, SUSPECT_MAP, TRAITS } from '../engine/suspects'
-import { countTrait } from '../engine/logic'
 import SuspectCard, { FaceDownCard } from '../components/SuspectCard'
 import ClueSheet from '../components/ClueSheet'
-import { askQuestion, exchangeCentral, accuse } from '../engine/room'
+import { askQuestion, answerQuestion, exchangeCentral, accuse } from '../engine/room'
 
 type Modal = null | 'question' | 'exchange-side' | 'exchange-give' | 'accuse'
 
@@ -30,7 +29,11 @@ export default function GameScreen({
   const [errorMsg, setErrorMsg] = useState('')
 
   const myTurn = room.currentPlayer === role && room.phase === 'playing'
-  const canExchange = myTurn && room.exchangeCount < 2 && (room.central.leftId === null || room.central.rightId === null)
+  const pendingQuestion = room.pendingQuestion
+  const mustAnswer = Boolean(pendingQuestion && pendingQuestion.askedBy !== role)
+  const waitingForAnswer = Boolean(pendingQuestion && pendingQuestion.askedBy === role)
+  const canAct = myTurn && !pendingQuestion
+  const canExchange = canAct && room.exchangeCount < 2 && (room.central.leftId === null || room.central.rightId === null)
 
   const myHandSuspects = useMemo(() => myHand.map((id) => SUSPECT_MAP[id]).filter(Boolean), [myHand])
   const revealedCentralIds = useMemo(
@@ -60,8 +63,11 @@ export default function GameScreen({
   }
 
   async function handleAsk(trait: TraitId, label: string) {
-    const count = countTrait(myHand, SUSPECT_MAP, trait)
-    await run(() => askQuestion(code, room, role, trait, label, count))
+    await run(() => askQuestion(code, room, role, trait, label))
+  }
+
+  async function handleAnswer() {
+    await run(() => answerQuestion(code, room, role))
   }
 
   async function handleExchangeGive(id: SuspectId) {
@@ -109,7 +115,7 @@ export default function GameScreen({
       {room.log.length > 0 && (
         <div className="mini-log">
           {room.log
-            .slice(-2)
+            .slice(-4)
             .reverse()
             .map((e, i) => (
               <div key={i} className="mini-log-entry">
@@ -128,19 +134,39 @@ export default function GameScreen({
         </div>
       </div>
 
-      <div className="action-bar">
-        <button type="button" className="action-btn" disabled={!myTurn} onClick={() => setModal('question')}>
-          🔎<span>질문</span>
-        </button>
-        <button type="button" className="action-btn" disabled={!canExchange} onClick={() => setModal('exchange-side')}>
-          🔄<span>교환</span>
-        </button>
-        <button type="button" className="action-btn danger" disabled={!myTurn} onClick={() => setModal('accuse')}>
-          ☠<span>고발</span>
-        </button>
-      </div>
+      {mustAnswer && pendingQuestion && (
+        <div className="question-pending-panel">
+          <p className="question-pending-text">
+            상대가 <strong>"{pendingQuestion.traitLabel}"</strong>을(를) 질문했어요. 내 손패에서 실제 개수를 세어 답해야 해요.
+          </p>
+          {errorMsg && <p className="sheet-error">{errorMsg}</p>}
+          <button type="button" className="menu-btn primary" disabled={busy} onClick={handleAnswer}>
+            {busy ? '답하는 중…' : '답변하기'}
+          </button>
+        </div>
+      )}
 
-      {!myTurn && <p className="wait-hint">상대의 행동을 기다리고 있어요…</p>}
+      {waitingForAnswer && pendingQuestion && (
+        <p className="wait-hint">"{pendingQuestion.traitLabel}" 질문에 대한 상대의 답변을 기다리고 있어요…</p>
+      )}
+
+      {!pendingQuestion && (
+        <>
+          <div className="action-bar">
+            <button type="button" className="action-btn" disabled={!canAct} onClick={() => setModal('question')}>
+              🔎<span>질문</span>
+            </button>
+            <button type="button" className="action-btn" disabled={!canExchange} onClick={() => setModal('exchange-side')}>
+              🔄<span>교환</span>
+            </button>
+            <button type="button" className="action-btn danger" disabled={!canAct} onClick={() => setModal('accuse')}>
+              ☠<span>고발</span>
+            </button>
+          </div>
+
+          {!myTurn && <p className="wait-hint">상대의 행동을 기다리고 있어요…</p>}
+        </>
+      )}
 
       {/* 질문 모달 */}
       {modal === 'question' && (
@@ -252,6 +278,7 @@ export default function GameScreen({
         myHand={myHand}
         revealedCentralIds={revealedCentralIds}
         answers={room.answers}
+        log={room.log}
       />
     </div>
   )

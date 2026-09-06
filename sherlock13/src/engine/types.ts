@@ -48,6 +48,15 @@ export interface LastAnswer {
   at: number
 }
 
+/** 질문은 던졌지만 아직 상대가 답하지 않은 상태(섹션: 질문하기). 답은
+ * 반드시 질문받은 사람 본인의 손패에서 세어야 해서, 그 사람의 클라이언트가
+ * 자기 손패를 직접 읽어 답할 때까지 이 상태로 대기한다. */
+export interface PendingQuestion {
+  askedBy: Role
+  trait: TraitId
+  traitLabel: string
+}
+
 export interface LogEntry {
   at: number
   text: string
@@ -67,6 +76,7 @@ export interface RoomDoc {
   result: GameResult | null
   answers: LastAnswer[]
   log: LogEntry[]
+  pendingQuestion: PendingQuestion | null
 }
 
 /** sherlock13Rooms/{code}/private/host, /guest — 본인만 읽는 손패. */

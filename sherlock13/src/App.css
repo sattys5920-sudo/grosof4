@@ -785,3 +785,40 @@ button.suspect-card:hover {
 @media (max-width: 380px) {
   .suspect-card-sm { width: 58px; }
 }
+
+/* ---------------------------------------------------------------- 질문 대기/답변 */
+.question-pending-panel {
+  background: linear-gradient(160deg, var(--panel-raised), var(--panel));
+  border: 1.5px solid var(--brass-dim);
+  border-radius: 14px;
+  padding: 14px;
+  margin: 4px 2px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.question-pending-text {
+  font-size: 13px;
+  color: var(--ink-dim);
+  line-height: 1.5;
+  margin: 0;
+}
+.question-pending-text strong {
+  color: var(--brass-bright);
+}
+
+/* ---------------------------------------------------------------- 수사 노트: 전체 기록 */
+.full-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.full-log-entry {
+  font-size: 12px;
+  color: var(--ink-dim);
+  line-height: 1.5;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line-soft);
+}

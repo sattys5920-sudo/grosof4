@@ -37,6 +37,15 @@ describe('용의자 데이터', () => {
       expect(count).toBeLessThan(13)
     }
   })
+
+  it('소지품 특징은 한쪽 성별에만 몰려있지 않고 양쪽 성별에 걸쳐 있다 (특징이 곧 성별 힌트가 되지 않게)', () => {
+    const itemTraits = TRAITS.filter((t) => t.id !== 'male' && t.id !== 'female')
+    for (const trait of itemTraits) {
+      const holders = SUSPECTS.filter((s) => s.traits.includes(trait.id))
+      const genders = new Set(holders.map((s) => (s.traits.includes('male') ? 'male' : 'female')))
+      expect(genders.size).toBeGreaterThan(1)
+    }
+  })
 })
 
 describe('shuffle', () => {

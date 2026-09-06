@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { LastAnswer, Role, SuspectId } from '../engine/types'
+import type { LastAnswer, LogEntry, Role, SuspectId } from '../engine/types'
 import { SUSPECTS, SUSPECT_MAP, TRAITS, TRAIT_MAP } from '../engine/suspects'
 import { countTrait, possibleCriminals } from '../engine/logic'
 
@@ -20,6 +20,7 @@ export default function ClueSheet({
   myHand,
   revealedCentralIds,
   answers,
+  log,
 }: {
   open: boolean
   onClose: () => void
@@ -28,6 +29,7 @@ export default function ClueSheet({
   myHand: SuspectId[]
   revealedCentralIds: SuspectId[]
   answers: LastAnswer[]
+  log: LogEntry[]
 }) {
   const [notes, setNotes] = useState<Record<SuspectId, NoteStatus>>({})
 
@@ -135,6 +137,19 @@ export default function ClueSheet({
                 </div>
               )
             })}
+          </div>
+        </section>
+
+        <section className="clue-section">
+          <h3>전체 기록</h3>
+          <div className="full-log-list">
+            {[...log]
+              .reverse()
+              .map((e, i) => (
+                <div key={`${e.at}-${i}`} className="full-log-entry">
+                  {e.text}
+                </div>
+              ))}
           </div>
         </section>
       </div>
