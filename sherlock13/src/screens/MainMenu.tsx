@@ -3,11 +3,13 @@ import { useState } from 'react'
 export default function MainMenu({
   onCreate,
   onJoin,
+  onOpenAbraca,
   busy,
   errorMsg,
 }: {
   onCreate: () => void
   onJoin: (code: string) => void
+  onOpenAbraca: () => void
   busy: boolean
   errorMsg: string
 }) {
@@ -34,6 +36,9 @@ export default function MainMenu({
           </button>
           <button type="button" className="menu-btn" disabled={busy} onClick={() => setMode('join')}>
             초대 코드로 입장하기
+          </button>
+          <button type="button" className="menu-btn ghost" disabled={busy} onClick={onOpenAbraca}>
+            🪄 아브라카왓 (한 기기로 2인)
           </button>
         </div>
       )}

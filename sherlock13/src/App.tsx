@@ -6,8 +6,9 @@ import MainMenu from './screens/MainMenu'
 import Lobby from './screens/Lobby'
 import GameScreen from './screens/GameScreen'
 import GameResultScreen from './screens/GameResult'
+import AbracaGame from './screens/AbracaGame'
 
-type Screen = 'menu' | 'lobby' | 'game'
+type Screen = 'menu' | 'lobby' | 'game' | 'abraca'
 
 function initialCodeFromUrl(): string {
   try {
@@ -101,7 +102,10 @@ export default function App() {
 
   return (
     <div className="app">
-      {screen === 'menu' && <MainMenu onCreate={handleCreate} onJoin={handleJoin} busy={busy} errorMsg={errorMsg} />}
+      {screen === 'menu' && (
+        <MainMenu onCreate={handleCreate} onJoin={handleJoin} onOpenAbraca={() => setScreen('abraca')} busy={busy} errorMsg={errorMsg} />
+      )}
+      {screen === 'abraca' && <AbracaGame onExit={() => setScreen('menu')} />}
       {screen === 'lobby' && code && <Lobby code={code} onCancel={exitToMenu} />}
       {screen === 'game' && room && role && code && room.phase !== 'over' && (
         <GameScreen code={code} role={role} room={room} myHand={myHand} onHandChanged={refreshHand} />

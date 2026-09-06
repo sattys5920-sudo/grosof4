@@ -822,3 +822,522 @@ button.suspect-card:hover {
   padding: 6px 8px;
   border-bottom: 1px solid var(--line-soft);
 }
+
+/* ==================================================================
+   아브라카왓 — 셜록13의 브라스 테마와 분리된 독자적인 마법학교 팔레트.
+   .abraca-theme 안에서만 이 변수들을 쓴다. */
+.abraca-theme {
+  --arcane-void: #0b0921;
+  --arcane-panel: #171136;
+  --arcane-panel-raised: #221a4a;
+  --arcane-line: #4a3b82;
+  --arcane-line-soft: #2a2154;
+  --arcane-ink: #ece7fb;
+  --arcane-ink-dim: #b2a8d6;
+  --arcane-ink-faint: #7268a0;
+  --arcane-gold: #d9b45f;
+  --arcane-gold-bright: #f4d688;
+  --arcane-purple: #8266cf;
+  --arcane-purple-bright: #ab8ceb;
+  --arcane-ok: #5fbf8f;
+  --arcane-ok-bright: #86dcae;
+  --arcane-danger: #d1495f;
+  --arcane-danger-bright: #ec7387;
+
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 20px;
+  overflow-y: auto;
+  background:
+    radial-gradient(ellipse 700px 420px at 20% -10%, rgba(130, 102, 207, 0.22), transparent 60%),
+    radial-gradient(ellipse 600px 500px at 100% 110%, rgba(217, 180, 95, 0.1), transparent 55%),
+    var(--arcane-void);
+  color: var(--arcane-ink);
+  font-family: var(--font-body);
+}
+
+.abraca-setup,
+.abraca-handoff,
+.abraca-result {
+  width: 100%;
+  max-width: 420px;
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.abraca-emblem {
+  font-size: 34px;
+  margin-bottom: 2px;
+}
+.abraca-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  letter-spacing: 0.05em;
+  color: var(--arcane-gold-bright);
+  margin: 0;
+  text-shadow: 0 0 18px rgba(244, 214, 136, 0.35);
+}
+.abraca-tagline {
+  font-size: 12.5px;
+  color: var(--arcane-ink-dim);
+  line-height: 1.6;
+  margin: 4px 0 18px;
+}
+
+.abraca-field {
+  width: 100%;
+  text-align: left;
+  margin-bottom: 6px;
+}
+.abraca-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  color: var(--arcane-purple-bright);
+  margin-bottom: 6px;
+}
+.abraca-input {
+  width: 100%;
+  background: var(--arcane-panel-raised);
+  border: 1.5px solid var(--arcane-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--arcane-ink);
+  font-size: 14px;
+}
+.abraca-input:focus {
+  outline: none;
+  border-color: var(--arcane-purple-bright);
+}
+
+.abraca-difficulty-row {
+  display: flex;
+  gap: 8px;
+}
+.abraca-difficulty-btn {
+  flex: 1;
+  padding: 10px 4px;
+  border-radius: 10px;
+  border: 1.5px solid var(--arcane-line);
+  background: var(--arcane-panel-raised);
+  color: var(--arcane-ink-dim);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.abraca-difficulty-btn.active {
+  border-color: var(--arcane-gold-bright);
+  color: var(--arcane-gold-bright);
+  background: linear-gradient(160deg, var(--arcane-panel-raised), rgba(217, 180, 95, 0.12));
+}
+
+.abraca-btn {
+  width: 100%;
+  border: 1.5px solid var(--arcane-line);
+  background: var(--arcane-panel-raised);
+  color: var(--arcane-ink-dim);
+  border-radius: 12px;
+  padding: 13px;
+  font-weight: 700;
+  font-size: 13.5px;
+  margin-top: 10px;
+}
+.abraca-btn.primary {
+  border: none;
+  background: linear-gradient(180deg, var(--arcane-purple-bright), var(--arcane-purple));
+  color: #0e0824;
+}
+.abraca-btn.ghost {
+  background: none;
+  border-color: var(--arcane-line-soft);
+  color: var(--arcane-ink-faint);
+}
+
+/* ---------------------------------------------------------------- 턴 전환 화면 */
+.abraca-handoff {
+  justify-content: center;
+}
+.abraca-handoff-card {
+  width: 100%;
+  background: linear-gradient(165deg, var(--arcane-panel-raised), var(--arcane-panel));
+  border: 1.5px solid var(--arcane-line);
+  border-radius: 20px;
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  animation: abraca-card-flip 0.4s ease-out both;
+}
+.abraca-handoff-done {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--arcane-ink-faint);
+  margin: 0;
+}
+.abraca-handoff-divider {
+  width: 48px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--arcane-gold), transparent);
+}
+.abraca-handoff-instruction {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--arcane-gold-bright);
+  margin: 0;
+}
+.abraca-handoff-btn {
+  margin-top: 12px;
+}
+
+/* ---------------------------------------------------------------- 결과 화면 */
+.abraca-result-eyebrow {
+  font-size: 14px;
+  color: var(--arcane-gold-bright);
+  margin: 0;
+}
+.abraca-result-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--arcane-purple-bright);
+  margin: 4px 0 8px;
+  animation: abraca-victory-pop 0.5s ease-out both;
+}
+.abraca-result-detail {
+  font-size: 13px;
+  color: var(--arcane-ink-dim);
+  margin: 0 0 20px;
+}
+.abraca-result-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---------------------------------------------------------------- 플레이 화면 */
+.abraca-play {
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  position: relative;
+  gap: 12px;
+}
+
+.abraca-hp-row {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+}
+.abraca-hp-chip {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border-radius: 12px;
+  border: 1.5px solid var(--arcane-line-soft);
+  background: var(--arcane-panel);
+}
+.abraca-hp-chip.turn {
+  border-color: var(--arcane-gold-bright);
+  background: linear-gradient(160deg, var(--arcane-panel-raised), rgba(217, 180, 95, 0.1));
+}
+.abraca-hp-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--arcane-ink-dim);
+}
+.abraca-hp-chip.turn .abraca-hp-name {
+  color: var(--arcane-gold-bright);
+}
+.abraca-hearts {
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--arcane-danger-bright);
+}
+.abraca-heart.empty {
+  color: var(--arcane-line);
+}
+
+.abraca-turn-label {
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--arcane-purple-bright);
+  margin: 0;
+}
+
+.abraca-section {
+  width: 100%;
+}
+.abraca-section-title {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--arcane-ink-faint);
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+.abraca-tile-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.abraca-empty-hint {
+  font-size: 12px;
+  color: var(--arcane-ink-faint);
+}
+.abraca-tile {
+  flex: 0 0 auto;
+  min-width: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  border: 1.5px solid var(--arcane-line);
+}
+.abraca-tile.revealed {
+  background: linear-gradient(160deg, var(--arcane-panel-raised), var(--arcane-panel));
+}
+.abraca-tile.hidden {
+  background: repeating-linear-gradient(135deg, var(--arcane-panel), var(--arcane-panel) 6px, var(--arcane-panel-raised) 6px, var(--arcane-panel-raised) 12px);
+  min-width: 40px;
+  padding: 10px 6px;
+}
+.abraca-tile-icon {
+  font-size: 18px;
+}
+.abraca-tile.hidden .abraca-tile-icon {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--arcane-ink-faint);
+}
+.abraca-tile-name {
+  font-size: 10.5px;
+  color: var(--arcane-ink-dim);
+  white-space: nowrap;
+}
+.abraca-tile-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--arcane-gold-bright);
+}
+
+.abraca-memo {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.abraca-memo-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.abraca-memo-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  padding: 2px 0;
+}
+.abraca-memo-label.ok {
+  color: var(--arcane-ok-bright);
+}
+.abraca-memo-label.bad {
+  color: var(--arcane-danger-bright);
+}
+.abraca-memo-chip {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--arcane-line);
+}
+.abraca-memo-chip.ok {
+  color: var(--arcane-ok-bright);
+  border-color: var(--arcane-ok);
+}
+.abraca-memo-chip.bad {
+  color: var(--arcane-danger-bright);
+  border-color: var(--arcane-danger);
+}
+
+.abraca-log {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 2px;
+}
+.abraca-log-line {
+  font-size: 10.5px;
+  color: var(--arcane-ink-faint);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.abraca-declare-grid {
+  width: 100%;
+  margin-top: auto;
+  padding-top: 6px;
+}
+.abraca-declare-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--arcane-ink-dim);
+  margin: 0 0 8px;
+}
+.abraca-declare-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+}
+.abraca-declare-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 4px;
+  border-radius: 14px;
+  border: 1.5px solid var(--arcane-line);
+  background: var(--arcane-panel-raised);
+  color: var(--arcane-ink-dim);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.abraca-declare-btn:not(:disabled):active {
+  border-color: var(--arcane-gold-bright);
+  color: var(--arcane-gold-bright);
+}
+.abraca-declare-btn:disabled {
+  opacity: 0.45;
+}
+.abraca-declare-icon {
+  font-size: 20px;
+}
+
+.abraca-flash-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(11, 9, 33, 0.86);
+  border-radius: 18px;
+  backdrop-filter: blur(2px);
+  animation: abraca-flash-in 0.2s ease-out both;
+}
+.abraca-flash-card {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.abraca-flash-icon {
+  font-size: 46px;
+}
+.abraca-flash-overlay.success .abraca-flash-icon {
+  animation: abraca-success-glow 0.7s ease-out;
+}
+.abraca-flash-overlay.fail .abraca-flash-icon {
+  animation: abraca-fail-shake 0.5s ease-out;
+}
+.abraca-flash-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  margin: 0;
+}
+.abraca-flash-overlay.success .abraca-flash-title {
+  color: var(--arcane-ok-bright);
+}
+.abraca-flash-overlay.fail .abraca-flash-title {
+  color: var(--arcane-danger-bright);
+}
+.abraca-flash-desc {
+  font-size: 12.5px;
+  color: var(--arcane-ink-dim);
+  max-width: 260px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+@keyframes abraca-card-flip {
+  from {
+    opacity: 0;
+    transform: rotateY(90deg) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: rotateY(0) scale(1);
+  }
+}
+@keyframes abraca-victory-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes abraca-flash-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes abraca-success-glow {
+  0% {
+    filter: drop-shadow(0 0 0 rgba(134, 220, 174, 0));
+    transform: scale(0.7);
+  }
+  60% {
+    filter: drop-shadow(0 0 22px rgba(134, 220, 174, 0.9));
+    transform: scale(1.15);
+  }
+  100% {
+    filter: drop-shadow(0 0 6px rgba(134, 220, 174, 0.4));
+    transform: scale(1);
+  }
+}
+@keyframes abraca-fail-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-8px) rotate(-4deg);
+  }
+  40% {
+    transform: translateX(7px) rotate(3deg);
+  }
+  60% {
+    transform: translateX(-5px) rotate(-2deg);
+  }
+  80% {
+    transform: translateX(3px) rotate(1deg);
+  }
+}
