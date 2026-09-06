@@ -91,6 +91,28 @@ service cloud.firestore {
       }
     }
 
+    // 아브라카왓(sherlock13/ 안의 온라인 2인 마법 추리) — 이 게임은 다른
+    // 게임들과 정반대의 정보 구조다: "내 손패는 나도 못 보고 상대만
+    // 본다"가 핵심 규칙이라, private/host 문서(호스트의 손패)는 호스트
+    // 본인이 아니라 게스트만 읽고 쓸 수 있고, private/guest는 반대로
+    // 호스트만 읽고 쓸 수 있다. 그래서 "선언"(어떤 마법을 쓸지 고르는 것)
+    // 은 방 공개 문서에만 기록되고, 실제 성공/실패 판정과 손패 갱신은
+    // 항상 상대방 클라이언트가 수행한다(자기 손패를 절대 스스로 못 만짐).
+    match /abracaRooms/{roomId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+
+      match /private/host {
+        allow read, write: if request.auth != null
+          && request.auth.uid == get(/databases/$(database)/documents/abracaRooms/$(roomId)).data.guestUid;
+      }
+
+      match /private/guest {
+        allow read, write: if request.auth != null
+          && request.auth.uid == get(/databases/$(database)/documents/abracaRooms/$(roomId)).data.hostUid;
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -6,7 +6,7 @@ import MainMenu from './screens/MainMenu'
 import Lobby from './screens/Lobby'
 import GameScreen from './screens/GameScreen'
 import GameResultScreen from './screens/GameResult'
-import AbracaGame from './screens/AbracaGame'
+import AbracaOnline from './screens/AbracaOnline'
 
 type Screen = 'menu' | 'lobby' | 'game' | 'abraca'
 
@@ -105,7 +105,7 @@ export default function App() {
       {screen === 'menu' && (
         <MainMenu onCreate={handleCreate} onJoin={handleJoin} onOpenAbraca={() => setScreen('abraca')} busy={busy} errorMsg={errorMsg} />
       )}
-      {screen === 'abraca' && <AbracaGame onExit={() => setScreen('menu')} />}
+      {screen === 'abraca' && <AbracaOnline onExit={() => setScreen('menu')} />}
       {screen === 'lobby' && code && <Lobby code={code} onCancel={exitToMenu} />}
       {screen === 'game' && room && role && code && room.phase !== 'over' && (
         <GameScreen code={code} role={role} room={room} myHand={myHand} onHandChanged={refreshHand} />

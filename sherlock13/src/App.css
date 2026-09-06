@@ -964,42 +964,91 @@ button.suspect-card:hover {
   color: var(--arcane-ink-faint);
 }
 
-/* ---------------------------------------------------------------- 턴 전환 화면 */
-.abraca-handoff {
-  justify-content: center;
+/* ---------------------------------------------------------------- 초대 코드 입력/오류 */
+.abraca-code-input {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  letter-spacing: 0.3em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--arcane-gold-bright);
 }
-.abraca-handoff-card {
+.abraca-error {
   width: 100%;
-  background: linear-gradient(165deg, var(--arcane-panel-raised), var(--arcane-panel));
-  border: 1.5px solid var(--arcane-line);
-  border-radius: 20px;
-  padding: 40px 24px;
+  font-size: 12px;
+  color: var(--arcane-danger-bright);
+  background: rgba(209, 73, 95, 0.12);
+  border: 1px solid var(--arcane-danger);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin: 4px 0;
+}
+
+/* ---------------------------------------------------------------- 로비(초대 코드 대기) */
+.abraca-lobby {
+  width: 100%;
+  max-width: 420px;
+  margin: auto 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  animation: abraca-card-flip 0.4s ease-out both;
+  text-align: center;
+  gap: 8px;
 }
-.abraca-handoff-done {
+.abraca-code-display {
+  display: flex;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 10px 0;
+  margin: 6px 0;
+}
+.abraca-code-display span {
   font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  color: var(--arcane-ink-faint);
-  margin: 0;
-}
-.abraca-handoff-divider {
-  width: 48px;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--arcane-gold), transparent);
-}
-.abraca-handoff-instruction {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 34px;
+  font-weight: 800;
   color: var(--arcane-gold-bright);
-  margin: 0;
+  border: 1.5px solid var(--arcane-line);
+  border-radius: 10px;
+  padding: 4px 10px;
+  background: var(--arcane-panel-raised);
 }
-.abraca-handoff-btn {
-  margin-top: 12px;
+.abraca-copied {
+  font-size: 11.5px;
+  color: var(--arcane-ok-bright);
+  margin: -4px 0 4px;
+}
+.abraca-lobby-hint {
+  font-size: 12px;
+  color: var(--arcane-ink-dim);
+  line-height: 1.6;
+  margin: 4px 0 18px;
+}
+.abraca-lobby-waiting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--arcane-purple-bright);
+  margin-bottom: 18px;
+}
+.abraca-lobby-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--arcane-purple-bright);
+  animation: abraca-pulse 1.2s ease-in-out infinite;
+}
+@keyframes abraca-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
 }
 
 /* ---------------------------------------------------------------- 결과 화면 */
@@ -1281,16 +1330,6 @@ button.suspect-card:hover {
   margin: 0;
 }
 
-@keyframes abraca-card-flip {
-  from {
-    opacity: 0;
-    transform: rotateY(90deg) scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: rotateY(0) scale(1);
-  }
-}
 @keyframes abraca-victory-pop {
   from {
     opacity: 0;

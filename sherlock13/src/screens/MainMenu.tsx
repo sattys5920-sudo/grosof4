@@ -38,7 +38,7 @@ export default function MainMenu({
             초대 코드로 입장하기
           </button>
           <button type="button" className="menu-btn ghost" disabled={busy} onClick={onOpenAbraca}>
-            🪄 아브라카왓 (한 기기로 2인)
+            🪄 아브라카왓 (초대 코드로 2인)
           </button>
         </div>
       )}
