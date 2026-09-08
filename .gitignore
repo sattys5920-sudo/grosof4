@@ -24,3 +24,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 디자인 시안 캔버스(자동 생성물)
+design/*.canvas.html
+design/goun-high-dark-school-directions.html

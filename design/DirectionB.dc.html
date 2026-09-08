@@ -1,0 +1,124 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #b13a2b; } a:hover { color: #83271b; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #e3ddcd; color: #1e1c18; font-family: 'Nanum Gothic Coding', 'Apple SD Gothic Neo', monospace; display: flex; flex-direction: column; overflow: hidden; position: relative;">
+
+  <div style="position: absolute; inset: 0; background-image: linear-gradient(rgba(30,28,24,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(30,28,24,0.055) 1px, transparent 1px); background-size: 13px 13px; pointer-events: none;"></div>
+
+  <!-- header : 문서 상단 -->
+  <div style="padding: 26px 20px 14px; border-bottom: 2px solid #1e1c18; position: relative;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+      <div style="display: flex; flex-direction: column; gap: 5px;">
+        <div style="font-size: 9.5px; letter-spacing: 0.22em; color: #6b6558;">문서번호 GO-2021-0714</div>
+        <div style="font-family: 'Gowun Batang', serif; font-weight: 700; font-size: 23px; letter-spacing: 0.02em;">조사 성적 통지표</div>
+      </div>
+      <div style="border: 2px solid #b13a2b; color: #b13a2b; width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; font-family: 'Gowun Batang', serif; font-weight: 700; font-size: 12px; letter-spacing: 0.06em; transform: rotate(-9deg); text-align: center; line-height: 1.2;">대외<br>비</div>
+    </div>
+    <div style="display: flex; gap: 14px; margin-top: 12px; font-size: 10.5px; color: #4b4740;">
+      <span>3 학년 · 괴담연구회</span>
+      <span>제 3 차</span>
+      <span>02:14</span>
+    </div>
+  </div>
+
+  <!-- 등급표 -->
+  <div style="padding: 16px 20px 14px; border-bottom: 1px dashed #8d8674; position: relative;">
+    <div style="font-size: 10px; letter-spacing: 0.2em; color: #6b6558; margin-bottom: 10px;">차 수 별 판 정</div>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px;">
+      <div style="aspect-ratio: 1; border: 1.5px solid #1e1c18; background: #1e1c18; color: #e3ddcd; display: flex; align-items: center; justify-content: center; font-family: 'Gowun Batang', serif; font-weight: 700; font-size: 24px;">A</div>
+      <div style="aspect-ratio: 1; border: 1.5px solid #b13a2b; color: #b13a2b; display: flex; align-items: center; justify-content: center; font-family: 'Gowun Batang', serif; font-weight: 700; font-size: 24px;">F</div>
+      <div style="aspect-ratio: 1; border: 1.5px solid #1e1c18; display: flex; align-items: center; justify-content: center; font-family: 'Gowun Batang', serif; font-weight: 700; font-size: 20px; background: repeating-linear-gradient(45deg, transparent 0 5px, rgba(30,28,24,0.12) 5px 10px);">?</div>
+      <div style="aspect-ratio: 1; border: 1.5px dashed #a49c88; color: #a49c88; display: flex; align-items: center; justify-content: center; font-family: 'Gowun Batang', serif; font-size: 20px;">·</div>
+      <div style="aspect-ratio: 1; border: 1.5px dashed #a49c88; color: #a49c88; display: flex; align-items: center; justify-content: center; font-family: 'Gowun Batang', serif; font-size: 20px;">·</div>
+    </div>
+  </div>
+
+  <!-- 명부 -->
+  <div style="padding: 14px 20px 6px; position: relative;">
+    <div style="display: flex; justify-content: space-between; font-size: 10px; letter-spacing: 0.18em; color: #6b6558; padding-bottom: 7px; border-bottom: 1px solid #1e1c18;">
+      <span>명 부</span>
+      <span>투 표</span>
+    </div>
+    <div style="display: flex; flex-direction: column;">
+      <div style="display: flex; align-items: center; gap: 10px; height: 44px; border-bottom: 1px dotted #9b9484;">
+        <span style="width: 20px; font-size: 11px; color: #7a7364;">01</span>
+        <span style="flex-grow: 1; font-family: 'Gowun Batang', serif; font-size: 14.5px;">기록자</span>
+        <span style="font-size: 11px; letter-spacing: 0.1em; border: 1px solid #1e1c18; padding: 3px 9px;">찬성</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; height: 44px; border-bottom: 1px dotted #9b9484;">
+        <span style="width: 20px; font-size: 11px; color: #7a7364;">02</span>
+        <span style="flex-grow: 1; font-family: 'Gowun Batang', serif; font-size: 14.5px;">감찰자</span>
+        <span style="font-size: 11px; letter-spacing: 0.1em; border: 1px solid #b13a2b; color: #b13a2b; padding: 3px 9px;">반대</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; height: 44px; border-bottom: 1px dotted #9b9484; background: rgba(177,58,43,0.07);">
+        <span style="width: 20px; font-size: 11px; color: #7a7364;">03</span>
+        <span style="flex-grow: 1; font-family: 'Gowun Batang', serif; font-size: 14.5px;">보호자<span style="font-size: 10px; color: #b13a2b; margin-left: 8px; letter-spacing: 0.1em;">기권 2 회</span></span>
+        <span style="font-size: 11px; letter-spacing: 0.1em; color: #7a7364; border: 1px dashed #9b9484; padding: 3px 9px;">미정</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; height: 44px; border-bottom: 1px dotted #9b9484;">
+        <span style="width: 20px; font-size: 11px; color: #7a7364;">04</span>
+        <span style="flex-grow: 1; font-family: 'Gowun Batang', serif; font-size: 14.5px;">목격자</span>
+        <span style="font-size: 11px; letter-spacing: 0.1em; border: 1px solid #1e1c18; padding: 3px 9px;">찬성</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 회람 -->
+  <div style="flex-grow: 1; margin: 8px 20px 0; border-top: 2px solid #1e1c18; padding-top: 12px; display: flex; flex-direction: column; gap: 11px; overflow: hidden; position: relative;">
+    <div style="font-size: 10px; letter-spacing: 0.2em; color: #6b6558;">회 람</div>
+    <div style="display: flex; gap: 9px; align-items: baseline;">
+      <span style="font-size: 11px; color: #7a7364; white-space: nowrap;">02:09</span>
+      <span style="font-size: 13px; line-height: 1.65; text-wrap: pretty;"><strong style="font-family: 'Gowun Batang', serif;">감찰자</strong> — 3 번은 두 번 다 기권했다. 기록에 남긴다.</span>
+    </div>
+    <div style="display: flex; gap: 9px; align-items: baseline;">
+      <span style="font-size: 11px; color: #7a7364; white-space: nowrap;">02:12</span>
+      <span style="font-size: 13px; line-height: 1.65; text-wrap: pretty;"><strong style="font-family: 'Gowun Batang', serif; color: #b13a2b;">나</strong> — 기권도 점수로 매기는 학교였나, 여기가.</span>
+    </div>
+  </div>
+
+  <!-- 입력 -->
+  <div style="padding: 12px 20px; position: relative;">
+    <div style="display: flex; align-items: center; gap: 10px; height: 46px; border: 1.5px solid #1e1c18; background: #ece7d9; padding: 0 14px;">
+      <span style="font-size: 11px; letter-spacing: 0.14em; color: #7a7364;">기 입</span>
+      <span style="width: 1px; height: 18px; background: #b6ae9b;"></span>
+      <span style="flex-grow: 1; font-size: 12.5px; color: #8d8674;">의견을 회람에 남기시오</span>
+    </div>
+  </div>
+
+  <!-- 탭 -->
+  <div style="border-top: 2px solid #1e1c18; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #d8d1bf; position: relative;">
+    <div style="height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-right: 1px solid #a9a18d; background: #1e1c18; color: #e3ddcd;">
+      <span style="font-size: 9px; letter-spacing: 0.14em;">1 교시</span>
+      <span style="font-family: 'Gowun Batang', serif; font-size: 13px;">교실</span>
+    </div>
+    <div style="height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-right: 1px solid #a9a18d; color: #4b4740;">
+      <span style="font-size: 9px; letter-spacing: 0.14em; color: #7a7364;">2 교시</span>
+      <span style="font-family: 'Gowun Batang', serif; font-size: 13px;">조사실</span>
+    </div>
+    <div style="height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-right: 1px solid #a9a18d; color: #4b4740;">
+      <span style="font-size: 9px; letter-spacing: 0.14em; color: #7a7364;">3 교시</span>
+      <span style="font-family: 'Gowun Batang', serif; font-size: 13px;">원정</span>
+    </div>
+    <div style="height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #4b4740;">
+      <span style="font-size: 9px; letter-spacing: 0.14em; color: #7a7364;">생활</span>
+      <span style="font-family: 'Gowun Batang', serif; font-size: 13px;">기록부</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

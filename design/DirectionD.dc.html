@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gothic+A1:wght@200;400&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #6d7f8c; } a:hover { color: #4e5f6b; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #c9ced0; color: #3d4649; font-family: 'Gothic A1', 'Apple SD Gothic Neo', sans-serif; font-weight: 200; display: flex; flex-direction: column; overflow: hidden; position: relative;">
+
+  <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(238,241,241,0.75) 0%, rgba(201,206,208,0) 42%, rgba(150,158,162,0.35) 100%); pointer-events: none;"></div>
+
+  <!-- header -->
+  <div style="padding: 46px 32px 0; position: relative;">
+    <div style="font-size: 10px; letter-spacing: 0.34em; color: #7c868a;">셋째 날 · 02:14</div>
+  </div>
+
+  <!-- 조사 상태 : 한 문장 -->
+  <div style="padding: 34px 32px 0; position: relative;">
+    <div style="font-family: 'Gowun Batang', serif; font-size: 27px; line-height: 1.58; letter-spacing: -0.01em; color: #2c3639; text-wrap: pretty;">세 번째 조사는<br>아직 아무도<br>들어가지 않았다.</div>
+    <div style="display: flex; gap: 5px; margin-top: 30px;">
+      <span style="width: 26px; height: 1px; background: #55605f;"></span>
+      <span style="width: 26px; height: 1px; background: #a45a52;"></span>
+      <span style="width: 26px; height: 1px; background: #2c3639;"></span>
+      <span style="width: 26px; height: 1px; background: #adb3b5;"></span>
+      <span style="width: 26px; height: 1px; background: #adb3b5;"></span>
+    </div>
+  </div>
+
+  <!-- 대화 : 여백 큰 독백 흐름 -->
+  <div style="flex-grow: 1; padding: 52px 32px 0; display: flex; flex-direction: column; gap: 34px; overflow: hidden; position: relative;">
+
+    <div style="display: flex; flex-direction: column; gap: 9px;">
+      <span style="font-size: 9.5px; letter-spacing: 0.28em; color: #86908f;">기록자</span>
+      <span style="font-size: 15px; line-height: 1.86; color: #414a4d; font-weight: 400; text-wrap: pretty;">그해 여름 기사만 잘려 있었어.</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 9px;">
+      <span style="font-size: 9.5px; letter-spacing: 0.28em; color: #86908f;">감찰자</span>
+      <span style="font-size: 15px; line-height: 1.86; color: #414a4d; font-weight: 400; text-wrap: pretty;">우리 중 누군가는 먼저 알고 있었다는 뜻이지.</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 9px; align-items: flex-end; text-align: right;">
+      <span style="font-size: 9.5px; letter-spacing: 0.28em; color: #a45a52;">나</span>
+      <span style="font-size: 15px; line-height: 1.86; color: #2c3639; font-weight: 400; text-wrap: pretty;">나는 그 여름을 기억하지 못한다.</span>
+    </div>
+
+  </div>
+
+  <!-- 방송 : 화면 하단에 낮게 깔림 -->
+  <div style="padding: 0 32px 26px; position: relative;">
+    <div style="border-top: 1px solid #aab1b3; padding-top: 18px; display: flex; flex-direction: column; gap: 10px;">
+      <span style="font-size: 9.5px; letter-spacing: 0.3em; color: #86908f;">방송</span>
+      <span style="font-family: 'Gowun Batang', serif; font-size: 16px; line-height: 1.7; color: #2c3639; text-wrap: pretty;">유민서 학생은 지금 즉시 방송실로 오십시오.</span>
+    </div>
+  </div>
+
+  <!-- 입력 -->
+  <div style="padding: 0 32px 18px; position: relative;">
+    <div style="display: flex; align-items: center; height: 46px; border-bottom: 1px solid #8f9799;">
+      <span style="flex-grow: 1; font-size: 13px; letter-spacing: 0.06em; color: #7c868a;">말하기</span>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3d4649" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15"></path><path d="M13 6l6 6-6 6"></path></svg>
+    </div>
+  </div>
+
+  <!-- 탭 -->
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0 24px 26px; position: relative;">
+    <div style="height: 46px; display: flex; align-items: center; justify-content: center;">
+      <span style="font-family: 'Gowun Batang', serif; font-size: 14px; color: #2c3639; border-bottom: 1px solid #2c3639; padding-bottom: 4px;">교실</span>
+    </div>
+    <div style="height: 46px; display: flex; align-items: center; justify-content: center;">
+      <span style="font-family: 'Gowun Batang', serif; font-size: 14px; color: #7c868a;">조사실</span>
+    </div>
+    <div style="height: 46px; display: flex; align-items: center; justify-content: center;">
+      <span style="font-family: 'Gowun Batang', serif; font-size: 14px; color: #7c868a;">원정</span>
+    </div>
+    <div style="height: 46px; display: flex; align-items: center; justify-content: center;">
+      <span style="font-family: 'Gowun Batang', serif; font-size: 14px; color: #7c868a;">프로필</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
