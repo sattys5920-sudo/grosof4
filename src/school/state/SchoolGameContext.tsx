@@ -3,14 +3,19 @@ import { roleById } from '../data/roles'
 import { actionByKind } from '../data/actions'
 import { computeRelationshipMatrix, type RelationshipMatrix } from '../engine/relationships'
 import { createOriginRumor, retellRumor } from '../engine/rumors'
+import { revealText } from '../engine/reveals'
 import {
   addSchoolRumor,
   advanceSchoolDay,
   assignRolesAndReveal,
   ensureSchoolSessionInitialized,
   joinSchoolSession,
+  logReveal,
   logSchoolAction,
   postGroupChatMessage,
+  sendDirectMessage,
+  subscribeMyDmThreads,
+  threadKeyFor,
   resetSchoolSession,
   setActiveEventCard,
   setHiddenGoalResolution as setHiddenGoalResolutionSync,
@@ -20,7 +25,17 @@ import {
   subscribeSchoolPlayers,
   subscribeSchoolSession,
 } from '../sync'
-import type { ActionKind, ChatMessage, EndingKey, PlayerProfile, RoleSpec, RumorEntry, SchoolSessionState } from '../types'
+import type {
+  ActionKind,
+  ChatMessage,
+  DmThread,
+  EndingKey,
+  PlayerProfile,
+  RevealKind,
+  RoleSpec,
+  RumorEntry,
+  SchoolSessionState,
+} from '../types'
 
 const HOST_CODE = '821113'
 const LS = {
@@ -37,6 +52,7 @@ const EMPTY_SESSION: SchoolSessionState = {
   groupChat: [],
   actionLog: [],
   rumors: [],
+  revealLog: [],
   activeEventCard: null,
   createdAtMs: Date.now(),
 }
@@ -64,6 +80,11 @@ interface SchoolGameValue {
   hostEndGame: () => Promise<void>
   hostResetSession: () => Promise<void>
   sendGroupChat: (text: string) => Promise<void>
+  dmThreads: Record<string, DmThread>
+  dmWith: (otherId: string) => ChatMessage[]
+  sendDm: (targetId: string, text: string) => Promise<void>
+  revealToPerson: (targetId: string, kind: RevealKind, custom: string) => Promise<void>
+  revealToClass: (kind: RevealKind, custom: string) => Promise<void>
   performAction: (kind: ActionKind, targetId: string | null, text: string | null) => Promise<void>
   spreadRumor: (targetId: string, text: string, parentRumorId: string | null) => Promise<void>
   toggleMyMissionCheck: (index: number) => Promise<void>
@@ -88,6 +109,7 @@ export function SchoolGameProvider({ children }: { children: ReactNode }) {
   const [players, setPlayers] = useState<Record<string, PlayerProfile>>({})
   const [sessionLoaded, setSessionLoaded] = useState(false)
   const [playersLoaded, setPlayersLoaded] = useState(false)
+  const [dmThreads, setDmThreads] = useState<Record<string, DmThread>>({})
 
   useEffect(() => {
     ensureSchoolSessionInitialized().catch(() => {})
@@ -104,6 +126,14 @@ export function SchoolGameProvider({ children }: { children: ReactNode }) {
       unsubPlayers()
     }
   }, [])
+
+  useEffect(() => {
+    if (!viewerId) {
+      setDmThreads({})
+      return
+    }
+    return subscribeMyDmThreads(viewerId, setDmThreads)
+  }, [viewerId])
 
   const myPlayer = viewerId ? (players[viewerId] ?? null) : null
   const myRole = myPlayer?.roleId ? roleById[myPlayer.roleId] : null
@@ -187,6 +217,75 @@ export function SchoolGameProvider({ children }: { children: ReactNode }) {
     await postGroupChatMessage(message)
   }
 
+  function dmWith(otherId: string): ChatMessage[] {
+    if (!viewerId) return []
+    const thread = dmThreads[threadKeyFor(viewerId, otherId)]
+    if (!thread) return []
+    return [...thread.messages].sort((a, b) => a.createdAtMs - b.createdAtMs)
+  }
+
+  async function sendDm(targetId: string, text: string) {
+    if (!viewerId || !text.trim()) return
+    const message: ChatMessage = {
+      id: crypto.randomUUID(),
+      authorId: viewerId,
+      text: text.trim(),
+      day: session.day,
+      createdAtMs: Date.now(),
+      kind: 'text',
+    }
+    await sendDirectMessage(viewerId, targetId, message)
+  }
+
+  async function revealToPerson(targetId: string, kind: RevealKind, custom: string) {
+    if (!viewerId || !myRole) return
+    const text = revealText(kind, myRole, custom)
+    if (!text) return
+    const message: ChatMessage = {
+      id: crypto.randomUUID(),
+      authorId: viewerId,
+      text,
+      day: session.day,
+      createdAtMs: Date.now(),
+      kind: 'reveal',
+      revealKind: kind,
+    }
+    await sendDirectMessage(viewerId, targetId, message)
+    await logReveal({
+      id: crypto.randomUUID(),
+      actorId: viewerId,
+      revealKind: kind,
+      scope: 'person',
+      targetId,
+      day: session.day,
+      createdAtMs: Date.now(),
+    })
+  }
+
+  async function revealToClass(kind: RevealKind, custom: string) {
+    if (!viewerId || !myRole) return
+    const text = revealText(kind, myRole, custom)
+    if (!text) return
+    await postGroupChatMessage({
+      id: crypto.randomUUID(),
+      authorId: viewerId,
+      text,
+      day: session.day,
+      createdAtMs: Date.now(),
+      kind: 'reveal',
+      revealKind: kind,
+    })
+    await logReveal({
+      id: crypto.randomUUID(),
+      actorId: viewerId,
+      revealKind: kind,
+      scope: 'class',
+      targetId: null,
+      day: session.day,
+      createdAtMs: Date.now(),
+    })
+  }
+
   async function performAction(kind: ActionKind, targetId: string | null, text: string | null) {
     if (!viewerId) return
     const spec = actionByKind[kind]
@@ -252,6 +351,11 @@ export function SchoolGameProvider({ children }: { children: ReactNode }) {
     hostEndGame,
     hostResetSession,
     sendGroupChat,
+    dmThreads,
+    dmWith,
+    sendDm,
+    revealToPerson,
+    revealToClass,
     performAction,
     spreadRumor,
     toggleMyMissionCheck,

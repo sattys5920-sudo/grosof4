@@ -2,12 +2,12 @@ import { useState } from 'react'
 import './RosterScreen.css'
 import { useSchoolGame } from '../state/SchoolGameContext'
 import { roleById } from '../data/roles'
-import { actionByKind } from '../data/actions'
 import { missionCompleteCount, missionTotalCount } from '../engine/missionProgress'
+import { ChatScreen } from './ChatScreen'
 
 export function RosterScreen() {
-  const { isHost, viewerId, players, otherPlayerIds, session } = useSchoolGame()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const { isHost, viewerId, players, otherPlayerIds, dmWith } = useSchoolGame()
+  const [openChatId, setOpenChatId] = useState<string | null>(null)
 
   const classmates = otherPlayerIds
     .map((id) => players[id])
@@ -31,52 +31,38 @@ export function RosterScreen() {
               </li>
             )
           })}
+          {classmates.length === 0 && <li className="sc-roster__empty">아직 아무도 없다.</li>}
         </ul>
       </div>
     )
   }
 
-  const selected = selectedId ? players[selectedId] : null
-  const sharedLog = selectedId
-    ? session.actionLog
-        .filter(
-          (e) =>
-            (e.actorId === viewerId && e.targetId === selectedId) ||
-            (e.actorId === selectedId && e.targetId === viewerId),
-        )
-        .sort((a, b) => a.createdAtMs - b.createdAtMs)
-    : []
+  if (openChatId) {
+    return <ChatScreen otherId={openChatId} onBack={() => setOpenChatId(null)} />
+  }
 
   return (
     <div className="sc-roster">
       <h1 className="sc-roster__title">아이들</h1>
+      <p className="sc-roster__hint">이름을 누르면 둘만의 대화가 열린다.</p>
       <ul className="sc-roster__list">
-        {classmates.map((p) => (
-          <li key={p.id}>
-            <button
-              className={`sc-roster__row sc-roster__row--tap ${selectedId === p.id ? 'is-selected' : ''}`}
-              onClick={() => setSelectedId(selectedId === p.id ? null : p.id)}
-            >
-              <span className="sc-roster__name">{p.nickname}</span>
-              <span className="sc-roster__chevron">{selectedId === p.id ? '−' : '+'}</span>
-            </button>
-            {selectedId === p.id && (
-              <div className="sc-roster__detail">
-                {sharedLog.length === 0 && <p className="sc-roster__empty">{selected?.nickname}와 아직 아무 일도 없었다.</p>}
-                {sharedLog.map((e) => {
-                  const mine = e.actorId === viewerId
-                  return (
-                    <div key={e.id} className="sc-roster__entry">
-                      <span className="sc-roster__entry-actor">{mine ? '나' : selected?.nickname}</span>
-                      <span className="sc-roster__entry-kind">{actionByKind[e.kind].label}</span>
-                      {e.text && <span className="sc-roster__entry-text">{e.text}</span>}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </li>
-        ))}
+        {classmates.map((p) => {
+          const messages = viewerId ? dmWith(p.id) : []
+          const last = messages[messages.length - 1]
+          const revealedToMe = messages.some((m) => m.kind === 'reveal' && m.authorId === p.id)
+          return (
+            <li key={p.id}>
+              <button className="sc-roster__row sc-roster__row--tap" onClick={() => setOpenChatId(p.id)}>
+                <span className="sc-roster__left">
+                  <span className="sc-roster__name">{p.nickname}</span>
+                  {last && <span className="sc-roster__preview">{last.text}</span>}
+                </span>
+                {revealedToMe && <span className="sc-roster__revealed">공개함</span>}
+              </button>
+            </li>
+          )
+        })}
+        {classmates.length === 0 && <li className="sc-roster__empty">아직 아무도 없다.</li>}
       </ul>
     </div>
   )

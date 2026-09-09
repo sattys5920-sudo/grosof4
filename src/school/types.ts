@@ -123,10 +123,35 @@ export interface ActionLogEntry {
   createdAtMs: number
 }
 
+/** 무엇을 공개했는지. 공개는 되돌릴 수 없고, 받은 사람의 화면에 그대로 남는다. */
+export type RevealKind = 'role' | 'privateFact' | 'hiddenGoal' | 'custom'
+
 export interface ChatMessage {
   id: string
   authorId: string
   text: string
+  day: number
+  createdAtMs: number
+  /** 'reveal'이면 공개로 표시된다. 없으면 일반 대화. */
+  kind?: 'text' | 'reveal'
+  revealKind?: RevealKind
+}
+
+/** 두 사람만 보는 1:1 대화방. 문서 id는 threadKey(두 id를 정렬해 이은 값). */
+export interface DmThread {
+  key: string
+  participants: string[]
+  messages: ChatMessage[]
+  updatedAtMs: number
+}
+
+/** 진행자가 판의 속도를 가늠하기 위해 보는 공개 기록. 내용까지는 남기지 않는다. */
+export interface RevealLogEntry {
+  id: string
+  actorId: string
+  revealKind: RevealKind
+  scope: 'class' | 'person'
+  targetId: string | null
   day: number
   createdAtMs: number
 }
@@ -158,6 +183,7 @@ export interface SchoolSessionState {
   groupChat: ChatMessage[]
   actionLog: ActionLogEntry[]
   rumors: RumorEntry[]
+  revealLog: RevealLogEntry[]
   /** 진행자가 오늘 공지한 사건. */
   activeEventCard: string | null
   createdAtMs: number

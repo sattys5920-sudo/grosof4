@@ -3,11 +3,14 @@ import './HomeScreen.css'
 import { useSchoolGame } from '../state/SchoolGameContext'
 import { dayByNumber } from '../data/days'
 import { ActionSheet } from './ActionSheet'
+import { RevealSheet } from '../components/RevealSheet'
+import { REVEAL_LABEL } from '../engine/reveals'
 
 export function HomeScreen() {
-  const { session, players, viewerId, sendGroupChat } = useSchoolGame()
+  const { session, players, viewerId, myRole, sendGroupChat, revealToClass } = useSchoolGame()
   const [draft, setDraft] = useState('')
   const [actionSheetOpen, setActionSheetOpen] = useState(false)
+  const [revealOpen, setRevealOpen] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const day = dayByNumber(session.day)
 
@@ -38,6 +41,16 @@ export function HomeScreen() {
           .map((m) => {
             const isMine = m.authorId === viewerId
             const name = players[m.authorId]?.nickname ?? '???'
+            if (m.kind === 'reveal') {
+              return (
+                <div key={m.id} className="sc-home__reveal">
+                  <span className="sc-home__reveal-label">
+                    {isMine ? '나' : name} · {REVEAL_LABEL[m.revealKind ?? 'custom']}을 공개했다
+                  </span>
+                  <span className="sc-home__reveal-text">{m.text}</span>
+                </div>
+              )
+            }
             return (
               <div key={m.id} className={`sc-home__msg ${isMine ? 'is-mine' : ''}`}>
                 <span className="sc-home__msg-name">{isMine ? '나' : name}</span>
@@ -49,7 +62,10 @@ export function HomeScreen() {
 
       <div className="sc-home__composer">
         <button className="sc-home__act" onClick={() => setActionSheetOpen(true)}>
-          행동하기
+          행동
+        </button>
+        <button className="sc-home__reveal-btn" onClick={() => setRevealOpen(true)} disabled={!myRole}>
+          공개
         </button>
         <input
           value={draft}
@@ -63,6 +79,15 @@ export function HomeScreen() {
       </div>
 
       {actionSheetOpen && <ActionSheet onClose={() => setActionSheetOpen(false)} />}
+
+      {revealOpen && myRole && (
+        <RevealSheet
+          role={myRole}
+          scopeLabel="교실 전체에"
+          onClose={() => setRevealOpen(false)}
+          onReveal={(kind, custom) => revealToClass(kind, custom)}
+        />
+      )}
     </div>
   )
 }

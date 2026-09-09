@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './HostPanelScreen.css'
 import { useSchoolGame } from '../state/SchoolGameContext'
 import { dayByNumber, DAYS } from '../data/days'
+import { REVEAL_LABEL } from '../engine/reveals'
 
 const DISTORTION_LABEL: Record<string, string> = {
   truth: '진실',
@@ -104,6 +105,26 @@ export function HostPanelScreen() {
                 <span className="sc-host__rumor-tag">{DISTORTION_LABEL[r.distortion]}</span>
                 <span className="sc-host__rumor-text">{r.text}</span>
                 <span className="sc-host__rumor-by">{players[r.tellerId]?.nickname ?? '???'}</span>
+              </li>
+            ))}
+        </ul>
+      </section>
+
+      <section className="sc-host__section">
+        <span className="sc-host__label">공개된 것들 · 진행자 전용</span>
+        {session.revealLog.length === 0 && <p className="sc-host__hint">아직 아무도 공개하지 않았다.</p>}
+        <ul className="sc-host__rumors">
+          {session.revealLog
+            .slice()
+            .reverse()
+            .map((r) => (
+              <li key={r.id}>
+                <span className="sc-host__rumor-tag">{REVEAL_LABEL[r.revealKind]}</span>
+                <span className="sc-host__rumor-text">
+                  {players[r.actorId]?.nickname ?? '???'} →{' '}
+                  {r.scope === 'class' ? '교실 전체' : (players[r.targetId ?? '']?.nickname ?? '한 사람')}
+                </span>
+                <span className="sc-host__rumor-by">DAY {r.day}</span>
               </li>
             ))}
         </ul>

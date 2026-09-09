@@ -5,16 +5,27 @@ import {
   doc,
   getDocs,
   onSnapshot,
+  query,
   runTransaction,
   setDoc,
   updateDoc,
+  where,
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { roleById } from './data/roles'
 import { assignRoles } from './engine/setup'
-import type { ActionLogEntry, ChatMessage, GamePhase, PlayerProfile, RumorEntry, SchoolSessionState } from './types'
+import type {
+  ActionLogEntry,
+  ChatMessage,
+  DmThread,
+  GamePhase,
+  PlayerProfile,
+  RevealLogEntry,
+  RumorEntry,
+  SchoolSessionState,
+} from './types'
 
 const SESSION_ID = 'live'
 
@@ -35,6 +46,15 @@ function playerRef(playerId: string) {
   return doc(playersCol(), playerId)
 }
 
+function dmCol() {
+  return collection(requireDb(), 'schoolSessions', SESSION_ID, 'dmThreads')
+}
+
+/** 두 사람의 대화방 id. 누가 먼저 말을 걸었든 같은 방이 되도록 정렬해서 잇는다. */
+export function threadKeyFor(a: string, b: string): string {
+  return a < b ? `${a}__${b}` : `${b}__${a}`
+}
+
 const emptySession: SchoolSessionState = {
   phase: 'lobby',
   day: 1,
@@ -42,6 +62,7 @@ const emptySession: SchoolSessionState = {
   groupChat: [],
   actionLog: [],
   rumors: [],
+  revealLog: [],
   activeEventCard: null,
   createdAtMs: Date.now(),
 }
@@ -60,8 +81,39 @@ export function subscribeSchoolSession(cb: (state: SchoolSessionState) => void):
       cb(emptySession)
       return
     }
-    cb(snap.data() as SchoolSessionState)
+    // 이전 회차에 만들어진 문서에는 나중에 추가한 필드가 없을 수 있어 기본값 위에 얹는다.
+    cb({ ...emptySession, ...(snap.data() as Partial<SchoolSessionState>) })
   })
+}
+
+/** 내가 참여한 1:1 대화방만 구독한다. 남의 방은 애초에 내려오지 않는다. */
+export function subscribeMyDmThreads(viewerId: string, cb: (threads: Record<string, DmThread>) => void): Unsubscribe {
+  const q = query(dmCol(), where('participants', 'array-contains', viewerId))
+  return onSnapshot(q, (snap) => {
+    const threads: Record<string, DmThread> = {}
+    snap.forEach((d) => {
+      threads[d.id] = d.data() as DmThread
+    })
+    cb(threads)
+  })
+}
+
+export async function sendDirectMessage(a: string, b: string, message: ChatMessage): Promise<void> {
+  const key = threadKeyFor(a, b)
+  await setDoc(
+    doc(dmCol(), key),
+    {
+      key,
+      participants: [a, b],
+      messages: arrayUnion(message),
+      updatedAtMs: Date.now(),
+    },
+    { merge: true },
+  )
+}
+
+export async function logReveal(entry: RevealLogEntry): Promise<void> {
+  await updateDoc(sessionRef(), { revealLog: arrayUnion(entry) })
 }
 
 export function subscribeSchoolPlayers(cb: (players: Record<string, PlayerProfile>) => void): Unsubscribe {
@@ -141,9 +193,9 @@ export async function setPlayerEnding(playerId: string, endingKey: string, endin
   await updateDoc(playerRef(playerId), { endingKey, endingNote })
 }
 
-/** 진행자 전용: 다음 회차를 위해 세션과 참가자를 모두 지운다. */
+/** 진행자 전용: 다음 회차를 위해 세션·참가자·대화방을 모두 지운다. */
 export async function resetSchoolSession(): Promise<void> {
-  const players = await getDocs(playersCol())
-  await Promise.all(players.docs.map((d) => deleteDoc(d.ref)))
+  const [players, threads] = await Promise.all([getDocs(playersCol()), getDocs(dmCol())])
+  await Promise.all([...players.docs, ...threads.docs].map((d) => deleteDoc(d.ref)))
   await setDoc(sessionRef(), { ...emptySession, createdAtMs: Date.now() })
 }
