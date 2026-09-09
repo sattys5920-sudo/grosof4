@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './LobbyScreen.css'
 import { useSchoolGame } from '../state/SchoolGameContext'
 import { MAX_PLAYERS, MIN_PLAYERS } from '../data/roles'
+import { withParticle } from '../lib/particle'
 
 export function LobbyScreen() {
   const { isHost, players, hostAssignRoles, hostRemovePlayer, hostResetSession } = useSchoolGame()
@@ -49,7 +50,8 @@ export function LobbyScreen() {
     try {
       await hostRemovePlayer(playerId)
     } catch (e) {
-      setError(e instanceof Error ? `${nickname}을 내보내지 못했다. ${e.message}` : `${nickname}을 내보내지 못했다.`)
+      const who = withParticle(nickname, 'object')
+      setError(e instanceof Error ? `${who} 내보내지 못했다. ${e.message}` : `${who} 내보내지 못했다.`)
     }
   }
 

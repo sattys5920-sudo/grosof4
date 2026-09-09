@@ -5,6 +5,7 @@ import { dayByNumber } from '../data/days'
 import { ActionSheet } from './ActionSheet'
 import { RevealSheet } from '../components/RevealSheet'
 import { REVEAL_LABEL } from '../engine/reveals'
+import { withParticle } from '../lib/particle'
 
 export function HomeScreen() {
   const { session, players, viewerId, myRole, sendGroupChat, revealToClass } = useSchoolGame()
@@ -45,7 +46,7 @@ export function HomeScreen() {
               return (
                 <div key={m.id} className="sc-home__reveal">
                   <span className="sc-home__reveal-label">
-                    {isMine ? '나' : name} · {REVEAL_LABEL[m.revealKind ?? 'custom']}을 공개했다
+                    {isMine ? '나' : name} · {withParticle(REVEAL_LABEL[m.revealKind ?? 'custom'], 'object')} 공개했다
                   </span>
                   <span className="sc-home__reveal-text">{m.text}</span>
                 </div>

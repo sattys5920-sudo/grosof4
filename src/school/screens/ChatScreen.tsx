@@ -3,6 +3,7 @@ import './ChatScreen.css'
 import { useSchoolGame } from '../state/SchoolGameContext'
 import { RevealSheet } from '../components/RevealSheet'
 import { REVEAL_LABEL } from '../engine/reveals'
+import { withParticle } from '../lib/particle'
 
 export function ChatScreen({ otherId, onBack }: { otherId: string; onBack: () => void }) {
   const { players, viewerId, myRole, dmWith, sendDm, revealToPerson } = useSchoolGame()
@@ -42,7 +43,7 @@ export function ChatScreen({ otherId, onBack }: { otherId: string; onBack: () =>
             return (
               <div key={m.id} className={`sc-chat__reveal ${mine ? 'is-mine' : ''}`}>
                 <span className="sc-chat__reveal-label">
-                  {mine ? '내가 공개했다' : `${other?.nickname ?? '???'}이 공개했다`} ·{' '}
+                  {mine ? '내가 공개했다' : `${withParticle(other?.nickname ?? '???', 'subject')} 공개했다`} ·{' '}
                   {REVEAL_LABEL[m.revealKind ?? 'custom']}
                 </span>
                 <span className="sc-chat__reveal-text">{m.text}</span>
