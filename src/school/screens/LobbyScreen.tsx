@@ -59,13 +59,10 @@ export function LobbyScreen() {
     <div className="sc-lobby">
       <div className="sc-lobby__head">
         <span className="sc-lobby__eyebrow">아직 시작하지 않았다</span>
-        <h1>
-          {count}명이 모였다
-          <span className="sc-lobby__range">
-            {' '}
-            / {MIN_PLAYERS}~{MAX_PLAYERS}
-          </span>
-        </h1>
+        <h1>{count}명이 모였다</h1>
+        <span className="sc-lobby__range">
+          {MAX_PLAYERS}명 기준 · {MIN_PLAYERS}명부터 시작할 수 있다
+        </span>
       </div>
 
       <ul className="sc-lobby__list">

@@ -233,27 +233,30 @@ export const roleById: Record<RoleId, RoleSpec> = Object.fromEntries(ROLES.map((
 >
 
 /**
- * 참가자 수(8~14)에 따라 어떤 역할부터 쓸지 정하는 우선순위.
- * 앞쪽일수록 "관계의 허브" 또는 "A의 서사·엔딩 훅"에 직접 걸려 있어 인원이 적어도 반드시 필요하고,
- * 뒤쪽일수록 있으면 이야기가 풍성해지지만 없어도 게임이 성립하는 역할이다.
- * N명이면 앞에서부터 N개를 그대로 쓴다.
+ * 14명을 기준으로 짠 판이고, 당일 한두 명이 못 오는 경우까지만 받는다.
+ * N명이면 앞에서부터 N개를 쓰므로, 뒤의 두 자리가 먼저 비는 자리다.
+ * 그래서 꼬리에는 "털어놓을 것이 가장 약한" 역할을 둔다 — 이 게임의 중심이
+ * 공개(무엇을 털어놓는가)라서, 빠져도 판에서 사라지는 카드가 가장 적은 쪽이다.
+ * 모범생은 숨긴 사실이 "사실 관심이 없었다"라 공개해도 파장이 가장 작고,
+ * 전학생은 "일부러 거리를 뒀다"로 인기 학생 쪽과 결이 겹친다.
  */
 export const ROLE_INCLUDE_ORDER: RoleId[] = [
-  'classPresident', // 1 — 관계 허브
-  'popular', // 2 — 관계 허브
+  'classPresident', // 1 — 관계 허브 + 거절했다는 죄책감
+  'popular', // 2 — 관계 허브 + 배제의 가해
   'gossip', // 3 — 소문 시스템의 심장
   'secretAdmirer', // 4 — 감정선의 축(짝사랑 → 고백 여부)
-  'topStudent', // 5 — 경쟁/열등감 축
-  'exPartner', // 6 — A 서사의 핵심 증인
-  'troublemaker', // 7 — 오해받는 관계의 축
+  'exPartner', // 5 — A 서사의 핵심 증인
+  'counselee', // 6 — 비밀을 맡고 옮긴 배신
+  'troublemaker', // 7 — 혼자만 특별하다고 믿었던 오해
   'stranger', // 8 — 엔딩 훅(A의 마지막 부탁)
-  'counselee', // 9 — 비밀을 맡고 배신하는 축
-  'goodStudent', // 10 — "모두에게 좋은 사람"이라는 환상이 깨지는 축
-  'athlete', // 11 — 방관자의 축
-  'snsAddict', // 12 — 정보 공개/은폐 축
-  'transferStudent', // 13 — 아웃사이더 시점
-  'exLover', // 14 — 가장 큰 반전이지만 없어도 무방
+  'snsAddict', // 9 — A의 마지막 게시물
+  'athlete', // 10 — 괴롭힘을 보고 지나친 방관
+  'topStudent', // 11 — 경쟁과 험담
+  'exLover', // 12 — 아무도 모르는 연애
+  'transferStudent', // 13 — 먼저 빠지는 자리
+  'goodStudent', // 14 — 먼저 빠지는 자리
 ]
 
-export const MIN_PLAYERS = 8
+/** 14명이 기준. 당일 두 명까지 빠져도 판이 굴러가도록 12명부터 받는다. */
+export const MIN_PLAYERS = 12
 export const MAX_PLAYERS = ROLE_INCLUDE_ORDER.length // 14
