@@ -21,6 +21,14 @@ service cloud.firestore {
       }
     }
 
+    match /schoolSessions/live {
+      allow read, write: if true;
+
+      match /players/{playerId} {
+        allow read, write: if true;
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
