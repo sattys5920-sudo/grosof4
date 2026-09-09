@@ -4,9 +4,10 @@ import { useSchoolGame } from '../state/SchoolGameContext'
 import { MAX_PLAYERS, MIN_PLAYERS } from '../data/roles'
 
 export function LobbyScreen() {
-  const { isHost, players, hostAssignRoles } = useSchoolGame()
+  const { isHost, players, hostAssignRoles, hostRemovePlayer, hostResetSession } = useSchoolGame()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [confirmReset, setConfirmReset] = useState(false)
 
   const roster = Object.values(players)
     .filter((p) => !p.isHost)
@@ -23,6 +24,20 @@ export function LobbyScreen() {
       setError(e instanceof Error ? e.message : '알 수 없는 오류가 발생했다.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function reset() {
+    if (!confirmReset) {
+      setConfirmReset(true)
+      return
+    }
+    setBusy(true)
+    try {
+      await hostResetSession()
+    } finally {
+      setBusy(false)
+      setConfirmReset(false)
     }
   }
 
@@ -44,6 +59,11 @@ export function LobbyScreen() {
           <li key={p.id} className="sc-lobby__row">
             <span className="sc-lobby__index">{String(i + 1).padStart(2, '0')}</span>
             <span className="sc-lobby__name">{p.nickname}</span>
+            {isHost && (
+              <button className="sc-lobby__kick" onClick={() => hostRemovePlayer(p.id)} aria-label={`${p.nickname} 내보내기`}>
+                내보내기
+              </button>
+            )}
           </li>
         ))}
         {roster.length === 0 && <li className="sc-lobby__empty">아직 아무도 들어오지 않았다.</li>}
@@ -59,6 +79,9 @@ export function LobbyScreen() {
           {error && <p className="sc-lobby__error">{error}</p>}
           <button className="sc-lobby__start" disabled={!canStart || busy} onClick={start}>
             역할을 배정하고 시작한다
+          </button>
+          <button className="sc-lobby__reset" disabled={busy} onClick={reset}>
+            {confirmReset ? '정말 명단을 비운다 (다시 누르면 실행)' : '명단 비우기'}
           </button>
         </div>
       ) : (

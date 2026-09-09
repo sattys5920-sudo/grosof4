@@ -60,9 +60,20 @@
 }
 
 .sc-lobby__name {
+  flex-grow: 1;
   font-family: var(--sc-font-title);
   font-size: 15px;
   color: var(--sc-text);
+}
+
+.sc-lobby__kick {
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--sc-line-strong);
+  background: transparent;
+  font-size: 11px;
+  color: var(--sc-text-dim);
 }
 
 .sc-lobby__empty {
@@ -98,6 +109,18 @@
 }
 
 .sc-lobby__start:disabled {
+  opacity: 0.35;
+}
+
+.sc-lobby__reset {
+  height: 42px;
+  border: 1px solid var(--sc-danger);
+  background: transparent;
+  color: var(--sc-danger);
+  font-size: 12.5px;
+}
+
+.sc-lobby__reset:disabled {
   opacity: 0.35;
 }
 

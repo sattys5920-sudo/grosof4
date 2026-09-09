@@ -13,6 +13,7 @@ import {
   logReveal,
   logSchoolAction,
   postGroupChatMessage,
+  removeSchoolPlayer,
   sendDirectMessage,
   subscribeMyDmThreads,
   threadKeyFor,
@@ -75,6 +76,7 @@ interface SchoolGameValue {
   loginAsHost: (code: string) => void
   logout: () => void
   hostAssignRoles: () => Promise<void>
+  hostRemovePlayer: (playerId: string) => Promise<void>
   hostAdvanceDay: (nextDay: number, eventCard: string | null) => Promise<void>
   hostSetEventCard: (eventCard: string | null) => Promise<void>
   hostEndGame: () => Promise<void>
@@ -187,6 +189,10 @@ export function SchoolGameProvider({ children }: { children: ReactNode }) {
       .filter((p) => !p.isHost)
       .map((p) => p.id)
     await assignRolesAndReveal(ids)
+  }
+
+  async function hostRemovePlayer(playerId: string) {
+    await removeSchoolPlayer(playerId)
   }
 
   async function hostAdvanceDay(nextDay: number, eventCard: string | null) {
@@ -346,6 +352,7 @@ export function SchoolGameProvider({ children }: { children: ReactNode }) {
     loginAsHost,
     logout,
     hostAssignRoles,
+    hostRemovePlayer,
     hostAdvanceDay,
     hostSetEventCard,
     hostEndGame,

@@ -141,6 +141,12 @@ export async function joinSchoolSession(playerId: string, nickname: string, isHo
   await setDoc(playerRef(playerId), profile, { merge: true })
 }
 
+/** 진행자 전용: 중복 입장이나 유령 참가자를 명단에서 뺀다. 그 사람이 낀 대화방도 같이 지운다. */
+export async function removeSchoolPlayer(playerId: string): Promise<void> {
+  const threads = await getDocs(query(dmCol(), where('participants', 'array-contains', playerId)))
+  await Promise.all([deleteDoc(playerRef(playerId)), ...threads.docs.map((d) => deleteDoc(d.ref))])
+}
+
 /** 진행자 전용: 지금 모인 인원으로 역할을 자동 배정하고 역할 공개 단계로 넘긴다. */
 export async function assignRolesAndReveal(playerIds: string[]): Promise<void> {
   const assignment = assignRoles(playerIds)
