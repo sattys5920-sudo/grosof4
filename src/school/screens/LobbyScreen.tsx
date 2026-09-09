@@ -32,12 +32,24 @@ export function LobbyScreen() {
       setConfirmReset(true)
       return
     }
+    setError('')
     setBusy(true)
     try {
       await hostResetSession()
+    } catch (e) {
+      setError(e instanceof Error ? `명단을 비우지 못했다. ${e.message}` : '명단을 비우지 못했다.')
     } finally {
       setBusy(false)
       setConfirmReset(false)
+    }
+  }
+
+  async function kick(playerId: string, nickname: string) {
+    setError('')
+    try {
+      await hostRemovePlayer(playerId)
+    } catch (e) {
+      setError(e instanceof Error ? `${nickname}을 내보내지 못했다. ${e.message}` : `${nickname}을 내보내지 못했다.`)
     }
   }
 
@@ -60,7 +72,7 @@ export function LobbyScreen() {
             <span className="sc-lobby__index">{String(i + 1).padStart(2, '0')}</span>
             <span className="sc-lobby__name">{p.nickname}</span>
             {isHost && (
-              <button className="sc-lobby__kick" onClick={() => hostRemovePlayer(p.id)} aria-label={`${p.nickname} 내보내기`}>
+              <button className="sc-lobby__kick" onClick={() => kick(p.id, p.nickname)} aria-label={`${p.nickname} 내보내기`}>
                 내보내기
               </button>
             )}
