@@ -54,18 +54,21 @@ export default function GameScreen({
       {errorMsg && <p className="game-error">{errorMsg}</p>}
 
       <div className="board-wrap">
-        <div className="board" style={{ gridTemplateColumns: `repeat(${BOARD_SIZE}, 1fr)` }}>
+        <div className="board">
           {board.map((rowCells, row) =>
             rowCells.map((cell, col) => {
               const key = `${row}-${col}`
               const isStar = STAR_POINTS.has(key)
               const isLast = lastMove && lastMove.row === row && lastMove.col === col
               const isWin = winCells.has(key)
+              const leftPct = ((col + 0.5) / BOARD_SIZE) * 100
+              const topPct = ((row + 0.5) / BOARD_SIZE) * 100
               return (
                 <button
                   type="button"
                   key={key}
-                  className={`board-cell ${isWin ? 'win' : ''}`}
+                  className={`board-point ${isWin ? 'win' : ''}`}
+                  style={{ left: `${leftPct}%`, top: `${topPct}%` }}
                   disabled={busy || !myTurn || room.phase !== 'playing' || cell !== null}
                   onClick={() => onPlace(row, col)}
                 >
