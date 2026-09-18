@@ -42,7 +42,7 @@ button{font-family:inherit}
 }
 .blob{
   position:absolute; width:520px; height:520px; border-radius:50%;
-  background:var(--lime); opacity:.18; top:-160px; left:-120px;
+  background:var(--lime); opacity:.18; top:-150px; left:-130px;
   z-index:0; pointer-events:none;
 }
 
@@ -67,64 +67,14 @@ button{font-family:inherit}
 .build .lbl{font-family:var(--num); font-size:11px; letter-spacing:.14em}
 .build .val{font-family:var(--num); font-size:15px}
 
-/* layout */
-.body{position:relative; z-index:2; flex:1 1 auto; display:flex; gap:20px; padding:26px}
-
-/* brand side */
-.brand{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:20px}
-.eyebrow{font-family:var(--num); font-size:13px; letter-spacing:.22em; color:var(--lime)}
-.brand h1{
-  margin:0; font-family:var(--disp); font-size:64px; line-height:1.08;
-  color:var(--line); text-wrap:balance;
-}
-.brand h1 em{font-style:normal; color:var(--lime)}
-.lede{margin:0; max-width:46ch; font-size:15px; line-height:1.8; color:var(--t2)}
-.marks{display:flex; gap:12px; flex-wrap:wrap}
-.mark{
-  display:inline-flex; align-items:center; height:38px; padding:0 16px;
-  border-radius:999px; border:4px solid var(--dim); color:var(--t2);
-  font-family:var(--num); font-size:12px; letter-spacing:.08em;
-}
-.cards{display:flex; gap:14px; margin-top:auto}
-.card{
-  width:158px; display:flex; flex-direction:column; gap:8px;
-  padding:10px; border-radius:18px; background:var(--panel); border:4px solid var(--line);
-}
-.card:nth-child(1){transform:rotate(-2deg)}
-.card:nth-child(2){transform:rotate(1.4deg)}
-.card:nth-child(3){transform:rotate(2.2deg)}
-.card-top{display:flex; align-items:center; justify-content:space-between; gap:6px}
-.cost{
-  width:34px; height:34px; flex:0 0 34px; border-radius:50%;
-  background:var(--lime); border:4px solid var(--line); color:var(--ink);
-  display:flex; align-items:center; justify-content:center; font-family:var(--num); font-size:15px;
-}
-.card.pinkish .cost{background:var(--pink)}
-.fam{font-family:var(--num); font-size:9px; letter-spacing:.08em; color:var(--t3)}
-.art{
-  position:relative; height:88px; border-radius:12px; overflow:hidden;
-  background:var(--ink); border:4px solid var(--dim);
+/* centered auth */
+.body{
+  position:relative; z-index:2; flex:1 1 auto;
   display:flex; align-items:center; justify-content:center;
+  padding:26px;
 }
-.art::after{
-  content:""; position:absolute; inset:0;
-  background-image:radial-gradient(#14061F 1.4px, transparent 1.5px);
-  background-size:12px 12px; opacity:.35;
-}
-.glyph{position:relative; z-index:1; font-family:var(--disp); font-size:30px; color:var(--lime)}
-.card.pinkish .glyph{color:var(--pink)}
-.cname{margin:0; font-family:var(--disp); font-size:14px; line-height:1.2; color:var(--line)}
-.stats{display:flex; gap:6px}
-.stat{
-  flex:1 1 0; height:28px; border-radius:999px; border:3px solid var(--line);
-  display:flex; align-items:center; justify-content:center; font-family:var(--num); font-size:12px;
-}
-.stat.atk{background:var(--line); color:var(--ink)}
-.stat.hp{color:var(--t1)}
-
-/* auth panel (inverted) */
 .auth{
-  flex:0 0 440px; display:flex; flex-direction:column; gap:20px;
+  width:100%; max-width:460px; display:flex; flex-direction:column; gap:20px;
   padding:26px; border-radius:28px;
   background:var(--line); color:var(--ink); border:5px solid var(--ink);
   box-shadow:10px 10px 0 var(--lime);
@@ -137,8 +87,7 @@ button{font-family:inherit}
 }
 .seg-btn:hover{background:#EFE6F6}
 .seg-btn[aria-selected="true"]{background:var(--lime); box-shadow:6px 6px 0 var(--ink)}
-.pane{display:flex; flex-direction:column; gap:18px; flex:1 1 auto}
-.pane[hidden]{display:none !important}
+.pane{display:flex; flex-direction:column; gap:18px}
 .field{display:flex; flex-direction:column; gap:6px}
 .field label{font-family:var(--num); font-size:11px; letter-spacing:.14em; color:#5B4470}
 .inputwrap{position:relative; display:flex}
@@ -155,21 +104,9 @@ button{font-family:inherit}
   color:var(--ink); cursor:pointer; display:flex; align-items:center; justify-content:center;
 }
 .peek:hover{background:#EFE6F6}
-.hint{font-size:12px; font-weight:700; color:#5B4470}
-.fams{display:flex; gap:8px; flex-wrap:wrap}
-.fams .opt{position:relative}
-.fams input{position:absolute; opacity:0; width:1px; height:1px}
-.fams span{
-  display:inline-flex; align-items:center; min-height:44px; padding:0 16px;
-  border-radius:999px; border:4px solid var(--ink); cursor:pointer;
-  font-family:var(--disp); font-size:14px; color:var(--ink);
-}
-.fams input:checked + span{background:var(--pink); box-shadow:4px 4px 0 var(--ink)}
-.fams input:focus-visible + span{outline:4px solid var(--pink); outline-offset:3px}
 .remember{display:flex; align-items:center; gap:12px; min-height:44px; cursor:pointer}
 .remember input{width:26px; height:26px; accent-color:#14061F; margin:0}
 .remember span{font-size:14px; font-weight:700}
-.msg{min-height:0}
 .msg:empty{display:none}
 .msg > b{
   display:block; padding:12px 16px; border-radius:18px;
@@ -184,7 +121,7 @@ button{font-family:inherit}
   display:inline-flex; align-items:center; justify-content:center; gap:12px;
 }
 .btn-main:hover{transform:translate(2px,2px); box-shadow:4px 4px 0 var(--ink)}
-.admin-slot{margin-top:auto; display:flex; flex-direction:column; gap:12px}
+.admin-slot{display:flex; flex-direction:column; gap:12px}
 .rule{height:4px; background:var(--ink); border-radius:999px}
 .btn-admin{
   width:100%; min-height:56px; border-radius:999px; cursor:pointer;
@@ -195,7 +132,7 @@ button{font-family:inherit}
 .btn-admin:hover{background:var(--panel)}
 
 /* result panes */
-.result{flex:1 1 auto; display:flex; flex-direction:column; gap:18px; justify-content:center; text-align:center}
+.result{gap:18px; text-align:center}
 .result .badge{
   align-self:center; width:96px; height:96px; border-radius:50%;
   border:5px solid var(--ink); background:var(--lime);
@@ -203,7 +140,6 @@ button{font-family:inherit}
 }
 .result.admin .badge{background:var(--pink)}
 .result h2{margin:0; font-family:var(--disp); font-size:34px; line-height:1.15}
-.result p{margin:0; font-size:14px; font-weight:700; color:#5B4470; line-height:1.7}
 .who{
   align-self:center; display:inline-flex; align-items:center; gap:10px;
   min-height:44px; padding:0 18px; border-radius:999px; border:4px solid var(--ink);
@@ -217,7 +153,7 @@ button{font-family:inherit}
   display:inline-flex; align-items:center; justify-content:center;
 }
 .btn-ghost:hover{background:#EFE6F6}
-.stack{display:flex; flex-direction:column; gap:12px; margin-top:auto}
+.stack{display:flex; flex-direction:column; gap:12px}
 
 /* dialog */
 dialog.dlg{
@@ -240,7 +176,6 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
   border:4px solid var(--line); background:var(--ink); color:var(--line);
   font-family:var(--num); font-size:22px; letter-spacing:.24em; text-align:center;
 }
-.dlg .note{font-size:12px; font-weight:700; color:var(--t3); line-height:1.6}
 .dlg .msg > b{border-color:var(--line)}
 .dlg-actions{display:flex; gap:12px}
 .dlg-actions button{
@@ -252,25 +187,14 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
 .dlg-actions .no{background:transparent; color:var(--t1)}
 .dlg-actions .no:hover{background:var(--dim)}
 
-@media (max-width:1024px){
-  .stage{min-height:0}
-  .body{flex-direction:column}
-  .auth{flex:0 0 auto; box-shadow:6px 6px 0 var(--lime)}
-  .brand h1{font-size:48px}
-  .cards{margin-top:0}
-  .card{flex:1 1 150px; width:auto}
-}
 @media (max-width:640px){
+  .stage{min-height:0}
   .hd{padding:0 16px; gap:10px}
   .wordmark{font-size:19px}
   .build .lbl{display:none}
-  .body{padding:16px; gap:16px}
-  .brand h1{font-size:38px}
-  .auth{padding:20px; border-radius:24px}
+  .body{padding:16px; align-items:flex-start}
+  .auth{padding:20px; border-radius:24px; box-shadow:6px 6px 0 var(--lime)}
   .btn-main{font-size:22px; min-height:60px}
-  .cards{gap:10px}
-  .card{flex:1 1 calc(50% - 5px)}
-  .card:nth-child(3){display:none}
 }
 @media (prefers-reduced-motion:reduce){
   *{transition:none !important}
@@ -298,42 +222,7 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
   </header>
 
   <div class="body">
-    <section class="brand">
-      <span class="eyebrow">DEMIGOD ACADEMY · 입학처</span>
-      <h1>피는<br><em>못 속인다</em></h1>
-      <p class="lede">
-        12계보의 피를 이어받은 학생들이 카드로 서열을 정하는 곳. 학번을 만들고 들어오면
-        시작 덱 한 벌과 이코르 1,240이 지급됩니다.
-      </p>
-      <div class="marks">
-        <span class="mark">CARDS 144</span>
-        <span class="mark">계보 12</span>
-        <span class="mark">SEASON 01 · D-12</span>
-      </div>
-
-      <div class="cards" aria-hidden="true">
-        <article class="card">
-          <div class="card-top"><span class="cost">4</span><span class="fam">POSEIDON</span></div>
-          <div class="art"><span class="glyph">네레오</span></div>
-          <h3 class="cname">네레오 · 파도의 아들</h3>
-          <div class="stats"><span class="stat atk">ATK 5</span><span class="stat hp">HP 4</span></div>
-        </article>
-        <article class="card pinkish">
-          <div class="card-top"><span class="cost">2</span><span class="fam">HERMES</span></div>
-          <div class="art"><span class="glyph">이즈미</span></div>
-          <h3 class="cname">이즈미 · 전령의 딸</h3>
-          <div class="stats"><span class="stat atk">ATK 2</span><span class="stat hp">HP 3</span></div>
-        </article>
-        <article class="card">
-          <div class="card-top"><span class="cost">6</span><span class="fam">HADES</span></div>
-          <div class="art"><span class="glyph">하윤</span></div>
-          <h3 class="cname">하윤 · 명계의 문지기</h3>
-          <div class="stats"><span class="stat atk">ATK 4</span><span class="stat hp">HP 9</span></div>
-        </article>
-      </div>
-    </section>
-
-    <aside class="auth">
+    <main class="auth">
       <div class="seg" role="tablist" aria-label="입장 방식">
         <button type="button" class="seg-btn" id="tabLogin" role="tab" aria-selected="true" aria-controls="paneLogin">로그인</button>
         <button type="button" class="seg-btn" id="tabSignup" role="tab" aria-selected="false" aria-controls="paneSignup">가입</button>
@@ -342,7 +231,7 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
       <!-- 로그인 -->
       <form class="pane" id="paneLogin" role="tabpanel" aria-labelledby="tabLogin" novalidate>
         <div class="field">
-          <label for="loginId">학번 (아이디)</label>
+          <label for="loginId">아이디</label>
           <div class="inputwrap">
             <input id="loginId" name="loginId" type="text" autocomplete="username" placeholder="영문·숫자 4~16자" required>
           </div>
@@ -358,7 +247,7 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
         </div>
         <label class="remember" for="remember">
           <input id="remember" name="remember" type="checkbox">
-          <span>이 기기에서 학번 기억하기</span>
+          <span>아이디 기억하기</span>
         </label>
         <div class="msg" id="loginMsg" role="status" aria-live="polite"></div>
         <button type="submit" class="btn-main">
@@ -378,11 +267,10 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
       <!-- 가입 -->
       <form class="pane" id="paneSignup" role="tabpanel" aria-labelledby="tabSignup" hidden novalidate>
         <div class="field">
-          <label for="newId">학번 (아이디)</label>
+          <label for="newId">아이디</label>
           <div class="inputwrap">
             <input id="newId" name="newId" type="text" autocomplete="username" placeholder="영문·숫자 4~16자" required>
           </div>
-          <span class="hint">영문·숫자·밑줄만, 4~16자</span>
         </div>
         <div class="field">
           <label for="newPw">비밀번호</label>
@@ -399,19 +287,10 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
             <input id="newPw2" name="newPw2" type="password" autocomplete="new-password" placeholder="한 번 더" required>
           </div>
         </div>
-        <fieldset class="field" style="border:0; padding:0; margin:0">
-          <legend style="font-family:var(--num); font-size:11px; letter-spacing:.14em; color:#5B4470; padding:0">시작 계열</legend>
-          <div class="fams">
-            <label class="opt"><input type="radio" name="fam" value="올림포스" checked><span>올림포스</span></label>
-            <label class="opt"><input type="radio" name="fam" value="명계"><span>명계</span></label>
-            <label class="opt"><input type="radio" name="fam" value="원시신"><span>원시신</span></label>
-            <label class="opt"><input type="radio" name="fam" value="인간계"><span>인간계</span></label>
-          </div>
-        </fieldset>
         <div class="msg" id="signupMsg" role="status" aria-live="polite"></div>
         <button type="submit" class="btn-main">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#14061F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 19h6"/><path d="M19 16v6"/><circle cx="10" cy="8" r="4"/><path d="M3 20c.7-3.6 3.4-5.5 7-5.5 1 0 1.9.15 2.7.43"/></svg>
-          학번 만들기
+          가입하기
         </button>
       </form>
 
@@ -421,11 +300,10 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
           <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#14061F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4 10-10"/></svg>
         </span>
         <h2>입장 완료</h2>
-        <span class="who"><span class="k">학번</span><span class="v" id="whoId">—</span></span>
-        <p id="whoSub">시작 덱과 이코르 1,240이 계정에 들어왔습니다.</p>
+        <span class="who"><span class="k">ID</span><span class="v" id="whoId">—</span></span>
         <div class="stack">
           <a class="btn-main" href="01-lobby.html" style="text-decoration:none">로비로 가기</a>
-          <button type="button" class="btn-ghost" data-logout>다른 학번으로 입장</button>
+          <button type="button" class="btn-ghost" data-logout>다른 아이디로 입장</button>
         </div>
       </div>
 
@@ -435,13 +313,12 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
           <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#14061F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v2"/></svg>
         </span>
         <h2>관리자 모드</h2>
-        <p>카드 데이터, 시즌 설정, 계정 목록을 편집할 수 있습니다.<br>일반 학생 화면과 분리된 세션입니다.</p>
         <div class="stack">
           <button type="button" class="btn-main" id="adminGo">관리자 콘솔 열기</button>
           <button type="button" class="btn-ghost" data-logout>나가기</button>
         </div>
       </div>
-    </aside>
+    </main>
   </div>
 </div>
 
@@ -457,7 +334,6 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
       <label for="adminCode">ADMIN CODE · 9자리</label>
       <input id="adminCode" name="adminCode" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="9" autocomplete="off" placeholder="000000000">
     </div>
-    <p class="note">관리자 코드는 학생 계정과 별개입니다. 입력한 코드는 이 기기 밖으로 나가지 않습니다.</p>
     <div class="msg" id="adminMsg" role="status" aria-live="polite"></div>
     <div class="dlg-actions">
       <button type="button" class="no" id="adminCancel">취소</button>
@@ -537,14 +413,13 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
   var ID_RE = /^[A-Za-z0-9_]{4,16}$/;
   var signupMsg = $('#signupMsg');
 
-  $('#paneSignup').addEventListener('submit', function (e) {
+  paneSignup.addEventListener('submit', function (e) {
     e.preventDefault();
     var id = $('#newId').value.trim();
     var pw = $('#newPw').value;
     var pw2 = $('#newPw2').value;
-    var fam = (document.querySelector('input[name="fam"]:checked') || {}).value || '올림포스';
 
-    if (!ID_RE.test(id)) { say(signupMsg, '학번은 영문·숫자·밑줄 4~16자로 만들어 주세요.'); $('#newId').focus(); return; }
+    if (!ID_RE.test(id)) { say(signupMsg, '아이디는 영문·숫자·밑줄 4~16자로 만들어 주세요.'); $('#newId').focus(); return; }
     if (pw.length < 8 || !/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw)) {
       say(signupMsg, '비밀번호는 영문과 숫자를 섞어 8자 이상으로 만들어 주세요.'); $('#newPw').focus(); return;
     }
@@ -552,10 +427,10 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
 
     var accounts = readAccounts();
     if (Object.prototype.hasOwnProperty.call(accounts, id)) {
-      say(signupMsg, '이미 쓰이고 있는 학번입니다. 다른 학번을 골라 주세요.'); $('#newId').focus(); return;
+      say(signupMsg, '이미 쓰이고 있는 아이디입니다. 다른 아이디를 골라 주세요.'); $('#newId').focus(); return;
     }
 
-    accounts[id] = { pw: pw, fam: fam, ichor: 1240, joined: new Date().toISOString() };
+    accounts[id] = { pw: pw, joined: new Date().toISOString() };
     writeAccounts(accounts);
 
     say(signupMsg, '');
@@ -563,23 +438,23 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
     $('#newPw2').value = '';
     $('#loginId').value = id;
     showTab('login');
-    say($('#loginMsg'), '학번 ' + id + ' 생성 완료. 비밀번호를 입력하면 입장합니다.', true);
+    say($('#loginMsg'), '가입 완료. 비밀번호를 입력하면 입장합니다.', true);
     $('#loginPw').focus();
   });
 
   /* ---- 로그인 ---- */
   var loginMsg = $('#loginMsg');
 
-  $('#paneLogin').addEventListener('submit', function (e) {
+  paneLogin.addEventListener('submit', function (e) {
     e.preventDefault();
     var id = $('#loginId').value.trim();
     var pw = $('#loginPw').value;
     var accounts = readAccounts();
     var acct = Object.prototype.hasOwnProperty.call(accounts, id) ? accounts[id] : null;
 
-    if (!id || !pw) { say(loginMsg, '학번과 비밀번호를 모두 입력해 주세요.'); return; }
+    if (!id || !pw) { say(loginMsg, '아이디와 비밀번호를 모두 입력해 주세요.'); return; }
     if (!acct || acct.pw !== pw) {
-      say(loginMsg, '학번 또는 비밀번호가 맞지 않습니다. 처음이라면 가입 탭에서 학번을 먼저 만들어 주세요.');
+      say(loginMsg, '아이디 또는 비밀번호가 맞지 않습니다. 처음이라면 가입 탭에서 아이디를 먼저 만들어 주세요.');
       $('#loginPw').select();
       return;
     }
@@ -592,7 +467,6 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
     say(loginMsg, '');
     $('#loginPw').value = '';
     $('#whoId').textContent = id;
-    $('#whoSub').textContent = (acct.fam || '올림포스') + ' 계열 시작 덱과 이코르 ' + (acct.ichor || 1240).toLocaleString() + '이 계정에 들어왔습니다.';
     showResult(paneWelcome);
   });
 
@@ -634,7 +508,6 @@ dialog.dlg::backdrop{background:rgba(20,6,31,.78)}
   });
 
   $('#adminGo').addEventListener('click', function () {
-    say(adminMsg, '');
     alert('관리자 콘솔은 다음 화면에서 만듭니다.');
   });
 
